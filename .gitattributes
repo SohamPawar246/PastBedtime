@@ -169,3 +169,6 @@ Packages/packages-lock.json linguist-generated
 
 # Exceptions for .asset files such as lightning pre-baking
 LightingData.asset     binary
+
+# Keep the jam proposal as a normal file (not LFS) so anyone can pull and open it.
+proposal.pdf            -filter -diff -merge binary
