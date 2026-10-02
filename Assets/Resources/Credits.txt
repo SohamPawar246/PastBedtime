@@ -1,0 +1,50 @@
+## PAST BEDTIME
+<i>It's 2 AM. The comic only happens where it's being read.</i>
+
+
+# A GAME BY
+## Soham Pawar
+Studio Kamikaze
+
+Made in 100 hours for the
+TGC Game Jam × GDAI × Infinium '26
+Themes: Comic · Twist · Light
+
+
+# MUSIC
+"First Snow" and "Snow Drift" by HoliznaCC0
+Public domain (CC0)
+
+
+# SOUND
+Interface Sounds, UI Audio, Impact Sounds
+Kenney (kenney.nl) · CC0
+
+
+# CHARACTERS
+Universal Animation Library by Quaternius
+quaternius.com · CC0
+
+
+# FONTS
+Bangers by Vernon Adams · SIL Open Font License 1.1
+Comic Neue by Craig Rozynski · SIL Open Font License 1.1
+Courier Prime by Alan Dague-Greene · SIL Open Font License 1.1
+
+
+# STUDIO LOGO
+Animated with KlingAI 3.0 (AI-generated, disclosed)
+
+
+# TOOLS
+Unity 6 · Universal Render Pipeline
+Claude Code + Unity MCP (AI assistance, see AI_DISCLOSURE.md)
+
+
+# THANKS
+Every kid who read under the covers.
+And you, for reading this far.
+
+
+
+## GOOD NIGHT.

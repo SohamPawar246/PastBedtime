@@ -6,8 +6,24 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/Scenes/Boot.unity
+    guid: bbff89d245e88af459c8b23b6ced3cbe
+  - enabled: 1
+    path: Assets/Scenes/StudioIntro.unity
+    guid: 04de2f0e82d0147499bfc2c1c3854fc1
+  - enabled: 1
+    path: Assets/Scenes/EpilepsyWarning.unity
+    guid: b808ed930b87bb74283767985b12b34f
+  - enabled: 1
+    path: Assets/Scenes/Title.unity
+    guid: b90c20493bc2d3d43ab8bc44d6731d1e
+  - enabled: 1
+    path: Assets/Scenes/Game.unity
+    guid: 03425439fb18b8748bcdb75ada85ff59
+  - enabled: 1
+    path: Assets/Scenes/Credits.unity
+    guid: 1438cf331d0482b4bafdfe18c1adc447
   m_configObjects:
+    com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0
