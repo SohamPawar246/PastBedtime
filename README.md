@@ -19,20 +19,22 @@ what it does, and switch it off when Mom's door opens.
 
 ## Controls
 
+Max is on the left hand, the torch on the right (the mouse).
+
 | Action | Keyboard + mouse |
 |---|---|
 | Move | A / D |
-| Look up / drop through | W / S |
+| Up / down (launcher, ground slam) | W / S |
 | Jump (hold for higher) | Space |
-| Punch (3-hit chain) | J |
-| Kick (W+K launcher) | K |
-| Dodge | Left Shift |
-| Splash Page super | U |
+| Punch (3-hit chain: jab, cross, haymaker) | E |
+| Kick (W + Q launcher, Q in the air dive kick, S + Q in the air ground slam) | Q |
+| Dodge (passes through enemies) | Left Shift |
+| Splash Page super | F |
 | Aim the torch | Mouse |
 | Beam follows Max | Hold left mouse |
 | Torch on / off | Right click |
-| Twist the crank (charge) | Scroll wheel |
-| Twist the lens wheel | Q / E |
+| Twist the crank (charge) | Scroll wheel (or R) |
+| Twist the lens wheel | Middle click, mouse side buttons or Tab (1 to 4 pick a lens) |
 | Pause ("Bookmark") | Esc or P |
 
 Menus also work with arrow keys + Enter. Settings include follow assist, twist input, easy suspicion,
@@ -56,11 +58,13 @@ flat page view, screen shake, reduce flashing and sound captions.
 
 | Path | What |
 |---|---|
-| `Assets/Scripts/Core` | App root, scene transitions, audio, settings, input |
+| `Assets/Scripts/Core` | App root, scene transitions, audio, settings |
 | `Assets/Scripts/UI` | Front-end screens and the comic UI kit (built in code) |
-| `Assets/Shaders` | `LightMask`: torch beam with a Ben-Day halftone edge |
-| `Assets/Editor` | `ShellSetup` (scene/font generation), `ShellCapture` (dev screenshots) |
-| `Assets/Resources` | Fonts, audio, music, credits text |
+| `Assets/Scripts/Game` | The game: the light rule, the torch, Max, the Inkies and Baron Blot, Mom, the pages, the HUD, the finale |
+| `Assets/Scripts/Game/Dev` | Editor-only playtest driver (scripted runs that check the rules) and screenshot capture |
+| `Assets/Shaders/Comic` | The comic's printing: ink, tone, hatching, gradation and the torch's light on the page |
+| `Assets/Editor` | Menu tools: *Build Shell*, *Build Comic Cast*, *Build Game Assets*, *Build Pages* |
+| `Assets/Resources` | Fonts, audio, music, the room renders, the page definitions, credits text |
 
 ## Licence
 
