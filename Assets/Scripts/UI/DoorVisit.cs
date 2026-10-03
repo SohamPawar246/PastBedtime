@@ -33,7 +33,8 @@ public class DoorVisit : MonoBehaviour
 
     public AngryEyes Eyes => _eyes;
 
-    public static DoorVisit Create(Transform layer, Rect cropRect, Vector2 eyesCentre, float eyeSpacing)
+    /// <param name="spillSet">"spill_" for the title's room; "spill_open_" for the game's (no comic standing in it).</param>
+    public static DoorVisit Create(Transform layer, Rect cropRect, Vector2 eyesCentre, float eyeSpacing, string spillSet = "spill_")
     {
         var root = UIKit.Rect(layer, "DoorVisit");
         UIKit.Stretch(root);
@@ -45,7 +46,7 @@ public class DoorVisit : MonoBehaviour
         for (int i = 1; i < n; i++)
         {
             dv._crops[i] = Resources.Load<Texture2D>($"Room/Door/door_{Angles[i]:00}");
-            dv._spills[i] = Resources.Load<Texture2D>($"Room/Door/spill_{Angles[i]:00}");
+            dv._spills[i] = Resources.Load<Texture2D>($"Room/Door/{spillSet}{Angles[i]:00}");
         }
 
         var additive = Shader.Find("PastBedtime/UI/Additive");

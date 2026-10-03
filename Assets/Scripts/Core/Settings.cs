@@ -33,6 +33,8 @@ public static class Settings
     // ---- Progress ---------------------------------------------------------------------
     /// <summary>Highest comic page the player has reached (0 = never started).</summary>
     public static int HighestPage;
+    /// <summary>Stars in hand, and the torch's upgrade levels from the Nightstand (0 to 2 each).</summary>
+    public static int Stars, Spring, Gear, Ratchet;
 
     /// <summary>Raised after any option changes, so live systems can re-read them.</summary>
     public static event Action Changed;
@@ -71,6 +73,10 @@ public static class Settings
         SoundCaptions = GetBool("read.captions", SoundCaptions);
         Fullscreen = GetBool("video.fullscreen", Fullscreen);
         HighestPage = PlayerPrefs.GetInt(Prefix + "progress.page", 0);
+        Stars = PlayerPrefs.GetInt(Prefix + "progress.stars", 0);
+        Spring = PlayerPrefs.GetInt(Prefix + "progress.spring", 0);
+        Gear = PlayerPrefs.GetInt(Prefix + "progress.gear", 0);
+        Ratchet = PlayerPrefs.GetInt(Prefix + "progress.ratchet", 0);
     }
 
     public static void Save()
@@ -87,6 +93,10 @@ public static class Settings
         SetBool("read.captions", SoundCaptions);
         SetBool("video.fullscreen", Fullscreen);
         PlayerPrefs.SetInt(Prefix + "progress.page", HighestPage);
+        PlayerPrefs.SetInt(Prefix + "progress.stars", Stars);
+        PlayerPrefs.SetInt(Prefix + "progress.spring", Spring);
+        PlayerPrefs.SetInt(Prefix + "progress.gear", Gear);
+        PlayerPrefs.SetInt(Prefix + "progress.ratchet", Ratchet);
         PlayerPrefs.Save(); // flush now: a browser tab can close at any moment
     }
 

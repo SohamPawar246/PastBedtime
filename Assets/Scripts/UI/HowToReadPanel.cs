@@ -22,15 +22,16 @@ public static class HowToReadPanel
         UIKit.Stretch(title.rectTransform);
         title.characterSpacing = 6f;
 
+        // left hand only: everything Max does is in reach of W A S D (the right hand holds the mouse)
         Column(root, new Vector2(-w * 0.25f + 10f, 110f), "THE KEYBOARD IS MAX", Palette.HeroRed, new[]
         {
             ("A / D", "run"),
             ("SPACE", "jump (hold = higher)"),
-            ("J", "punch, x3 = haymaker"),
-            ("K", "kick (W+K launches)"),
+            ("E", "punch, x3 = haymaker"),
+            ("Q", "kick (W+Q launches)"),
             ("SHIFT", "dodge"),
             ("W / S", "look up / drop down"),
-            ("U", "splash page (meter full)"),
+            ("F", "splash page (meter full)"),
         });
 
         Column(root, new Vector2(w * 0.25f - 10f, 110f), "THE MOUSE IS THE TORCH", Palette.Cyan, new[]
@@ -39,7 +40,7 @@ public static class HowToReadPanel
             ("HOLD LEFT", "beam follows Max"),
             ("RIGHT CLICK", "torch on / off"),
             ("SCROLL", "twist the crank"),
-            ("Q / E", "twist the lens"),
+            ("MIDDLE CLICK", "twist the lens"),
             ("ESC", "bookmark (pause)"),
         });
 

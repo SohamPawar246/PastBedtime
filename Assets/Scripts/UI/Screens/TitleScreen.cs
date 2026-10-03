@@ -388,7 +388,32 @@ public class TitleScreen : MonoBehaviour
     private void OnRead()
     {
         if (_leaving) return;
-        StartCoroutine(Leave(Scenes.Game));
+        // "continue" picks up at the furthest page reached; a first read starts at page 1
+        GameDirector.StartPage = Mathf.Max(1, Settings.HighestPage);
+        StartCoroutine(OpenTheComic());
+    }
+
+    /// <summary>"Start reading": the words fade, the torch settles back on the comic, and the game
+    /// takes over this exact picture (a cut nobody sees); there the cover swings open and the view
+    /// zooms in onto the page.</summary>
+    private IEnumerator OpenTheComic()
+    {
+        _leaving = true;
+        _menuGroup.interactable = false;
+        AudioDirector.I?.Duck(1f);                     // in case Mom was mid-visit
+        AudioDirector.I?.Confirm();
+        UIKit.Select(null);
+        _beam.followPointer = false;                   // the light drifts back onto the comic
+        _beam.followSelection = false;
+        ResetVisit();
+        for (float t = 0f; t < 0.45f; t += Time.unscaledDeltaTime)
+        {
+            _front.alpha = 1f - Mathf.SmoothStep(0f, 1f, t / 0.45f);
+            yield return null;
+        }
+        _front.alpha = 0f;
+        GameDirector.OpenFromTitle = true;
+        App.I.Flow.Cut(Scenes.Game);
     }
 
     private void OnStartOver()

@@ -1,0 +1,131 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 456cb30eeb6200041ae9c0916e7d8c93, type: 3}
+  m_Name: Page06
+  m_EditorClassIdentifier: Assembly-CSharp::PageDef
+  number: 6
+  title: Blot's office
+  act: 'PART 2: THE INKWORKS'
+  startCharge: 1
+  unlockLens: 3
+  start: {x: 1.5, y: 2.6}
+  momVisits: 1
+  momOpenChance: 0
+  catFakeout: 0
+  momTutorial: 0
+  momFirstVisit: 12
+  momFirstOpens: 0
+  momLens: -1
+  tiers:
+  - panels:
+    - width: 12
+      caption: THE TOP FLOOR OF THE INKWORKS. BARON BLOT'S OFFICE IS DEAD AHEAD.
+      heroLine: This is it, kid. Keep that light steady.
+      floors:
+      - serializedVersion: 2
+        x: 0
+        y: 0
+        width: 12
+        height: 2.5
+      erasable: []
+      ghost: []
+      ghostStars: []
+      flood: -1
+      floodTop: 8
+      floodRise: 0.55
+      spawns: []
+      props:
+      - kind: 7
+        at: {x: 3, y: 2.5}
+        size: 1
+        text: 
+        tail: {x: 0, y: 0}
+      - kind: 1
+        at: {x: 8.5, y: 2.5}
+        size: 1
+        text: 
+        tail: {x: 0, y: 0}
+      stars:
+      - {x: 8.5, y: 4.6}
+      backdrop: 1
+    - width: 13
+      caption: 'A DOOR WITH A GOLD PLATE: "B. BLOT, ESQ. KNOCK AND PERISH."'
+      heroLine: Shh... I can hear him monologuing.
+      floors:
+      - serializedVersion: 2
+        x: 0
+        y: 0
+        width: 5
+        height: 2.5
+      - serializedVersion: 2
+        x: 5
+        y: 0
+        width: 4
+        height: 3.6
+      - serializedVersion: 2
+        x: 9
+        y: 0
+        width: 4
+        height: 4.7
+      erasable: []
+      ghost: []
+      ghostStars: []
+      flood: -1
+      floodTop: 8
+      floodRise: 0.55
+      spawns: []
+      props:
+      - kind: 10
+        at: {x: 6.9, y: 6.7}
+        size: 3.6
+        text: ...AND THEN THE CITY IS MINE! MWAHAHA!
+        tail: {x: 5.8, y: -1.2}
+      stars:
+      - {x: 2.5, y: 4.8}
+      - {x: 11, y: 7.6}
+      - {x: 6.9, y: 9.6}
+      backdrop: 1
+  - panels:
+    - width: 22
+      caption: BARON BLOT! HIS CHANDELIER HANGS BY A THREAD... ONE FLARE WOULD SNAP
+        IT.
+      heroLine: Lights on, Baron. You're going down!
+      floors:
+      - serializedVersion: 2
+        x: 0
+        y: 0
+        width: 22
+        height: 2.5
+      erasable: []
+      ghost: []
+      ghostStars: []
+      flood: -1
+      floodTop: 8
+      floodRise: 0.55
+      spawns:
+      - kind: 5
+        at: {x: 16.5, y: 2.6}
+        faceRight: 0
+      props:
+      - kind: 9
+        at: {x: 11, y: 8.4}
+        size: 1
+        text: 
+        tail: {x: 0, y: 0}
+      - kind: 1
+        at: {x: 3, y: 2.5}
+        size: 1
+        text: 
+        tail: {x: 0, y: 0}
+      stars:
+      - {x: 3, y: 4.6}
+      backdrop: 1

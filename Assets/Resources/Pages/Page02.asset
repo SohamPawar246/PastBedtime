@@ -1,0 +1,150 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 456cb30eeb6200041ae9c0916e7d8c93, type: 3}
+  m_Name: Page02
+  m_EditorClassIdentifier: Assembly-CSharp::PageDef
+  number: 2
+  title: Water-tower roofs
+  act: 'PART 1: NIGHT OF THE BLOT'
+  startCharge: 0.12
+  unlockLens: -1
+  start: {x: 1.5, y: 2.6}
+  momVisits: 0
+  momOpenChance: 0
+  catFakeout: 0
+  momTutorial: 0
+  momFirstVisit: 0
+  momFirstOpens: 0
+  momLens: -1
+  tiers:
+  - panels:
+    - width: 11
+      caption: THE TORCH IS RUNNING DOWN! SCROLL TO TWIST THE CRANK.
+      heroLine: Kid, it's getting dark in here. Give that crank a twist!
+      floors:
+      - serializedVersion: 2
+        x: 0
+        y: 0
+        width: 11
+        height: 2.5
+      erasable: []
+      ghost: []
+      ghostStars: []
+      flood: -1
+      floodTop: 8
+      floodRise: 0.55
+      spawns: []
+      props:
+      - kind: 3
+        at: {x: 7, y: 2.5}
+        size: 1
+        text: 
+        tail: {x: 0, y: 0}
+      stars:
+      - {x: 9.6, y: 3.8}
+      backdrop: 0
+    - width: 14
+      caption: FREEZE A PUNCH NEXT TO ITS PAL, THEN LIGHT THEM BOTH.
+      heroLine: Two of 'em... let one swing at the other!
+      floors:
+      - serializedVersion: 2
+        x: 0
+        y: 0
+        width: 14
+        height: 2.5
+      erasable: []
+      ghost: []
+      ghostStars: []
+      flood: -1
+      floodTop: 8
+      floodRise: 0.55
+      spawns:
+      - kind: 0
+        at: {x: 6, y: 2.6}
+        faceRight: 0
+      - kind: 0
+        at: {x: 10, y: 2.6}
+        faceRight: 0
+      props:
+      - kind: 4
+        at: {x: 12.5, y: 2.5}
+        size: 1
+        text: 
+        tail: {x: 0, y: 0}
+      stars:
+      - {x: 12.8, y: 4.6}
+      backdrop: 0
+  - panels:
+    - width: 12
+      caption: BRICKS FALL ONLY IN THE LIGHT. STAND ON THE FROZEN ONES.
+      heroLine: Up there! Keep the bricks dark and climb!
+      floors:
+      - serializedVersion: 2
+        x: 0
+        y: 0
+        width: 4
+        height: 2.5
+      - serializedVersion: 2
+        x: 4.6
+        y: 0
+        width: 1.4
+        height: 4.2
+      - serializedVersion: 2
+        x: 8
+        y: 0
+        width: 4
+        height: 6
+      erasable: []
+      ghost: []
+      ghostStars: []
+      flood: -1
+      floodTop: 8
+      floodRise: 0.55
+      spawns: []
+      props:
+      - kind: 8
+        at: {x: 6.6, y: 7.2}
+        size: 1
+        text: 
+        tail: {x: 0, y: 0}
+      - kind: 8
+        at: {x: 7.2, y: 9.2}
+        size: 1
+        text: 
+        tail: {x: 0, y: 0}
+      stars:
+      - {x: 2, y: 4.6}
+      - {x: 7, y: 9.8}
+      backdrop: 0
+    - width: 13
+      caption: 'W + Q: LAUNCHER. FREEZE AN INKIE IN THE AIR AND STAND ON IT.'
+      heroLine: Pop him up with W and K!
+      floors:
+      - serializedVersion: 2
+        x: 0
+        y: 0
+        width: 13
+        height: 6
+      erasable: []
+      ghost: []
+      ghostStars: []
+      flood: -1
+      floodTop: 8
+      floodRise: 0.55
+      spawns:
+      - kind: 0
+        at: {x: 9, y: 6.1}
+        faceRight: 0
+      props: []
+      stars:
+      - {x: 11.5, y: 10.2}
+      backdrop: 0

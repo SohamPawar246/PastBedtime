@@ -98,7 +98,7 @@ public static class ShellSetup
         MakeScene(Scenes.Warning, typeof(WarningScreen), Color.black, overwrite: true);
         MakeScene(Scenes.Title, typeof(TitleScreen), Palette.Bedroom, overwrite: true);
         MakeScene(Scenes.Credits, typeof(CreditsScreen), Palette.Night, overwrite: true);
-        MakeScene(Scenes.Game, typeof(GamePlaceholder), Palette.Bedroom, overwrite: false);
+        MakeScene(Scenes.Game, typeof(GameDirector), Palette.Bedroom, overwrite: false);
 
         var order = new[] { Scenes.Boot, Scenes.StudioIntro, Scenes.Warning, Scenes.Title, Scenes.Game, Scenes.Credits };
         var list = new List<EditorBuildSettingsScene>();

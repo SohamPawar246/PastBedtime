@@ -68,6 +68,43 @@ public class SceneFlow : MonoBehaviour
 
     public void Reload() => Load(SceneManager.GetActiveScene().name);
 
+    /// <summary>Change scenes with no visible transition: the last frame holds on screen while the
+    /// next scene loads and draws, for a scene that picks up exactly where this one leaves off (the
+    /// title handing its room, comic and torch to the game).</summary>
+    public void Cut(string scene)
+    {
+        if (_loading) return;
+        StartCoroutine(CutRoutine(scene));
+    }
+
+    private IEnumerator CutRoutine(string scene)
+    {
+        _loading = true;
+        yield return new WaitForEndOfFrame();
+        var still = ScreenCapture.CaptureScreenshotAsTexture();
+        var mat = _overlay.material;
+        _overlay.material = null;
+        _overlay.texture = still;
+        _overlay.color = Color.white;
+        _overlay.gameObject.SetActive(true);
+
+        Time.timeScale = 1f;
+        var op = SceneManager.LoadSceneAsync(scene);
+        while (op != null && !op.isDone) yield return null;
+        for (int i = 0; i < 3; i++) yield return null;                 // the new scene draws its first frames underneath
+        for (float t = 0f; t < 0.2f; t += Time.unscaledDeltaTime)
+        {
+            _overlay.color = new Color(1f, 1f, 1f, 1f - t / 0.2f);
+            yield return null;
+        }
+        _overlay.gameObject.SetActive(false);
+        _overlay.texture = null;
+        _overlay.material = mat;
+        _overlay.color = Color.white;
+        Destroy(still);
+        _loading = false;
+    }
+
     private IEnumerator LoadRoutine(string scene, Vector2? focusPx, float startRadius)
     {
         _loading = true;

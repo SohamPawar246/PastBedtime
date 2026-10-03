@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e653ddc909cbea54d8c1aa37ebb8427a, type: 3}
+  m_Name: GameAssets
+  m_EditorClassIdentifier: Assembly-CSharp::GameAssets
+  max: {fileID: 8529698073408583575, guid: bf5f86f188a5b3c46bf8cdec7476898b, type: 3}
+  smudge: {fileID: 7641258412627094970, guid: 715b56c29ccd9ca47a4279a0b83eb482, type: 3}
+  dotShot: {fileID: 5463162825215505542, guid: f0bf35932d8292543b700988b3c9d65f, type: 3}
+  bruiser: {fileID: 319923750227641936, guid: 1a3660b99df159b46bef310bc2aac49b, type: 3}
+  splotch: {fileID: 2543933973630054225, guid: d87baf5386a9992469c76847fd9336e3, type: 3}
+  eraser: {fileID: 4913517660165499586, guid: 04d9717611accbe44a3a21fb29967dd5, type: 3}
+  blot: {fileID: 3280219537059195074, guid: 8ff5adab78a657d41ae418ae7a52a7ef, type: 3}
+  sky: {fileID: 2100000, guid: 18c71024bc8acad4f8439fb50010b2e7, type: 2}
+  moon: {fileID: 2100000, guid: f5788bc386c05de4a8bcd84056117900, type: 2}
+  far: {fileID: 2100000, guid: 0df505b39d9bb1d429ada3dcbcde8474, type: 2}
+  skylineMid: {fileID: 2100000, guid: 59c57d08e2bb0444aa91d94eaee39b61, type: 2}
+  skylineFar: {fileID: 2100000, guid: 0056dde98e0522f4297b14e47f027d1a, type: 2}
+  window: {fileID: 2100000, guid: 8672951bd99416c4bbeb39b44ebb4fad, type: 2}
+  roof: {fileID: 2100000, guid: 196a7b688fb68124fb959059306da591, type: 2}
+  wall: {fileID: 2100000, guid: 4d8876f0d577357419f3e09492e10d7f, type: 2}
+  border: {fileID: 2100000, guid: 778f1462ed76c504491bd729fbed93c6, type: 2}
+  ink: {fileID: 2100000, guid: 108e6e3e2d0899d41a982a4c236f9bf4, type: 2}
+  metal: {fileID: 2100000, guid: 5b805d0e2e6fefa44a9f69a242c1bd03, type: 2}
+  wood: {fileID: 2100000, guid: fc82628f64275954098df88c59ab83aa, type: 2}
+  paper: {fileID: 2100000, guid: 74bba8df859cb4046bdbb63e2b3caf62, type: 2}
+  star: {fileID: 2100000, guid: 2764b3ec4fd0d7546af2051229054051, type: 2}
+  caption: {fileID: 2100000, guid: 668c03f9bd14f9247b46f719995f3df7, type: 2}
+  ghostHint: {fileID: 2100000, guid: 09c218d3b173bae4faa46a6a842ef906, type: 2}
+  nothing: {fileID: 2100000, guid: 1483b9f590aff9b488dcc90d01d3d0a7, type: 2}

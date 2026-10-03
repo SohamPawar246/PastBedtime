@@ -1,0 +1,154 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 456cb30eeb6200041ae9c0916e7d8c93, type: 3}
+  m_Name: Page03
+  m_EditorClassIdentifier: Assembly-CSharp::PageDef
+  number: 3
+  title: Billboard alley
+  act: 'PART 1: NIGHT OF THE BLOT'
+  startCharge: 1
+  unlockLens: 1
+  start: {x: 1.5, y: 2.6}
+  momVisits: 1
+  momOpenChance: 0
+  catFakeout: 0
+  momTutorial: 1
+  momFirstVisit: 22
+  momFirstOpens: 0
+  momLens: -1
+  tiers:
+  - panels:
+    - width: 13
+      caption: PELLETS FREEZE AT THE EDGE OF THE LIGHT. DARK GAPS ARE SAFE LANES.
+      heroLine: Ink pellets! They only fly where you're reading.
+      floors:
+      - serializedVersion: 2
+        x: 0
+        y: 0
+        width: 13
+        height: 2.5
+      erasable: []
+      ghost: []
+      ghostStars: []
+      flood: -1
+      floodTop: 8
+      floodRise: 0.55
+      spawns:
+      - kind: 1
+        at: {x: 10.5, y: 2.6}
+        faceRight: 0
+      props:
+      - kind: 5
+        at: {x: 6.5, y: 2.5}
+        size: 1
+        text: 
+        tail: {x: 0, y: 0}
+      stars:
+      - {x: 3, y: 4.6}
+      backdrop: 0
+    - width: 13
+      caption: THE THIRD PUNCH, THE HAYMAKER, KNOCKS PELLETS BACK!
+      heroLine: Batter up!
+      floors:
+      - serializedVersion: 2
+        x: 0
+        y: 0
+        width: 7
+        height: 2.5
+      - serializedVersion: 2
+        x: 7
+        y: 0
+        width: 6
+        height: 4.2
+      erasable: []
+      ghost: []
+      ghostStars: []
+      flood: -1
+      floodTop: 8
+      floodRise: 0.55
+      spawns:
+      - kind: 0
+        at: {x: 4, y: 2.6}
+        faceRight: 0
+      - kind: 1
+        at: {x: 11, y: 4.3}
+        faceRight: 0
+      props: []
+      stars:
+      - {x: 12, y: 7}
+      backdrop: 0
+  - panels:
+    - width: 12
+      caption: 'TWIST PAST FULL AND THE BULB FLARES: THE WHOLE PAGE WAKES!'
+      heroLine: Easy on the crank... too much and, SPRONG!
+      floors:
+      - serializedVersion: 2
+        x: 0
+        y: 0
+        width: 12
+        height: 2.5
+      erasable: []
+      ghost: []
+      ghostStars: []
+      flood: -1
+      floodTop: 8
+      floodRise: 0.55
+      spawns:
+      - kind: 0
+        at: {x: 8, y: 2.6}
+        faceRight: 0
+      props:
+      - kind: 7
+        at: {x: 5.5, y: 2.5}
+        size: 1
+        text: 
+        tail: {x: 0, y: 0}
+      - kind: 4
+        at: {x: 2, y: 2.5}
+        size: 1
+        text: 
+        tail: {x: 0, y: 0}
+      stars:
+      - {x: 5.5, y: 5.4}
+      backdrop: 0
+    - width: 12
+      caption: A GREEN LENS! MIDDLE-CLICK SWAPS LENSES. GREEN HEALS... EVERYONE IN
+        IT.
+      heroLine: A new lens! Green patches me up. Keep the Inkies out of it!
+      floors:
+      - serializedVersion: 2
+        x: 0
+        y: 0
+        width: 12
+        height: 2.5
+      erasable: []
+      ghost: []
+      ghostStars: []
+      flood: -1
+      floodTop: 8
+      floodRise: 0.55
+      spawns: []
+      props:
+      - kind: 5
+        at: {x: 8, y: 2.5}
+        size: 1
+        text: 
+        tail: {x: 0, y: 0}
+      - kind: 10
+        at: {x: 3.9, y: 4.9}
+        size: 3.2
+        text: INK-O! INKREDIBLE!
+        tail: {x: 2.6, y: 0.1}
+      stars:
+      - {x: 1.4, y: 4.6}
+      - {x: 3.9, y: 7.6}
+      backdrop: 0
