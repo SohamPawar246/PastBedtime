@@ -68,8 +68,8 @@ MonoBehaviour:
       - {x: 7.9, y: 7}
       backdrop: 0
     - width: 13
-      caption: 'HOLD LEFT MOUSE: THE LIGHT FOLLOWS MAX.'
-      heroLine: Hold the left mouse and the light'll stick with me!
+      caption: 'HOLD {FOLLOW}: THE LIGHT FOLLOWS MAX.'
+      heroLine: Hold {FOLLOW} and the light'll stick with me!
       floors:
       - serializedVersion: 2
         x: 0
@@ -104,7 +104,7 @@ MonoBehaviour:
       backdrop: 0
   - panels:
     - width: 12
-      caption: AN INKIE! E, E, E TO PUNCH.
+      caption: AN INKIE! {PUNCH}, {PUNCH}, {PUNCH} TO PUNCH.
       heroLine: Light him up and I'll knock the blot out of him!
       floors:
       - serializedVersion: 2
@@ -132,18 +132,19 @@ MonoBehaviour:
       - {x: 2.2, y: 5.6}
       backdrop: 0
     - width: 13
-      caption: FROZEN THINGS ARE SOLID. KEEP THE CRATE DARK AND STAND ON IT.
+      caption: 'FROZEN THINGS ARE SOLID. KEEP THE CRATE DARK AND STEP ON IT. (HOLD
+        {FOLLOW}: THE LIGHT RIDES HIGH.)'
       heroLine: Read me from above, kid. Keep that crate in the dark!
       floors:
       - serializedVersion: 2
         x: 0
         y: 0
-        width: 4.5
+        width: 3.5
         height: 2.5
       - serializedVersion: 2
-        x: 9
+        x: 11
         y: 0
-        width: 4
+        width: 2
         height: 2.5
       erasable: []
       ghost: []
@@ -154,16 +155,16 @@ MonoBehaviour:
       spawns: []
       props:
       - kind: 1
-        at: {x: 6.75, y: 5}
+        at: {x: 7.25, y: 1.5}
         size: 1
         text: 
         tail: {x: 0, y: 0}
       - kind: 7
-        at: {x: 11, y: 2.5}
+        at: {x: 12, y: 2.5}
         size: 1
         text: 
         tail: {x: 0, y: 0}
       stars:
-      - {x: 6.75, y: 8}
-      - {x: 11.5, y: 4.2}
+      - {x: 7.25, y: 5.4}
+      - {x: 12, y: 4.4}
       backdrop: 0

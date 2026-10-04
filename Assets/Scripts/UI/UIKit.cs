@@ -222,6 +222,18 @@ public static class UIKit
 
     /// <summary>White face, 5 px ink border, 9-sliced. Image.color tints the face only.</summary>
     public static Sprite Box => _box ??= MakeBox();
+    /// <summary>Plain white: what a Filled image needs to show its fill amount (with no sprite it draws full).</summary>
+    public static Sprite Solid => _solid ??= MakeSolid();
+    private static Sprite _solid;
+
+    private static Sprite MakeSolid()
+    {
+        var tex = NewTex(4, 4);
+        var px = new Color32[16];
+        for (int i = 0; i < px.Length; i++) px[i] = new Color32(255, 255, 255, 255);
+        tex.SetPixels32(px);
+        return ToSprite(tex);
+    }
     /// <summary>Rounded white rectangle, no border, 9-sliced (bedding, door glow).</summary>
     public static Sprite Soft => _soft ??= MakeSoft();
     /// <summary>Anti-aliased white disc.</summary>

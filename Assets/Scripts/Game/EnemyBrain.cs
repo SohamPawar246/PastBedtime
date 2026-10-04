@@ -20,6 +20,10 @@ public abstract class EnemyBrain : MonoBehaviour
     public float MinX = -1e4f, MaxX = 1e4f;
     /// <summary>The panel this Inkie lives in (set by the page builder).</summary>
     [System.NonSerialized] public PanelLayout Panel;
+    /// <summary>Where the page drew this Inkie (a bat that dies is drawn back in there).</summary>
+    [System.NonSerialized] public Vector2 Home;
+    /// <summary>Called up by Baron Blot: it doesn't come back when it dies.</summary>
+    [System.NonSerialized] public bool Summoned;
     public float Facing = -1f;
     public Vector2 Velocity;
 
@@ -141,6 +145,9 @@ public abstract class EnemyBrain : MonoBehaviour
             if (Grounded && Velocity.y < 0f) Velocity.y = -2f;
         }
         float belt = Grounded && !Flies ? Conveyor.Carry(transform.position) : 0f;   // a running belt carries Inkies too
+        // walkers never step off a ledge of their own accord (a punch can still send them over)
+        if (!Flies && Grounded && Mode != State.Hurt && Mode != State.Dead && Mathf.Abs(Velocity.x) > 0.01f && !GroundAhead(Mathf.Sign(Velocity.x)))
+            Velocity.x = 0f;
         Vector3 step = new Vector3(Velocity.x + belt, Velocity.y, 0f) * dt;
         if (Body != null && Body.enabled)
         {
@@ -157,6 +164,24 @@ public abstract class EnemyBrain : MonoBehaviour
         transform.position = p;
         // knockback fades on the ground
         if (Grounded && (Mode == State.Hurt || Mode == State.Dead)) Velocity.x = Mathf.MoveTowards(Velocity.x, 0f, 25f * dt);
+    }
+
+    private static readonly RaycastHit[] _probe = new RaycastHit[6];
+
+    /// <summary>Is there floor just past the leading edge of this Inkie's body?</summary>
+    protected bool GroundAhead(float dir)
+    {
+        Vector3 from = transform.position + new Vector3(dir * (BodyRadius + 0.2f), 0.45f, 0f);
+        int n = Physics.RaycastNonAlloc(from, Vector3.down, _probe, 1.3f, ~0, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+        {
+            var c = _probe[i].collider;
+            if (c.attachedRigidbody != null && c.attachedRigidbody.gameObject == gameObject) continue;
+            if (c.transform.IsChildOf(transform)) continue;
+            if (c.GetComponentInParent<HeroController>() != null) continue;      // Max isn't a floor
+            return true;
+        }
+        return false;
     }
 
     protected void ApplyYaw(float dt, bool snap)

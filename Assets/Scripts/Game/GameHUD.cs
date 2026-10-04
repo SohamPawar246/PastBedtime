@@ -28,7 +28,8 @@ public class GameHUD : MonoBehaviour
     private Image _bossFill;
     private float _countdown, _bossLook;
     private BlotBrain _boss;
-    private RectTransform _bubble;
+    private RectTransform _bubble, _bubbleTail;
+    private bool _bubbleLeft;
     private TextMeshProUGUI _bubbleText;
     private float _bubbleFor;
 
@@ -53,12 +54,13 @@ public class GameHUD : MonoBehaviour
         }
         var barBack = UIKit.Image(box.transform, "SplashBack", Palette.Ink);
         UIKit.Place(barBack.rectTransform, new Vector2(0f, -24f), new Vector2(262f, 18f));
-        _splashFill = UIKit.Image(barBack.transform, "SplashFill", Palette.Paper);
+        _splashFill = UIKit.Image(barBack.transform, "SplashFill", Palette.Paper, UIKit.Solid);
         _splashFill.type = Image.Type.Filled;
         _splashFill.fillMethod = Image.FillMethod.Horizontal;
         UIKit.Stretch(_splashFill.rectTransform, 3f);
-        _splashHint = UIKit.Text(box.transform, "SplashHint", "", UIKit.Display, 22f, Palette.HeroRed);
-        UIKit.Place(_splashHint.rectTransform, new Vector2(0f, -54f), new Vector2(260f, 30f));
+        // beside the box, not under it: under it, it would print over the first panel's caption
+        _splashHint = UIKit.Text(box.transform, "SplashHint", "", UIKit.Display, 24f, Palette.HeroRed, TMPro.TextAlignmentOptions.Left);
+        UIKit.Place(_splashHint.rectTransform, new Vector2(150f + 12f + 150f, -22f), new Vector2(300f, 34f));
 
         // ---- stars: top-right caption ------------------------------------------------------
         var stars = UIKit.Panel(pageHolder, "StarsBox", Vector2.zero, new Vector2(190f, 56f), Palette.Yellow, shadow: 5f, tilt: 1.5f);
@@ -93,6 +95,7 @@ public class GameHUD : MonoBehaviour
         var tail = UIKit.Image(_bubble, "Tail", Color.white, UIKit.Triangle);
         UIKit.Place(tail.rectTransform, new Vector2(-150f, -52f), new Vector2(34f, 40f));
         tail.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 170f);
+        _bubbleTail = tail.rectTransform;
         _bubbleText = UIKit.Text(_bubble, "Text", "", UIKit.Body, 26f, Palette.Ink);
         _bubbleText.fontStyle = FontStyles.Bold;
         UIKit.Stretch(_bubbleText.rectTransform, 26f);
@@ -114,7 +117,7 @@ public class GameHUD : MonoBehaviour
         UIKit.Place(bossName.rectTransform, new Vector2(0f, 13f), new Vector2(480f, 30f));
         var bossBack = UIKit.Image(boss.transform, "Back", Palette.Ink.Alpha(0.25f));
         UIKit.Place(bossBack.rectTransform, new Vector2(0f, -14f), new Vector2(470f, 16f));
-        _bossFill = UIKit.Image(bossBack.transform, "Fill", Palette.Ink);
+        _bossFill = UIKit.Image(bossBack.transform, "Fill", Palette.Ink, UIKit.Solid);
         _bossFill.type = Image.Type.Filled;
         _bossFill.fillMethod = Image.FillMethod.Horizontal;
         UIKit.Stretch(_bossFill.rectTransform, 2f);
@@ -145,7 +148,8 @@ public class GameHUD : MonoBehaviour
         }
         var hero = HeroController.I;
         bool show = _boss != null && hero != null && _boss.Mode != EnemyBrain.State.Dead && !_boss.Escaping &&
-                    hero.transform.position.x > _boss.MinX - 0.5f && hero.transform.position.x < _boss.MaxX + 0.5f;
+                    hero.transform.position.x > _boss.MinX - 0.5f && hero.transform.position.x < _boss.MaxX + 0.5f &&
+                    Mathf.Abs(hero.transform.position.y - _boss.transform.position.y) < 8f;           // his tier, not one above
         _bossBox.gameObject.SetActive(show);
         if (show) _bossFill.fillAmount = _boss.Health.hp / BlotBrain.MaxHp;
     }
@@ -174,7 +178,7 @@ public class GameHUD : MonoBehaviour
         if (gs != null)
         {
             _splashFill.fillAmount = gs.Splash / 100f;
-            _splashHint.text = gs.Splash >= 100f ? (gs.Page >= 5 ? "PRESS F: SPLASH PAGE!" : "SPLASH METER FULL") : "";
+            _splashHint.text = gs.Splash >= 100f ? (gs.Page >= 5 ? Bindings.Format("PRESS {SPLASH}: SPLASH PAGE!") : "SPLASH METER FULL") : "";
             _stars.text = $"{gs.StarsThisPage}/5  <size=70%>({gs.StarsTotal})</size>";
             _folio.text = $"PAGE {gs.Page} / {PageManager.LastPage}";
         }
@@ -203,10 +207,18 @@ public class GameHUD : MonoBehaviour
 
         if (_bubble.gameObject.activeSelf)
         {
-            _bubbleFor -= Time.deltaTime;
-            bool show = hero != null && hero.Light.IsAwake && _bubbleFor > 0f;    // words only exist while read
+            // words only exist while read: the line waits, unread, while Max is in the dark
+            bool lit = hero != null && hero.Light.IsAwake;
+            if (lit) _bubbleFor -= Time.deltaTime;
+            bool show = lit && _bubbleFor > 0f;
             _bubble.GetComponent<CanvasGroup>().alpha = show ? 1f : 0f;
-            if (hero != null) _bubble.anchoredPosition = ToHolder((Vector2)hero.transform.position + new Vector2(0.4f, 2.4f));
+            if (hero != null)
+            {
+                Vector2 feet = hero.transform.position;
+                // off the edge of the page on this side? hang it on the other
+                if (!BubbleFits(feet, _bubbleLeft) && BubbleFits(feet, !_bubbleLeft)) SetBubbleSide(!_bubbleLeft);
+                _bubble.anchoredPosition = ToHolder(feet + new Vector2(_bubbleLeft ? -BubbleAt.x : BubbleAt.x, BubbleAt.y));
+            }
             if (_bubbleFor <= 0f) _bubble.gameObject.SetActive(false);
         }
     }
@@ -221,11 +233,54 @@ public class GameHUD : MonoBehaviour
 
     public void HeroSays(string text, float seconds)
     {
+        text = Bindings.Format(text);                   // "{FOLLOW}" says what the player has bound
         _bubbleText.text = text;
-        _bubbleFor = seconds;
+        // long enough to read: a beat, plus about fifteen letters a second
+        _bubbleFor = Mathf.Max(seconds, 2.4f + text.Length * 0.07f);
         _bubble.gameObject.SetActive(true);
         if (_bubble.GetComponent<CanvasGroup>() == null) _bubble.gameObject.AddComponent<CanvasGroup>();
         _bubble.anchorMin = _bubble.anchorMax = new Vector2(0.5f, 0.5f);
+        // the balloon hangs on the side Max isn't facing: his fight (and its POW!s) is the other way
+        var hero = HeroController.I;
+        SetBubbleSide(hero != null && hero.Facing > 0f);
+    }
+
+    /// <summary>Takes Max's line back if it's still up (or still waiting to be read).</summary>
+    public void Unsay(string text)
+    {
+        if (_bubble != null && _bubble.gameObject.activeSelf && _bubbleText.text == Bindings.Format(text)) _bubbleFor = 0f;
+    }
+
+    private void SetBubbleSide(bool left)
+    {
+        _bubbleLeft = left;
+        _bubble.pivot = new Vector2(left ? 0.85f : 0.15f, 0f);
+        _bubbleTail.anchoredPosition = new Vector2(left ? 150f : -150f, -52f);
+        _bubbleTail.localRotation = Quaternion.Euler(0f, 0f, left ? 190f : 170f);
+    }
+
+    /// <summary>Would the balloon, on this side of Max, stay on the page?</summary>
+    private bool BubbleFits(Vector2 feet, bool left)
+    {
+        var at = ToHolder(feet + new Vector2(left ? -BubbleAt.x : BubbleAt.x, BubbleAt.y));
+        float w = _bubble.sizeDelta.x, half = _page.rect.width * 0.5f - 8f;
+        float x0 = at.x - (left ? 0.85f : 0.15f) * w;
+        return x0 >= -half && x0 + w <= half;
+    }
+
+    private static readonly Vector2 BubbleAt = new(0.4f, 2.7f);       // from Max's feet (mirrored on the left)
+
+    /// <summary>Where Max's balloon is on the lane while it's showing, so lettering can keep clear of it.</summary>
+    public bool BubbleLane(out Rect lane)
+    {
+        lane = default;
+        var hero = HeroController.I;
+        if (_bubble == null || !_bubble.gameObject.activeSelf || _bubbleFor <= 0f || hero == null || !hero.Light.IsAwake) return false;
+        float perUnit = _page.rect.width / PageCamera.ViewWidth;
+        Vector2 size = _bubble.sizeDelta / perUnit;
+        Vector2 at = (Vector2)hero.transform.position + new Vector2(_bubbleLeft ? -BubbleAt.x : BubbleAt.x, BubbleAt.y);
+        lane = new Rect(at.x - _bubble.pivot.x * size.x, at.y, size.x, size.y);
+        return true;
     }
 
     public void PageStart(PageDef def) => StartCoroutine(TitleCard(def));
@@ -268,7 +323,7 @@ public class GameHUD : MonoBehaviour
     {
         var gs = GameState.I;
         string style = gs != null ? $"\n<size=40%>CHOREOGRAPHY {gs.Choreography}   STARS {gs.StarsThisPage}/5</size>" : "";
-        string lens = def.unlockLens >= 0 ? $"\n<size=40%>NEW LENS: {LensWheel.Name((Lens)def.unlockLens)} (MIDDLE-CLICK)</size>" : "";
+        string lens = def.unlockLens >= 0 ? $"\n<size=40%>NEW LENS: {LensWheel.Name((Lens)def.unlockLens)} ({Bindings.Name(Bindings.Act.Lens)})</size>" : "";
         yield return Card($"PAGE {def.number} DONE!{style}{lens}", 2.4f);
     }
 
@@ -284,7 +339,7 @@ public class GameHUD : MonoBehaviour
     }
 
     /// <summary>A tutorial or warning caption across the top of the page (no pause).</summary>
-    public void Warn(string text) => StartCoroutine(Banner(text, Palette.Yellow, Palette.Ink, 2.6f));
+    public void Warn(string text) => StartCoroutine(Banner(Bindings.Format(text), Palette.Yellow, Palette.Ink, 2.6f));
 
     /// <summary>Mom's line through the door: a real-world voice, so it's spoken at the door, not printed on the page.</summary>
     public void MomSays(string text)

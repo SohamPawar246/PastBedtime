@@ -5,7 +5,7 @@ using UnityEngine.UI;
 /// <summary>
 /// The pause menu, "Bookmark" (wireframe 08): Esc closes the comic on a red
 /// ribbon. Resume / Restart page / How to read / Quit to title on the left, and the
-/// settings sheet on the same screen (no nested menus).
+/// settings sheet on the same screen; its Controls line opens the Controls page.
 ///
 /// App adds one to every gameplay scene automatically. Pausing freezes game time,
 /// pauses gameplay audio and tape-stops the music, the same way the torch does.
@@ -16,7 +16,8 @@ public class BookmarkPause : MonoBehaviour
     public static event Action<bool> PauseChanged;
 
     private GameObject _root;
-    private Modal _howTo;
+    private Modal _howTo, _controlsModal;
+    private ControlsPanel _controls;
     private CaptionButton _resume;
     private SettingsPanel _settings;
     private CursorLockMode _savedLock;
@@ -50,7 +51,7 @@ public class BookmarkPause : MonoBehaviour
         var howTo = CaptionButton.Create(root, "HowTo", "HOW TO READ", OpenHowTo, new Vector2(x, y - step * 2), size, 40f, tilt: -0.6f);
         var quitTitle = CaptionButton.Create(root, "QuitToTitle", "QUIT TO TITLE", OnQuitToTitle, new Vector2(x, y - step * 3), size, 40f, tilt: 1.3f);
 
-        _settings = SettingsPanel.Build(root, new Vector2(470f, 0f), withButtons: false, onBack: null);
+        _settings = SettingsPanel.Build(root, new Vector2(470f, 0f), withButtons: false, onBack: null, onControls: OpenControls);
 
         var nav = new System.Collections.Generic.List<Selectable>
             { _resume.Button, restart.Button, howTo.Button, quitTitle.Button };
@@ -63,6 +64,8 @@ public class BookmarkPause : MonoBehaviour
         // How-to-read opens above everything, inside the same canvas.
         _howTo = Modal.Create(canvas, "HowToModal");
         HowToReadPanel.Build(_howTo.Content, CloseHowTo);
+        _controlsModal = Modal.Create(canvas, "ControlsModal");
+        _controls = ControlsPanel.Build(_controlsModal.Content, CloseControls);
     }
 
     /// <summary>The comic, closed on its ribbon: the same cover as on the bed, a little
@@ -105,6 +108,8 @@ public class BookmarkPause : MonoBehaviour
     private void Update()
     {
         if (App.I != null && App.I.Flow.IsLoading) return;
+        // the Controls page answers its own Esc (and the Esc that closed it doesn't resume the game too)
+        if ((_controlsModal != null && _controlsModal.IsOpen) || Time.frameCount == _controlsClosed) return;
 
         if (_howTo != null && _howTo.IsOpen)
         {
@@ -115,6 +120,15 @@ public class BookmarkPause : MonoBehaviour
         {
             if (IsPaused) Resume(); else Pause();
         }
+    }
+
+    /// <summary>In the browser, clicking out of the game (onto the itch.io page around it) bookmarks it: the
+    /// game runs in the background, and Mom shouldn't catch Roshan while the player reads the comments.</summary>
+    private void OnApplicationFocus(bool focused)
+    {
+        if (focused || IsPaused || Application.isEditor || !App.IsWeb || _root == null) return;
+        if (App.I != null && App.I.Flow.IsLoading) return;
+        Pause();
     }
 
     public void Pause()
@@ -147,6 +161,7 @@ public class BookmarkPause : MonoBehaviour
         Cursor.visible = _savedVisible;
         _root.SetActive(false);
         _howTo.Close();
+        _controlsModal.Close();
         PauseChanged?.Invoke(false);
     }
 
@@ -171,6 +186,18 @@ public class BookmarkPause : MonoBehaviour
     }
 
     private void OpenHowTo() => _howTo.Open();
+
+    private void OpenControls() => _controlsModal.Open(_controls.First);
+
+    private int _controlsClosed = -1;
+
+    private void CloseControls()
+    {
+        _controlsModal.Close();
+        _controlsClosed = Time.frameCount;
+        AudioDirector.I?.Back();
+        UIKit.Select(_settings.ControlsRow.gameObject);
+    }
 
     private void CloseHowTo()
     {

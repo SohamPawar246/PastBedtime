@@ -15,7 +15,11 @@ public class FallingProp : MonoBehaviour
     public bool held;
     private Rigidbody _rb;
     private Lightable _light;
-    private bool _spent;
+    private bool _spent, _startHeld;
+    private Vector3 _home;
+    private Quaternion _homeRot;
+    private float _gone, _pop = 1f;
+    private RigidbodyConstraints _homeConstraints;
 
     private const RigidbodyConstraints Falling = RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezeRotation;
 
@@ -47,12 +51,65 @@ public class FallingProp : MonoBehaviour
     {
         _rb = GetComponent<Rigidbody>();
         _light = GetComponent<Lightable>();
+        _scale = transform.localScale;
     }
 
     private void Start()
     {
         if (held && TorchController.I != null) TorchController.I.Charge.Flared += Release;
+        _home = transform.position;
+        _homeRot = transform.rotation;
+        _startHeld = held;
+        _homeConstraints = _rb.constraints;
+        // the panel's floor line: below it a prop has dropped into a pit (lit or frozen, it's no use there)
+        _pit = _home.y - 10f;
+        var layout = PageManager.I != null ? PageManager.I.Layout : null;
+        if (layout != null)
+            foreach (var tier in layout.tiers)
+                foreach (var pl in tier.panels)
+                    if (pl.rect.Contains((Vector2)_home)) _pit = pl.rect.yMin + 1.0f;
     }
+
+    private float _pit;
+
+    /// <summary>Back where the page drew it, as it was (a panel restart; or it fell out of its panel).</summary>
+    public void Redraw()
+    {
+        if (_rb == null) return;
+        bool kin = _rb.isKinematic;
+        _rb.isKinematic = true;
+        transform.SetPositionAndRotation(_home, _homeRot);
+        _rb.position = _home;
+        _rb.rotation = _homeRot;
+        if (!kin) { _rb.isKinematic = false; _rb.linearVelocity = Vector3.zero; _rb.angularVelocity = Vector3.zero; }
+        else _rb.isKinematic = kin;
+        held = _startHeld;
+        _rb.constraints = _homeConstraints;
+        _light.ClearStoredMotion();
+        _spent = false;
+        _gone = 0f;
+        _pop = 0f;                                         // inks back in with a little pop
+    }
+
+    private void Update()
+    {
+        if (_pop < 1f)
+        {
+            _pop = Mathf.Min(1f, _pop + Time.deltaTime / 0.3f);
+            float k = 1f - (1f - _pop) * (1f - _pop);
+            transform.localScale = _scale * Mathf.LerpUnclamped(0.2f, 1f, k);
+        }
+        // down a gap, below its panel's floor line (falling, or frozen down there): the page draws it
+        // back in where it was a moment later
+        if (transform.position.y < _pit)
+        {
+            _gone += Time.deltaTime;
+            if (_gone > 1.5f) Redraw();
+        }
+        else _gone = 0f;
+    }
+
+    private Vector3 _scale;
 
     private void OnDestroy()
     {

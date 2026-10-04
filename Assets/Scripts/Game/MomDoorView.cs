@@ -44,15 +44,58 @@ public class MomDoorView : MonoBehaviour
     [System.NonSerialized] public bool Ending;
     private float _torchClock;
 
-    /// <summary>The door view's caption, for the ending's narration ("MEANWHILE...").</summary>
-    public void Caption(string text)
+    /// <summary>The ending's narration ("MEANWHILE..."): a yellow caption box of its own, top right, over
+    /// the shot of the door. `big` is the last word, larger, in the middle.</summary>
+    public void Caption(string text, bool big = false)
     {
         _narration = text;
-        // the narration is a caption of its own, top right, over the shot of the door
-        UIKit.Place(_caption.rectTransform, new Vector2(470f, 400f), new Vector2(760f, 70f));
-        _caption.fontSize = 48f;
+        _caption.text = "";
+        if (_narrationBox != null) Destroy(_narrationBox.transform.parent.gameObject);
+        Vector2 size = big ? new Vector2(1180f, 120f) : new Vector2(820f, 86f);
+        _narrationBox = UIKit.Panel(_front, "Narration", big ? new Vector2(80f, 330f) : new Vector2(470f, 400f), size, Palette.Yellow,
+            shadow: 8f, tilt: big ? -1.5f : 1.2f);
+        var words = UIKit.Text(_narrationBox.transform, "Text", text, UIKit.Display, big ? 66f : 46f, Palette.Ink);
+        words.characterSpacing = 3f;
+        UIKit.Stretch(words.rectTransform, 10f);
+        StartCoroutine(Pop(_narrationBox.transform.parent, 1f));
     }
     private string _narration;
+    private Image _narrationBox;
+    private RectTransform _room, _front;
+
+    /// <summary>The ending: the comic's sound effects burst out under Mom's door, one by one, as she reads
+    /// it (lettering in the room, so it rides the push-in with the door).</summary>
+    public void Burst(string word, Vector2 roomPos, float size, float tilt)
+    {
+        var face = UIKit.Lettering(_room, "Burst " + word, word, size, Palette.Yellow, roomPos, new Vector2(size * word.Length * 0.75f + 40f, size * 1.6f),
+            outline: 0.26f, shadow: size * 0.12f, tilt: tilt);
+        StartCoroutine(BurstOut(face.transform.parent as RectTransform, roomPos));
+    }
+
+    private System.Collections.IEnumerator BurstOut(RectTransform rt, Vector2 at)
+    {
+        var group = rt.gameObject.AddComponent<CanvasGroup>();
+        // out of the gap under the door: it pops, overshoots, hangs a moment and fades as it drifts up
+        for (float t = 0f; t < 1.6f; t += Time.unscaledDeltaTime)
+        {
+            float pop = t < 0.16f ? Mathf.Lerp(0.2f, 1.2f, t / 0.16f) : Mathf.Lerp(1.2f, 1f, Mathf.Clamp01((t - 0.16f) / 0.12f));
+            rt.localScale = Vector3.one * pop;
+            rt.anchoredPosition = at + new Vector2(0f, 26f * t);
+            group.alpha = t < 1.15f ? 1f : 1f - (t - 1.15f) / 0.45f;
+            yield return null;
+        }
+        Destroy(rt.gameObject);
+    }
+
+    private System.Collections.IEnumerator Pop(Transform t, float to)
+    {
+        for (float k = 0f; k < 0.2f; k += Time.unscaledDeltaTime)
+        {
+            t.localScale = Vector3.one * Mathf.Lerp(0.6f, to * 1.06f, k / 0.2f);
+            yield return null;
+        }
+        t.localScale = Vector3.one * to;
+    }
 
     /// <summary>The middle of Mom's door in the room (zoomed-layer units), for the ending's last shot.</summary>
     public static readonly Vector2 DoorCentre = new(-373f, 209f);
@@ -69,6 +112,8 @@ public class MomDoorView : MonoBehaviour
 
     private void BuildUI(RectTransform room, RectTransform front)
     {
+        _room = room;
+        _front = front;
         // ---- the door itself, in the room (zooms with it) --------------------------------------------
         _door = DoorVisit.Create(room, DoorCrop, MomEyes, 21f, "spill_open_");   // its light, minus the comic the title has there
         _glow = UIKit.Raw(room, "HallwayGlow");
@@ -137,7 +182,7 @@ public class MomDoorView : MonoBehaviour
     public void Say(string text)
     {
         _say.text = text;
-        _sayFor = 1.8f;
+        _sayFor = Mathf.Clamp(1.6f + text.Length * 0.07f, 2.2f, 5.5f);
     }
 
     /// <summary>Where Mom's foot shadow i sits in the door gap; k = 0 far off to the side, 1 at the door.</summary>
@@ -172,6 +217,8 @@ public class MomDoorView : MonoBehaviour
         float framing = PageView.I != null ? PageView.I.Framing : 1f;
 
         _strip.color = Palette.Hallway.Alpha(Mathf.Lerp(0.25f, 1f, mom.Strip));
+        _glow.color = Palette.Hallway.Alpha(0.5f * mom.Strip);
+        float leak = 0f;
         if (TorchUnderDoor > 0f)
         {
             // a torch beam swinging about on the far side: the strip and the light it throws on the floor
@@ -183,8 +230,8 @@ public class MomDoorView : MonoBehaviour
             _glow.color = torch.Alpha(Mathf.Clamp01(0.95f * flick * TorchUnderDoor));
             float sway = 26f * (Mathf.PerlinNoise(_torchClock * 0.6f, 4.1f) - 0.5f) * 2f;
             UIKit.Place(_glow.rectTransform, new Vector2(-385f + sway, -58f), new Vector2(Mathf.Lerp(152f, 300f, TorchUnderDoor), Mathf.Lerp(72f, 120f, TorchUnderDoor)));
+            leak = Mathf.Clamp01(flick) * TorchUnderDoor;               // and round the edges of the door too
         }
-        _glow.color = Palette.Hallway.Alpha(0.5f * mom.Strip);
         for (int i = 0; i < _feet.Length; i++)
         {
             _feet[i].color = Palette.Ink.Alpha(0.85f * mom.Feet * mom.Feet);
@@ -212,9 +259,10 @@ public class MomDoorView : MonoBehaviour
             else if (before < 1.1f && after >= 1.1f) GameAudio.Heartbeat(loud * 0.6f);
         }
         float pulse = s > 0.05f ? 0.75f + 0.25f * Mathf.Sin(_beat) : 0f;
-        _frame.color = Color.Lerp(Palette.Hallway, Palette.HeroRed, s).Alpha(Mathf.Clamp01(s * 1.4f) * pulse);
+        _frame.color = leak > 0f ? new Color(0.86f, 0.93f, 1f, 0.38f * leak)
+                                 : Color.Lerp(Palette.Hallway, Palette.HeroRed, s).Alpha(Mathf.Clamp01(s * 1.4f) * pulse);
 
-        _caption.text = !string.IsNullOrEmpty(_narration) ? _narration : mom.Bust > 0f ? "ROSHAN!" : mom.Watching ? "MOM IS WATCHING..." : mom.State switch
+        _caption.text = !string.IsNullOrEmpty(_narration) ? "" : mom.Bust > 0f ? "ROSHAN!" : mom.Watching ? "MOM IS WATCHING..." : mom.State switch
         {
             MomState.Stirring => "HALL LIGHT ON",
             MomState.Approaching => mom.IsCat ? "PADDING..." : "FOOTSTEPS!",

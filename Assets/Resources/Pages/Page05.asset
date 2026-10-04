@@ -95,7 +95,7 @@ MonoBehaviour:
       backdrop: 1
   - panels:
     - width: 13
-      caption: 'SPLASH METER FULL? PRESS F: EVERY INKIE IN THE BEAM GETS IT!'
+      caption: 'SPLASH METER FULL? PRESS {SPLASH}: EVERY INKIE IN THE BEAM GETS IT!'
       heroLine: Time for a full-page spread!
       floors:
       - serializedVersion: 2

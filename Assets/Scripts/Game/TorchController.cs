@@ -60,6 +60,28 @@ public class TorchController : MonoBehaviour
         if (I == this) I = null;
     }
 
+    private static readonly Collider[] _steps = new Collider[16];
+
+    /// <summary>Is there a frozen freeze-step (a bat, a crate, an Inkie frozen in mid-air) under Max, or just
+    /// ahead of him at or below his feet, that the light would wake?</summary>
+    private static bool FrozenStepUnder(HeroController hero)
+    {
+        Vector3 feet = hero.transform.position;
+        int n = Physics.OverlapBoxNonAlloc(feet + new Vector3(0f, -1.1f, 0f), new Vector3(3.0f, 1.2f, 1.5f), _steps, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+        {
+            var c = _steps[i];
+            if (c.GetComponentInParent<HeroController>() != null) continue;
+            var light = c.GetComponentInParent<Lightable>();
+            if (light == null || light.IsAwake) continue;              // floors have no Lightable; awake things aren't solid
+            if (c.bounds.max.y > feet.y + 0.35f) continue;              // beside him, not under him
+            if (c.GetComponentInParent<FallingProp>() != null) return true;
+            var e = c.GetComponentInParent<EnemyBrain>();
+            if (e != null && (e is SplotchBrain || !e.Grounded)) return true;   // a bat, or an Inkie launched and frozen
+        }
+        return false;
+    }
+
     public void PlaceAt(Vector2 lanePoint)
     {
         Aim = Centre = lanePoint;
@@ -115,6 +137,9 @@ public class TorchController : MonoBehaviour
         if (follow)
         {
             Vector2 target = (Vector2)hero.transform.position + Vector2.up * 1.0f;
+            // a freeze-step: up on (or just over) something frozen, a bat, a crate, the light rides
+            // above him with its bottom rim at his feet, so the thing under him stays dark
+            if (FrozenStepUnder(hero)) target = (Vector2)hero.transform.position + Vector2.up * (0.2f + Radius - 0.4f);
             Centre = Vector2.SmoothDamp(Centre, target, ref _followVel, 0.12f, FollowSpeed, dt);
         }
         else

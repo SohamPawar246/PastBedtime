@@ -1,8 +1,6 @@
 using System;
 using UnityEngine;
 
-public enum TwistInput { Scroll, Circle, Mash }
-
 /// <summary>
 /// Every player-facing option plus the little progress we keep, behind Load/Save.
 /// Storage is PlayerPrefs (IndexedDB on WebGL). Nothing else touches PlayerPrefs.
@@ -20,7 +18,6 @@ public static class Settings
 
     // ---- Reading (gameplay assists, GDD sections 3, 8, 13) --------------------------
     public static bool FollowAssist;
-    public static TwistInput Twist;
     public static bool EasySuspicion;   // Mom's suspicion fills at half speed
     public static bool FlatPage;        // room camera straight above the page
     public static bool ScreenShake;
@@ -49,7 +46,6 @@ public static class Settings
         MusicVolume = 0.7f;
         SfxVolume = 1f;
         FollowAssist = true;
-        Twist = TwistInput.Scroll;
         EasySuspicion = false;
         FlatPage = false;
         ScreenShake = true;
@@ -65,7 +61,6 @@ public static class Settings
         MusicVolume = PlayerPrefs.GetFloat(Prefix + "vol.music", MusicVolume);
         SfxVolume = PlayerPrefs.GetFloat(Prefix + "vol.sfx", SfxVolume);
         FollowAssist = GetBool("read.follow", FollowAssist);
-        Twist = (TwistInput)Mathf.Clamp(PlayerPrefs.GetInt(Prefix + "read.twist", (int)Twist), 0, 2);
         EasySuspicion = GetBool("read.easysus", EasySuspicion);
         FlatPage = GetBool("read.flat", FlatPage);
         ScreenShake = GetBool("read.shake", ScreenShake);
@@ -85,7 +80,6 @@ public static class Settings
         PlayerPrefs.SetFloat(Prefix + "vol.music", MusicVolume);
         PlayerPrefs.SetFloat(Prefix + "vol.sfx", SfxVolume);
         SetBool("read.follow", FollowAssist);
-        PlayerPrefs.SetInt(Prefix + "read.twist", (int)Twist);
         SetBool("read.easysus", EasySuspicion);
         SetBool("read.flat", FlatPage);
         SetBool("read.shake", ScreenShake);
@@ -113,6 +107,10 @@ public static class Settings
         ApplyDefaults();
         Commit();
     }
+
+    // ---- Controls: <see cref="Bindings"/> keeps its slots here --------------------------------------
+    public static string GetText(string key, string fallback) => PlayerPrefs.GetString(Prefix + key, fallback);
+    public static void SetText(string key, string value) => PlayerPrefs.SetString(Prefix + key, value);
 
     private static bool GetBool(string key, bool fallback) =>
         PlayerPrefs.GetInt(Prefix + key, fallback ? 1 : 0) == 1;

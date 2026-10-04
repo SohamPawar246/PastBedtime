@@ -6,18 +6,20 @@ using UnityEngine.UI;
 /// <summary>
 /// The settings card: a sheet of paper with typewritten option lines (wireframe 08).
 /// The same builder serves the title menu (as a modal with RESET / BACK) and the
-/// Bookmark pause (embedded, no nested menus). Every change saves immediately.
+/// Bookmark pause (embedded). Every change saves immediately. "Controls" opens the
+/// Controls page (<see cref="ControlsPanel"/>) over it, wherever it is.
 /// </summary>
 public class SettingsPanel : MonoBehaviour
 {
     public readonly List<OptionRow> Rows = new();
     public CaptionButton ResetButton { get; private set; }
     public CaptionButton BackButton { get; private set; }
+    public OptionRow ControlsRow { get; private set; }
 
     /// <summary>First thing to select when the panel opens.</summary>
     public Selectable First => Rows.Count > 0 ? Rows[0] : null;
 
-    public static SettingsPanel Build(Transform parent, Vector2 pos, bool withButtons, Action onBack)
+    public static SettingsPanel Build(Transform parent, Vector2 pos, bool withButtons, Action onBack, Action onControls = null)
     {
         const float width = 820f, rowH = 44f, headH = 52f;
         float height = withButtons ? 870f : 790f;
@@ -61,8 +63,8 @@ public class SettingsPanel : MonoBehaviour
 
         Header("READING");
         Add(OptionRow.Toggle(root, "Follow assist", () => Settings.FollowAssist, v => { Settings.FollowAssist = v; Settings.Commit(); }, P(), rowW));
-        Add(OptionRow.Choice(root, "Twist", new[] { "scroll", "circle", "mash" },
-            () => (int)Settings.Twist, i => { Settings.Twist = (TwistInput)i; Settings.Commit(); }, P(), rowW));
+        panel.ControlsRow = OptionRow.Link(root, "Controls", "CHANGE", onControls, P(), rowW);
+        Add(panel.ControlsRow);
         Add(OptionRow.Choice(root, "Suspicion", new[] { "normal", "easy" },
             () => Settings.EasySuspicion ? 1 : 0, i => { Settings.EasySuspicion = i == 1; Settings.Commit(); }, P(), rowW));
         Add(OptionRow.Toggle(root, "Flat page view", () => Settings.FlatPage, v => { Settings.FlatPage = v; Settings.Commit(); }, P(), rowW));

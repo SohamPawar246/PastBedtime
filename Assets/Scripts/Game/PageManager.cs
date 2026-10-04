@@ -88,8 +88,17 @@ public class PageManager : MonoBehaviour
     {
         if (Layout != null && Layout.root != null) Destroy(Layout.root.gameObject);
         if (_actors != null) Destroy(_actors.gameObject);
-        foreach (var p in FindObjectsByType<InkPellet>(FindObjectsSortMode.None)) Destroy(p.gameObject);
+        MopUpInk();
         Layout = null;
+    }
+
+    /// <summary>Loose ink isn't part of any page: pellets, Blot's waves and geysers. A wave frozen in the dark
+    /// never runs out, so a turned page (or a restart) mops them all up.</summary>
+    private static void MopUpInk()
+    {
+        foreach (var p in FindObjectsByType<InkPellet>(FindObjectsSortMode.None)) Destroy(p.gameObject);
+        foreach (var w in FindObjectsByType<InkWave>(FindObjectsSortMode.None)) Destroy(w.gameObject);
+        foreach (var g in FindObjectsByType<InkGeyser>(FindObjectsSortMode.None)) Destroy(g.gameObject);
     }
 
     private void SetHeroBounds()
@@ -153,6 +162,20 @@ public class PageManager : MonoBehaviour
         foreach (var tier in Layout.tiers)
             foreach (var pl in tier.panels)
                 pl.enemies.Remove(e);
+        // bats are stepping stones: one that's lost is drawn back in at its roost (Blot's summons aren't)
+        if (e is SplotchBrain && !e.Summoned && e.Panel != null) StartCoroutine(Redraw(EnemyKind.Splotch, e.Home, e.Panel, Layout));
+    }
+
+    private IEnumerator Redraw(EnemyKind kind, Vector2 home, PanelLayout pl, PageLayout layout)
+    {
+        yield return new WaitForSeconds(4f);
+        if (Layout != layout || pl.root == null) yield break;           // the page has turned
+        int want = 0, have = 0;
+        foreach (var s in pl.def.spawns) if (s.kind == kind) want++;
+        foreach (var e in pl.enemies) if (e != null && e.GetType() == typeof(SplotchBrain) && !e.Summoned) have++;
+        if (have >= want) yield break;
+        var bat = PageBuilder.Spawn(kind, home, pl, _actors);
+        if (bat != null) SfxLettering.Spawn("FLAP FLAP", home + Vector2.up * 1.2f, Palette.Paper, 0.7f);
     }
 
     private IEnumerator NextTier()
@@ -263,7 +286,7 @@ public class PageManager : MonoBehaviour
         }
         yield return GameHUD.I?.Card("BUSTED!\n<size=40%>\"ROSHAN. LIGHTS. OUT.\"</size>", 2.2f);
         Busy = false;
-        yield return Restart(null);
+        yield return Restart(null, refill: false);                     // getting caught is no free heal
     }
 
     private IEnumerator FellOff()
@@ -310,8 +333,9 @@ public class PageManager : MonoBehaviour
         Busy = false;
     }
 
-    /// <summary>The panel restarts with the charge and splash meter Max had when he walked in.</summary>
-    private IEnumerator Restart(string card)
+    /// <summary>The panel restarts with the charge and splash meter Max had when he walked in (and full
+    /// hearts, unless it was Mom who caught him).</summary>
+    private IEnumerator Restart(string card, bool refill = true)
     {
         Busy = true;
         var hero = HeroController.I;
@@ -324,12 +348,13 @@ public class PageManager : MonoBehaviour
         var pl = Panel ?? Layout.tiers[TierIndex].panels[0];
         foreach (var b in pl.root.GetComponentsInChildren<ErasableBlock>(true)) b.Restore();   // an eaten bridge is drawn back in
         foreach (var other in Layout.tiers[TierIndex].panels) other.flood?.Drain();           // and the ink goes back down
+        foreach (var prop in pl.root.GetComponentsInChildren<FallingProp>(true)) prop.Redraw();  // crates and bricks back up
         foreach (var e in pl.enemies.ToArray()) if (e != null) Destroy(e.gameObject);
         pl.enemies.Clear();
         PageBuilder.SpawnEnemies(pl, _actors);
-        foreach (var p in FindObjectsByType<InkPellet>(FindObjectsSortMode.None)) Destroy(p.gameObject);
+        MopUpInk();
         var health = hero.GetComponent<Health>();
-        health.hp = health.maxHp;
+        health.hp = refill ? health.maxHp : Mathf.Max(1f, health.hp);
         hero.Teleport(pl.visited ? _checkpoint : pl.entry);
         hero.Clips?.Play("Idle", 0f, 1f, restart: true);
         var torch = TorchController.I;

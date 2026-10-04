@@ -32,10 +32,27 @@ public class SfxLettering : MonoBehaviour
         }
         _recent.Add((word, lanePos, now));
         lanePos += new Vector2(stack % 2 == 0 ? 0.3f : -0.3f, 0.85f) * stack;
+        lanePos = ClearOfBalloon(word, lanePos, scale, burst);
         _i.StartCoroutine(_i.Pop(word, lanePos, fill, scale, burst));
     }
 
     private static readonly System.Collections.Generic.List<(string word, Vector2 pos, float time)> _recent = new();
+
+    /// <summary>Max's speech balloon is printed over the action: a word that would land on it drops
+    /// below it, or steps out to the side, instead of printing over what he's saying.</summary>
+    private static Vector2 ClearOfBalloon(string word, Vector2 at, float scale, bool burst)
+    {
+        var hud = GameHUD.I;
+        if (hud == null || !hud.BubbleLane(out var balloon)) return at;
+        Vector2 half = new Vector2(Mathf.Max(0.5f, 0.26f * word.Length) * scale + (burst ? 0.5f : 0.1f), (burst ? 1.05f : 0.5f) * scale);
+        bool Hits(Vector2 p) => p.x + half.x > balloon.xMin && p.x - half.x < balloon.xMax &&
+                                p.y + half.y > balloon.yMin && p.y - half.y < balloon.yMax;
+        if (!Hits(at)) return at;
+        var below = new Vector2(at.x, balloon.yMin - half.y - 0.05f);
+        if (below.y >= balloon.yMin - 3.2f && !Hits(below)) return below;
+        float left = balloon.xMin - half.x - 0.1f, right = balloon.xMax + half.x + 0.1f;
+        return new Vector2(Mathf.Abs(left - at.x) < Mathf.Abs(right - at.x) ? left : right, at.y);
+    }
 
     private void Awake()
     {

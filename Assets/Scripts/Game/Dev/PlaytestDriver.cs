@@ -113,6 +113,12 @@ public class PlaytestDriver : MonoBehaviour
             case "bruiserko": yield return BruiserKnockout(); break;
             case "machines": yield return MachinesTest(); break;
             case "speed": yield return SpeedTest(); break;
+            case "fixes": yield return FixesTest(); break;
+            case "momlight": yield return MomLightTest(); break;
+            case "blotmoves": yield return BlotMovesTest(); break;
+            case "controls": yield return ControlsTest(); break;
+            case "death": yield return DeathTest(); break;
+            case "combo": yield return ComboTrace(); break;
         }
     }
 
@@ -175,8 +181,9 @@ public class PlaytestDriver : MonoBehaviour
         Log($"walked toward the edge: x {hero.transform.position.x:0.00}, beam x {LightField.I.BeamCentre.x:0.00} r {LightField.I.BeamRadius:0.0}, awake {hero.Light.IsAwake}");
         _followHero = true;
 
-        // twist: drain then crank
+        // twist: drain then crank (on a stock torch: the save's Nightstand upgrades change the numbers)
         var charge = TorchController.I.Charge;
+        charge.ApplyUpgrades(0, 0, 0);
         charge.Charge = 10f;
         _pad.twists = 5;
         yield return null;
@@ -191,6 +198,7 @@ public class PlaytestDriver : MonoBehaviour
         yield return null;
         yield return null;
         Log($"one more: flare {LightField.I.FlareTime:0.00}, dead {charge.Dead} (expect 1.5, True)");
+        if (GameState.I != null) charge.ApplyUpgrades(GameState.I.Spring, GameState.I.Gear, GameState.I.Ratchet);
     }
 
     private IEnumerator DotShotTest()
@@ -338,7 +346,7 @@ public class PlaytestDriver : MonoBehaviour
         h.Invulnerable = 0f;
         h.hp = 0f;
         yield return Wait(5f);
-        Log($"after the panel restart: blocks {Blocks()} (expect {b0})");
+        Log($"after the panel restart: blocks {Blocks()} (expect {pl.root.GetComponentsInChildren<ErasableBlock>(true).Length}: the whole bridge)");
     }
 
     /// <summary>The torch in Roshan's hand: the crank turning, the dial and the lens wheel.</summary>
@@ -348,6 +356,15 @@ public class PlaytestDriver : MonoBehaviour
     {
         var hero = HeroController.I;
         var clips = hero.Clips;
+        // on a flat, empty panel with Mom asleep (her open door would hold him still mid-combo)
+        PageManager.I.Load(1);
+        MomDirector.I.Schedule(ScriptableObject.CreateInstance<PageDef>());
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        var flat = PageManager.I.Layout.tiers[0].panels[0];
+        hero.Teleport(flat.rect.min + new Vector2(2.5f, 2.6f));
+        hero.Face(1f);
+        yield return Wait(0.5f);
         int page = GameState.I.Page;
         GameState.I.Page = Mathf.Max(page, 4);          // the slam is a page-4 move
 
@@ -523,6 +540,7 @@ public class PlaytestDriver : MonoBehaviour
     }
 
     // Page 9: Blot's last 30 HP brings Mom and the room light; beating him plays the ending
+    // (the ending rolls the credits, which unloads the game: run this one last in a suite)
     private IEnumerator FinaleTest()
     {
         var hero = HeroController.I;
@@ -557,7 +575,7 @@ public class PlaytestDriver : MonoBehaviour
         blot.Health.Invulnerable = 0f;
         blot.Health.Apply(new Hit { damage = 40f, team = Team.Hero, source = hero.gameObject });
         Log($"blot beaten: dead {blot.Health.Dead}, ending {Finale.I.Ended} (expect True, True)");
-        float[] at = { 2.5f, 4.5f, 7f, 9.5f, 13.5f, 16.5f, 19f };
+        float[] at = { 2.5f, 4.5f, 7f, 9.5f, 13.5f, 15.4f, 17.5f, 19.7f, 21.6f, 24.6f, 26.6f };
         float clock = 0f;
         foreach (float t in at)
         {
@@ -609,6 +627,7 @@ public class PlaytestDriver : MonoBehaviour
         PageManager.I.Load(1);
         hero.GetComponent<Health>().Invulnerable = 300f;
         yield return Wait(1.6f);
+        while (hero.Locked) yield return null;                         // a new act's splash card holds him longer
         var pl = PageManager.I.Layout.tiers[0].panels[0];
         foreach (var e in pl.enemies.ToArray()) if (e != null) { PageManager.I.EnemyDown(e); Destroy(e.gameObject); }
         float floor = pl.rect.yMin + 2.5f;
@@ -857,7 +876,7 @@ public class PlaytestDriver : MonoBehaviour
         yield return Wait(0.4f);
         x0 = hero.transform.position.x;
         yield return Wait(1f);
-        Log($"motor lit: the belt moved max {hero.transform.position.x - x0:+0.00;-0.00} in 1 s (expect about -2.4)");
+        Log($"motor lit: the belt moved max {hero.transform.position.x - x0:+0.00;-0.00} in 1 s (expect < -1: carried back to its start)");
         DevCapture.Shot("machines_belt");
         _followHero = true;
     }
@@ -886,6 +905,475 @@ public class PlaytestDriver : MonoBehaviour
             Log($"page {page}: ran {hero.transform.position.x - x0:0.00} in {t:0.00} s; velocity{samples}");
             yield return Wait(0.5f);
         }
+    }
+
+    // the playtest notes of 4 Oct: dialogue, lettering, the belt, bars, BUSTED, ledges, bats, props, perches, captions
+    private IEnumerator FixesTest()
+    {
+        var hero = HeroController.I;
+        var torch = TorchController.I;
+        var hud = GameHUD.I;
+        hero.GetComponent<Health>().Invulnerable = 600f;
+
+        // 1. a long line lasts long enough, and lettering keeps clear of it
+        PageManager.I.Load(1);
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        string line = "This is a long line of dialogue, long enough to need some time to read it all.";
+        hud.HeroSays(line, 4f);
+        yield return Wait(0.2f);
+        bool has = hud.BubbleLane(out var balloon);
+        Vector2 inside = balloon.center;
+        SfxLettering.Spawn("KAPOW!", inside, Palette.Yellow, 1.25f, burst: true);
+        yield return null;
+        var pop = GameObject.Find("SFX KAPOW!");
+        bool clear = pop != null && !balloon.Contains((Vector2)pop.transform.position);
+        Log($"long line: balloon showing {has}; KAPOW printed clear of it {clear} (expect True, True)");
+        DevCapture.Shot("fixes_balloon");
+        yield return Wait(4.8f);
+        Log($"after 5 s the long line is still up: {hud.BubbleLane(out _)} (expect True: it gets {2.4f + line.Length * 0.07f:0.0} s)");
+
+        // 2. the conveyor beats a run
+        PageManager.I.Load(4);
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        PageManager.I.GoToTier(1);
+        var beltPanel = PageManager.I.Layout.tiers[1].panels[1];
+        _followHero = false;
+        hero.Teleport(beltPanel.rect.min + new Vector2(5f, 2.6f));
+        torch.AimOverride = beltPanel.rect.min + new Vector2(3f, 3.5f);          // the motor and Max both lit
+        yield return Wait(1.0f);                                                  // the beam settles; the belt has him
+        float x0 = hero.transform.position.x;
+        _pad.moveX = 1f;
+        yield return Wait(1.2f);
+        _pad.moveX = 0f;
+        Log($"running against the lit belt for 1.2 s: moved {hero.transform.position.x - x0:+0.00;-0.00} (expect about 0: the belt is faster than he runs)");
+        torch.AimOverride = beltPanel.rect.min + new Vector2(8.5f, 3.5f);        // motor dark, Max lit
+        hero.Teleport(beltPanel.rect.min + new Vector2(6f, 2.6f));
+        yield return Wait(0.4f);
+        x0 = hero.transform.position.x;
+        _pad.moveX = 1f;
+        yield return Wait(0.8f);
+        _pad.moveX = 0f;
+        Log($"motor dark: ran {hero.transform.position.x - x0:+0.00;-0.00} in 0.8 s (expect about +5)");
+
+        // 3. the page 1 crate: lit, it falls out of its panel; it is drawn back in
+        PageManager.I.Load(1);
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        PageManager.I.GoToTier(1);
+        var cratePanel = PageManager.I.Layout.tiers[1].panels[1];
+        var crate = cratePanel.root.GetComponentInChildren<FallingProp>();
+        Vector3 home = crate.transform.position;
+        hero.Teleport(cratePanel.rect.min + new Vector2(1f, 2.6f));
+        torch.AimOverride = (Vector2)home;
+        yield return Wait(1.0f);
+        Log($"lit crate fell: {crate.transform.position.y < home.y - 1f} (expect True)");
+        torch.AimOverride = cratePanel.rect.min + new Vector2(1f, 4f);
+        yield return Wait(2.5f);
+        Log($"crate drawn back in: {(crate.transform.position - home).magnitude < 0.05f} (expect True)");
+
+        // 4. with the follow assist the crate stays dark under him
+        torch.AimOverride = null;
+        hero.Teleport(new Vector2(home.x, home.y + 1.0f));
+        _pad.followHeld = true;
+        yield return Wait(1.2f);
+        bool crateDark = !crate.GetComponent<Lightable>().IsAwake;
+        Log($"standing on the frozen crate, follow held: crate dark {crateDark}, max lit {hero.Light.IsAwake}, max y {hero.transform.position.y - cratePanel.rect.yMin:0.00} (expect True, True, about 2.5)");
+        DevCapture.Shot("fixes_perch");
+        _pad.followHeld = false;
+
+        // 5. a bat over the ink comes back after it dies
+        PageManager.I.Load(8);
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        var batPanel = PageManager.I.Layout.tiers[0].panels[1];
+        SplotchBrain bat = null;
+        int bats = 0;
+        foreach (var e in batPanel.enemies) if (e is SplotchBrain b) { bats++; if (bat == null) bat = b; }
+        hero.Teleport(batPanel.rect.min + new Vector2(1.5f, 5.4f));
+        torch.AimOverride = (Vector2)bat.transform.position + Vector2.up;
+        yield return Wait(0.5f);
+        bat.Health.Apply(new Hit { damage = 50f, team = Team.Hero, source = hero.gameObject });
+        yield return Wait(5f);
+        int after = 0;
+        foreach (var e in batPanel.enemies) if (e is SplotchBrain && e != null && !e.Health.Dead) after++;
+        Log($"a bat over the ink died: bats {bats} -> {after} after 5 s (expect {bats})");
+
+        // 6. the Dot-Shot on page 9 stays on its floor when it backs away
+        PageManager.I.Load(9);
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        var shooterPanel = PageManager.I.Layout.tiers[0].panels[0];
+        EnemyBrain shooter = null;
+        foreach (var e in shooterPanel.enemies) if (e is DotShotBrain) shooter = e;
+        float sy = shooter.transform.position.y;
+        torch.AimOverride = null;
+        _followHero = true;
+        hero.Teleport(shooterPanel.rect.min + new Vector2(6f, 3.7f));
+        yield return Wait(6f);
+        bool standing = shooter != null && Mathf.Abs(shooter.transform.position.y - sy) < 0.3f;
+        Log($"the Dot-Shot backed away for 6 s: still on its floor {standing} (expect True)");
+
+        // 7. the boss bar falls with his health, and only shows on his tier
+        PageManager.I.Load(6);
+        MomDirector.I.Schedule(ScriptableObject.CreateInstance<PageDef>());
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        var barBox = GameObject.Find("BossBox");
+        Log($"tier 1 of page 6 (Blot is on tier 2): boss bar showing {barBox != null && barBox.activeInHierarchy} (expect False)");
+        PageManager.I.GoToTier(1);
+        var office = PageManager.I.Layout.tiers[1].panels[0];
+        BlotBrain blot = null;
+        foreach (var e in office.enemies) if (e is BlotBrain bb) blot = bb;
+        hero.Teleport(new Vector2(blot.transform.position.x - 5f, office.rect.yMin + 2.6f));
+        _followHero = false;
+        torch.AimOverride = (Vector2)blot.transform.position + new Vector2(-2f, 1.5f);
+        yield return Wait(1f);
+        blot.Health.hp = 100f;
+        yield return Wait(0.8f);
+        UnityEngine.UI.Image fill = null;
+        foreach (var img in GameHUD.I.GetComponentsInChildren<UnityEngine.UI.Image>(true)) if (img.name == "Fill" && img.transform.parent.name == "Back") fill = img;
+        Log($"blot at 100/150: fill {(fill != null ? fill.fillAmount : -1f):0.00} with a sprite {fill != null && fill.sprite != null}, bar showing {fill != null && fill.gameObject.activeInHierarchy} (expect 0.67, True, True)");
+
+        // 8. BUSTED doesn't heal
+        PageManager.I.Load(3);
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        _followHero = true;
+        torch.AimOverride = null;
+        var h = hero.GetComponent<Health>();
+        h.Invulnerable = 0f;
+        h.hp = 2f;
+        PageManager.I.Busted();
+        yield return Wait(0.5f);
+        for (float t = 0f; t < 6f && PageManager.I.Busy; t += Time.deltaTime) yield return null;
+        Log($"busted at 2 hearts: hearts after the restart {h.hp:0} (expect 2)");
+        h.Invulnerable = 600f;
+
+        // 9. the first panel's caption stays on the page when the camera has moved on
+        PageManager.I.Load(5);
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        var p5 = PageManager.I.Layout.tiers[0];
+        hero.Teleport(new Vector2(p5.maxX - 3f, p5.y0 + 4.2f));
+        yield return Wait(1.5f);
+        var cap = p5.panels[0].root.GetComponentInChildren<CaptionInView>();
+        float viewL = PageCamera.I.ViewportToLane(new Vector2(0f, 0.5f)).x;
+        Log($"panel 1's caption with the camera panned right: left edge {cap.transform.position.x - viewL:+0.00;-0.00} inside the page edge (expect >= 0)");
+        DevCapture.Shot("fixes_caption");
+        _followHero = true;
+    }
+
+    // Mom's light falls on the trouble, and while her door is open Max holds still (and can't be hurt)
+    private IEnumerator MomLightTest()
+    {
+        var hero = HeroController.I;
+        var mom = MomDirector.I;
+        var torch = TorchController.I;
+        var pm = PageManager.I;
+        bool easy = Settings.EasySuspicion;
+        pm.Load(5);
+        yield return Wait(0.5f);
+        mom.Schedule(ScriptableObject.CreateInstance<PageDef>());       // no visits but ours
+        while (hero.Locked) yield return null;
+        var panel = pm.Layout.tiers[0].panels[0];
+        hero.Teleport(panel.rect.min + new Vector2(1.5f, 2.6f));
+        yield return Wait(0.5f);
+
+        // 1. torch off: her wedge alone, and it lands on an Inkie
+        torch.SetOn(false);
+        mom.VisitNow(opens: true);
+        for (float t = 0f; t < 14f && !(mom.State == MomState.Opening && mom.Open >= 1f); t += Time.deltaTime) yield return null;
+        yield return Wait(0.3f);
+        int lit = 0, all = 0;
+        string who = "";
+        foreach (var e in panel.enemies)
+        {
+            if (e == null) continue;
+            all++;
+            if (e.Light.IsAwake) { lit++; who += e.GetType().Name.Replace("Brain", "") + $"@{e.transform.position.x - panel.rect.xMin:0.0} "; }
+        }
+        var w = LightField.I.Wedges.Count > 0 ? LightField.I.Wedges[0] : null;
+        string spot = w != null ? $"{(w[2].x + w[3].x) * 0.5f - panel.rect.xMin:0.0}" : "none";
+        Log($"door open, torch off: inkies lit by her light {lit}/{all} [{who}], wedge foot at {spot} (expect >= 1 lit)");
+        DevCapture.Shot("momlight_wedge");
+        for (float t = 0f; t < 8f && mom.State != MomState.Asleep; t += Time.deltaTime) yield return null;
+
+        // 2. torch on (red, easy suspicion so she doesn't catch us): Max holds still while the door is open
+        Settings.EasySuspicion = true;
+        torch.Lenses.Unlock(Lens.Red);
+        torch.Lenses.Pick((int)Lens.Red);
+        torch.SetOn(true);
+        hero.Teleport(panel.rect.min + new Vector2(1.5f, 2.6f));
+        yield return Wait(0.4f);
+        mom.VisitNow(opens: true);
+        for (float t = 0f; t < 14f && mom.State != MomState.Opening; t += Time.deltaTime) yield return null;
+        yield return Wait(0.4f);
+        Vector2 p0 = hero.transform.position;
+        _pad.moveX = 1f;
+        _pad.jump = true;
+        _pad.jumpHeld = true;
+        yield return Wait(1f);
+        _pad.moveX = 0f;
+        _pad.jumpHeld = false;
+        _pad.jump = false;                                  // never read while he held still: don't let it fire later
+        Vector2 moved = (Vector2)hero.transform.position - p0;
+        var hh = hero.GetComponent<Health>();
+        bool says = GameHUD.I.BubbleLane(out _);
+        Log($"door open, torch on: hushed {hero.Hushed}, moved {moved.x:+0.00;-0.00} / {moved.y:+0.00;-0.00}, can't be hurt {hh.Invulnerable > 0f}, 'shh' balloon {says} (expect True, ~0 / ~0, True, True)");
+        DevCapture.Shot("momlight_hush");
+        for (float t = 0f; t < 8f && mom.State != MomState.Asleep; t += Time.deltaTime) yield return null;
+        yield return Wait(0.2f);
+        float x0 = hero.transform.position.x;
+        _pad.moveX = 1f;
+        yield return Wait(0.5f);
+        _pad.moveX = 0f;
+        Log($"she's gone: hushed {hero.Hushed}, ran {hero.transform.position.x - x0:+0.00;-0.00}, suspicion {mom.Suspicion:0}, slippers {GameState.I.Slippers} (expect False, about +3, < 100, 3)");
+        Settings.EasySuspicion = easy;
+        torch.Lenses.Pick((int)Lens.Clear);
+    }
+
+    // Baron Blot's new tricks: geysers through the floor, the lunge, the blink when beaten on, the vat's second wave
+    private IEnumerator BlotMovesTest()
+    {
+        var hero = HeroController.I;
+        var pm = PageManager.I;
+        var torch = TorchController.I;
+        pm.Load(6);
+        MomDirector.I.Schedule(ScriptableObject.CreateInstance<PageDef>());
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        hero.GetComponent<Health>().Invulnerable = 600f;
+        pm.GoToTier(1);
+        var office = pm.Layout.tiers[1].panels[0];
+        BlotBrain blot = null;
+        foreach (var e in office.enemies) if (e is BlotBrain b) blot = b;
+        hero.Teleport(new Vector2(blot.transform.position.x - 5f, office.rect.yMin + 2.6f));
+        _followHero = false;
+        var geysers = new System.Collections.Generic.HashSet<int>();
+        var waves = new System.Collections.Generic.HashSet<int>();
+        int lunges = 0;
+        bool lunging = false, shotGeyser = false, shotLunge = false, shotPuddle = false;
+        float geyserY = float.NaN;
+        for (float t = 0f; t < 32f; t += Time.deltaTime)
+        {
+            torch.AimOverride = ((Vector2)blot.transform.position + (Vector2)hero.transform.position) * 0.5f + Vector2.up * 1.4f;
+            foreach (var g in FindObjectsByType<InkGeyser>(FindObjectsSortMode.None))
+                if (geysers.Add(g.GetInstanceID()) && float.IsNaN(geyserY)) geyserY = g.transform.position.y;
+            foreach (var wv in FindObjectsByType<InkWave>(FindObjectsSortMode.None)) waves.Add(wv.GetInstanceID());
+            bool now = Mathf.Abs(blot.Velocity.x) > 7f;
+            if (now && !lunging) lunges++;
+            lunging = now;
+            foreach (var live in FindObjectsByType<InkGeyser>(FindObjectsSortMode.None))
+            {
+                if (!shotGeyser && live.transform.Find("Column").localScale.y > 1.2f) { shotGeyser = true; DevCapture.Shot("blot_geysers"); }
+                if (!shotPuddle && !live.transform.Find("Column").gameObject.activeSelf && live.transform.Find("Puddle").localScale.x > 1.4f) { shotPuddle = true; DevCapture.Shot("blot_puddles"); }
+            }
+            if (!shotLunge && now) { shotLunge = true; DevCapture.Shot("blot_lunge"); }
+            yield return null;
+        }
+        Log($"32 s in the office: geysers {geysers.Count}, waves {waves.Count}, lunges {lunges} (expect all > 0); first geyser {geyserY - office.rect.yMin:0.00} above the panel floor (expect 2.50)");
+
+        // the blink: 36 damage in quick succession and he melts away, to pop up across the room
+        for (float t = 0f; t < 3f && Mathf.Abs(blot.Velocity.x) > 7f; t += Time.deltaTime) yield return null;   // not mid-lunge
+        Vector3 at = blot.transform.position;
+        float hp0 = blot.Health.hp;
+        for (int i = 0; i < 3; i++)
+        {
+            blot.Health.Invulnerable = 0f;
+            blot.Health.Apply(new Hit { damage = 12f, team = Team.Hero, source = hero.gameObject, knockback = new Vector2(2f, 0f) });
+            yield return Wait(0.15f);
+        }
+        DevCapture.Shot("blot_blink");
+        yield return Wait(1.2f);
+        bool shown = true;
+        foreach (var r in blot.GetComponentsInChildren<SkinnedMeshRenderer>()) shown &= r.enabled;
+        Log($"blink after 36 damage: moved {Mathf.Abs(blot.transform.position.x - at.x):0.0} (expect > 4), hp {hp0:0} -> {blot.Health.hp:0}, shown again {shown}, still in the panel {blot.transform.position.x > office.rect.xMin && blot.transform.position.x < office.rect.xMax} (expect True, True)");
+
+        // the vat: every wave has a twin a beat behind it
+        pm.Load(8);
+        MomDirector.I.Schedule(ScriptableObject.CreateInstance<PageDef>());
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        hero.GetComponent<Health>().Invulnerable = 600f;
+        pm.GoToTier(1);
+        var vat = pm.Layout.tiers[1].panels[1];
+        blot = null;
+        foreach (var e in vat.enemies) if (e is BlotBrain b) blot = b;
+        hero.Teleport(new Vector2(blot.transform.position.x - 6.5f, vat.rect.yMin + 2.6f));
+        var times = new System.Collections.Generic.List<float>();
+        waves.Clear();
+        int stale = FindObjectsByType<InkWave>(FindObjectsSortMode.None).Length;
+        Log($"waves left over from the office after the page turned: {stale} (expect 0)");
+        for (float t = 0f; t < 30f && times.Count < 2; t += Time.deltaTime)
+        {
+            torch.AimOverride = ((Vector2)blot.transform.position + (Vector2)hero.transform.position) * 0.5f + Vector2.up * 1.4f;
+            foreach (var wv in FindObjectsByType<InkWave>(FindObjectsSortMode.None))
+                if (waves.Add(wv.GetInstanceID())) times.Add(t);
+            yield return null;
+        }
+        Log($"the vat: waves {times.Count}, the twin {(times.Count >= 2 ? times[1] - times[0] : -1f):0.00} s behind (expect 2, about 0.5)");
+        _followHero = true;
+    }
+
+    // controls: rebinding swaps, names follow the bindings into captions, DEFAULTS, and the Controls page in the Bookmark
+    private IEnumerator ControlsTest()
+    {
+        var mine = Bindings.Snapshot();
+        Bindings.ResetDefaults();
+        Bindings.Set(Bindings.Act.Jump, 0, new Bindings.Control(Bindings.Kind.Key, (int)UnityEngine.InputSystem.Key.K));
+        Log($"jump on K: '{Bindings.Name(Bindings.Act.Jump)}', '{Bindings.Format("PRESS {JUMP}")}' (expect 'K', 'PRESS K')");
+        Bindings.Set(Bindings.Act.Punch, 0, new Bindings.Control(Bindings.Kind.Key, (int)UnityEngine.InputSystem.Key.K));
+        Log($"punch onto K: punch '{Bindings.Name(Bindings.Act.Punch)}', jump '{Bindings.Name(Bindings.Act.Jump)}' (expect 'K', 'E': they swap)");
+        Bindings.Set(Bindings.Act.Crank, 0, new Bindings.Control(Bindings.Kind.Wheel));
+        Bindings.Set(Bindings.Act.Lens, 0, new Bindings.Control(Bindings.Kind.Wheel));
+        Log($"wheel to the lens: lens '{Bindings.SlotName(Bindings.Act.Lens, 0)}', crank '{Bindings.SlotName(Bindings.Act.Crank, 0)}' (expect 'SCROLL', 'MIDDLE CLICK')");
+        Bindings.ResetDefaults();
+        Log($"defaults: jump '{Bindings.Name(Bindings.Act.Jump)}', punch '{Bindings.Name(Bindings.Act.Punch)}', follow '{Bindings.Name(Bindings.Act.Follow)}', torch '{Bindings.Name(Bindings.Act.Torch)}' (expect SPACE, E, LEFT MOUSE, RIGHT CLICK)");
+
+        // a caption on the page re-letters itself
+        PageManager.I.Load(1);
+        yield return Wait(0.5f);
+        while (HeroController.I.Locked) yield return null;
+        TMPro.TextMeshPro cap = null;
+        foreach (var t in PageManager.I.Layout.tiers[0].panels[1].root.GetComponentsInChildren<TMPro.TextMeshPro>())
+            if (t.gameObject.name == "Caption") cap = t;
+        string before = cap != null ? cap.text : "(none)";
+        float w0 = cap != null ? cap.rectTransform.sizeDelta.x : 0f;
+        Bindings.Set(Bindings.Act.Follow, 0, new Bindings.Control(Bindings.Kind.Key, (int)UnityEngine.InputSystem.Key.H));
+        yield return null;
+        Log($"caption '{before}' -> '{(cap != null ? cap.text : "(none)")}', box {w0:0.00} -> {(cap != null ? cap.rectTransform.sizeDelta.x : 0f):0.00} (expect LEFT MOUSE -> H)");
+        Bindings.ResetDefaults();
+
+        // the Controls page, from the Bookmark
+        var pause = FindFirstObjectByType<BookmarkPause>();
+        pause.Pause();
+        yield return WaitReal(0.3f);
+        OptionRow row = null;
+        foreach (var r in FindObjectsByType<OptionRow>(FindObjectsInactive.Include, FindObjectsSortMode.None)) if (r.name == "Row Controls" && r.gameObject.activeInHierarchy) row = r;
+        row?.OnSubmit(null);
+        yield return WaitReal(0.4f);
+        var modal = GameObject.Find("ControlsModal");
+        Log($"bookmark > controls: row {row != null}, page open {modal != null && modal.activeInHierarchy} (expect True, True)");
+        DevCapture.Shot("controls_page");
+        Bindings.Set(Bindings.Act.Kick, 1, new Bindings.Control(Bindings.Kind.Mouse, 4));
+        yield return WaitReal(0.1f);
+        CaptionButton defaults = null, back = null;
+        if (modal != null)
+            foreach (var b in modal.GetComponentsInChildren<CaptionButton>()) { if (b.name == "DefaultsButton") defaults = b; if (b.name == "BackButton") back = b; }
+        defaults?.Button.onClick.Invoke();
+        yield return WaitReal(0.2f);
+        Log($"DEFAULTS: kick spare '{Bindings.SlotName(Bindings.Act.Kick, 1)}' (expect '--')");
+        back?.Button.onClick.Invoke();
+        yield return WaitReal(0.2f);
+        Log($"BACK: page open {modal != null && modal.activeInHierarchy}, still paused {BookmarkPause.IsPaused} (expect False, True)");
+        pause.Resume();
+        Bindings.Restore(mine);
+    }
+
+    // after Max goes down, nothing he "does" lands: not a punch during his fall, not a slam that was on its way
+    private IEnumerator DeathTest()
+    {
+        var hero = HeroController.I;
+        var pm = PageManager.I;
+        var h = hero.GetComponent<Health>();
+
+        // 1. knocked out next to a Smudge, then mashing punch and kick through the death animation
+        pm.Load(1);
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        pm.GoToTier(1);
+        var panel = pm.Layout.tiers[1].panels[0];
+        var smudge = panel.enemies[0];
+        hero.Teleport(new Vector2(smudge.transform.position.x - 1.2f, panel.rect.yMin + 2.6f));
+        hero.Face(1f);
+        yield return Wait(0.6f);
+        GameState.I.Splash = 0f;                            // a full meter can't show a hit
+        float s0 = smudge.Health.hp, splash0 = GameState.I.Splash;
+        h.Invulnerable = 0f;
+        h.hp = 1f;
+        h.Apply(new Hit { hearts = 1, team = Team.Inkie, source = smudge.gameObject, knockback = new Vector2(-2f, 3f), stun = 0.3f, word = "BAM!" });
+        for (float t = 0f; t < 0.9f; t += 0.1f)
+        {
+            _pad.punch = true;
+            _pad.kick = true;
+            yield return Wait(0.1f);
+        }
+        Log($"punching through his own knockout: max dead {hero.Dead}, smudge hp {s0:0} -> {smudge.Health.hp:0}, splash {splash0:0} -> {GameState.I.Splash:0} (expect True, unchanged, unchanged)");
+        for (float t = 0f; t < 6f && (hero.Dead || hero.Locked); t += Time.deltaTime) yield return null;
+
+        // 2. a Smudge that's down: its melting body takes no more hits
+        pm.GoToTier(1);
+        panel = pm.Layout.tiers[1].panels[0];
+        smudge = panel.enemies[0];
+        hero.Teleport(new Vector2(smudge.transform.position.x - 1.2f, panel.rect.yMin + 2.6f));
+        hero.Face(1f);
+        h.Invulnerable = 600f;
+        yield return Wait(0.6f);
+        smudge.Health.Apply(new Hit { damage = 999f, team = Team.Hero, source = hero.gameObject });
+        GameState.I.Splash = 0f;
+        splash0 = GameState.I.Splash;
+        for (int i = 0; i < 3; i++)
+        {
+            _pad.punch = true;
+            yield return Wait(0.3f);
+        }
+        Log($"punching a melting Smudge: splash {splash0:0} -> {GameState.I.Splash:0} (expect unchanged: no hit lands)");
+
+        // 3. killed (by the ink, not a blow) in the middle of a ground slam: the body landing is no slam
+        pm.Load(4);
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        EnemyBrain bruiser = null;
+        int tierOf = 0;
+        for (int ti = 0; ti < pm.Layout.tiers.Count; ti++)
+            foreach (var pl in pm.Layout.tiers[ti].panels)
+                foreach (var e in pl.enemies)
+                    if (e is BruiserBrain) { bruiser = e; tierOf = ti; }
+        if (bruiser == null) { Log("no Bruiser on page 4"); yield break; }
+        if (tierOf > 0) pm.GoToTier(tierOf);
+        hero.Teleport(new Vector2(bruiser.transform.position.x - 0.6f, bruiser.transform.position.y + 4.5f));
+        _followHero = false;
+        TorchController.I.AimOverride = (Vector2)bruiser.transform.position + Vector2.up * 2f;
+        yield return Wait(0.1f);
+        float b0 = bruiser.Health.hp;
+        _pad.down = true;
+        _pad.kick = true;
+        yield return Wait(0.05f);
+        h.Invulnerable = 0f;
+        h.hp = 0f;                                         // gone without a blow (drowned, fallen)
+        yield return Wait(1.2f);
+        _pad.down = false;
+        Log($"slam cut short by a knockout: bruiser hp {b0:0} -> {bruiser.Health.hp:0} (expect unchanged)");
+        _followHero = true;
+        for (float t = 0f; t < 6f && (hero.Dead || hero.Locked); t += Time.deltaTime) yield return null;
+    }
+
+    // the punch chain, frame by frame: what's playing, whether a move is on, and the frame time
+    private IEnumerator ComboTrace()
+    {
+        var hero = HeroController.I;
+        var combat = hero.GetComponent<HeroCombat>();
+        PageManager.I.Load(1);
+        MomDirector.I.Schedule(ScriptableObject.CreateInstance<PageDef>());
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        var flat = PageManager.I.Layout.tiers[0].panels[0];
+        hero.Teleport(flat.rect.min + new Vector2(2.5f, 2.6f));
+        hero.Face(1f);
+        yield return Wait(1.6f);
+        string trace = "";
+        float t = 0f;
+        _pad.punch = true;
+        for (int f = 0; t < 1.2f; f++)
+        {
+            yield return null;
+            t += Time.deltaTime;
+            if (f == 6 || f == 30) _pad.punch = true;               // the 2nd and 3rd presses, mid-swing
+            trace += $"{t:0.00}:{hero.Clips.Current}{(combat.Busy ? "*" : "")}{(hero.Locked ? "L" : "")}{(hero.Hushed ? "H" : "")}{(hero.Hurting ? "h" : "")} ";
+        }
+        Log("combo trace: " + trace);
     }
 
     private IEnumerator WaitReal(float s)

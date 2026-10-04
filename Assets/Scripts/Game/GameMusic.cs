@@ -1,11 +1,11 @@
 using UnityEngine;
 
 /// <summary>
-/// The comic's soundtrack (GDD section 12): noir sax on the pages, a jazzy fight theme while Baron
+/// The comic's soundtrack (GDD section 12): a quiet heroic theme on the pages, a jazzy fight theme while Baron
 /// Blot is in the panel, and the bedroom's lo-fi again once the comic is shut for the night. The
 /// music is in the comic too, so switching the torch off tape-stops it (TorchController) and it
 /// spins back up with the light.
-///   pages.ogg  "Night on the Docks - Sax", Kevin MacLeod (incompetech.com), CC BY 3.0
+///   pages.ogg  "Into The Wilds", Scott Buckley (scottbuckley.com.au), CC BY 4.0 (6 dB down, not normalised on import)
 ///   boss.ogg   "Jazzy Battle Theme", MintoDog, CC0
 ///   menu.ogg   "First Snow", HoliznaCC0, CC0
 /// </summary>

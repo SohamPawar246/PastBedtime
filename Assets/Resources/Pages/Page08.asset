@@ -91,10 +91,10 @@ MonoBehaviour:
       floodRise: 0.55
       spawns:
       - kind: 3
-        at: {x: 4.6, y: 6.4}
+        at: {x: 4.4, y: 4.6}
         faceRight: 0
       - kind: 3
-        at: {x: 7.4, y: 7.2}
+        at: {x: 7, y: 5.2}
         faceRight: 0
       props: []
       stars:

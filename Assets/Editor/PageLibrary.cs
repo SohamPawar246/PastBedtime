@@ -124,31 +124,32 @@ public static class PageLibrary
                                Say(7.9f, 4.55f, 1.8f, "COO?", -1.2f, -1.3f) },     // speech bubbles are solid: stand on it
                 stars: new[] { V(7.9f, 7.0f) }),
             Panel(13f, new[] { R(0, 0, 5, 2.5f), R(8, 0, 5, 3.4f) },
-                "HOLD LEFT MOUSE: THE LIGHT FOLLOWS MAX.",
-                "Hold the left mouse and the light'll stick with me!",
+                "HOLD {FOLLOW}: THE LIGHT FOLLOWS MAX.",
+                "Hold {FOLLOW} and the light'll stick with me!",
                 props: new[] { P(PropKind.Flowerpot, 6.5f, 8.2f), P(PropKind.WaterTower, 10.6f, 3.4f, 0.9f) },
                 stars: new[] { V(6.5f, 5.6f) }),
         },
         new[]
         {
             Panel(12f, new[] { R(0, 0, 12, 2.5f) },
-                "AN INKIE! E, E, E TO PUNCH.",
+                "AN INKIE! {PUNCH}, {PUNCH}, {PUNCH} TO PUNCH.",
                 "Light him up and I'll knock the blot out of him!",
                 spawns: new[] { S(EnemyKind.Smudge, 8.5f, 2.6f) },
                 props: new[] { P(PropKind.Chimney, 2.2f, 2.5f) },
                 stars: new[] { V(2.2f, 5.6f) }),
-            Panel(13f, new[] { R(0, 0, 4.5f, 2.5f), R(9, 0, 4, 2.5f) },
-                "FROZEN THINGS ARE SOLID. KEEP THE CRATE DARK AND STAND ON IT.",
+            // too far to jump: the crate frozen in the gap is the stepping stone (it's redrawn if it falls)
+            Panel(13f, new[] { R(0, 0, 3.5f, 2.5f), R(11, 0, 2, 2.5f) },
+                "FROZEN THINGS ARE SOLID. KEEP THE CRATE DARK AND STEP ON IT. (HOLD {FOLLOW}: THE LIGHT RIDES HIGH.)",
                 "Read me from above, kid. Keep that crate in the dark!",
-                props: new[] { P(PropKind.Crate, 6.75f, 5f), P(PropKind.Vent, 11f, 2.5f) },
-                stars: new[] { V(6.75f, 8f), V(11.5f, 4.2f) }),
+                props: new[] { P(PropKind.Crate, 7.25f, 1.5f), P(PropKind.Vent, 12f, 2.5f) },
+                stars: new[] { V(7.25f, 5.4f), V(12f, 4.4f) }),
         });
 
     private static PageDef Page2() => Page(2, "Water-tower roofs", Act1, 0.12f, -1,
         new[]
         {
             Panel(11f, new[] { R(0, 0, 11, 2.5f) },
-                "THE TORCH IS RUNNING DOWN! SCROLL TO TWIST THE CRANK.",
+                "THE TORCH IS RUNNING DOWN! TWIST THE CRANK: {CRANK}.",
                 "Kid, it's getting dark in here. Give that crank a twist!",
                 props: new[] { P(PropKind.WaterTower, 7f, 2.5f) },
                 stars: new[] { V(9.6f, 3.8f) }),
@@ -167,7 +168,7 @@ public static class PageLibrary
                 props: new[] { P(PropKind.Brick, 6.6f, 7.2f), P(PropKind.Brick, 7.2f, 9.2f) },
                 stars: new[] { V(2f, 4.6f), V(7f, 9.8f) }),
             Panel(13f, new[] { R(0, 0, 13, 6f) },
-                "W + Q: LAUNCHER. FREEZE AN INKIE IN THE AIR AND STAND ON IT.",
+                "{UP} + {KICK}: LAUNCHER. FREEZE AN INKIE IN THE AIR AND STAND ON IT.",
                 "Pop him up with W and K!",
                 spawns: new[] { S(EnemyKind.Smudge, 9f, 6.1f) },
                 stars: new[] { V(11.5f, 10.2f) }),
@@ -197,7 +198,7 @@ public static class PageLibrary
                 props: new[] { P(PropKind.Vent, 5.5f, 2.5f), P(PropKind.Antenna, 2f, 2.5f) },
                 stars: new[] { V(5.5f, 5.4f) }),
             Panel(12f, new[] { R(0, 0, 12, 2.5f) },
-                "A GREEN LENS! MIDDLE-CLICK SWAPS LENSES. GREEN HEALS... EVERYONE IN IT.",
+                "A GREEN LENS! {LENS} SWAPS LENSES. GREEN HEALS... EVERYONE IN IT.",
                 "A new lens! Green patches me up. Keep the Inkies out of it!",
                 props: new[] { P(PropKind.Billboard, 8f, 2.5f), Say(3.9f, 4.9f, 3.2f, "INK-O! INKREDIBLE!", 2.6f, 0.1f) },
                 stars: new[] { V(1.4f, 4.6f), V(3.9f, 7.6f) }),
@@ -215,14 +216,14 @@ public static class PageLibrary
                 props: new[] { P(PropKind.Vent, 2f, 2.5f) },
                 stars: new[] { V(7.5f, 9.6f) }, backdrop: 1),
             Panel(12f, new[] { R(0, 0, 4.5f, 2.5f), R(8, 0, 4, 4.2f) },
-                "KEEP MAX AT THE BEAM'S BOTTOM RIM SO THE BAT UNDER HIM STAYS DARK.",
+                "STANDING ON A FROZEN BAT? KEEP IT DARK: AIM ABOVE MAX, OR HOLD {FOLLOW} AND THE LIGHT RIDES HIGH.",
                 spawns: new[] { S(EnemyKind.Splotch, 6.3f, 7.4f) },
                 stars: new[] { V(6.2f, 5.6f) }, backdrop: 1),
         },
         new[]
         {
             Panel(15f, new[] { R(0, 0, 15, 2.5f) },
-                "THE BRUISER. ARMOURED IN FRONT: HIT HIM FROM BEHIND. S + Q IN THE AIR: GROUND SLAM!",
+                "THE BRUISER. ARMOURED IN FRONT: HIT HIM FROM BEHIND. {DOWN} + {KICK} IN THE AIR: GROUND SLAM!",
                 "Big fella. Freeze him at the top of his swing!",
                 spawns: new[] { S(EnemyKind.Bruiser, 11f, 2.6f) },
                 props: new[] { P(PropKind.Crate, 4f, 2.5f) },
@@ -252,7 +253,7 @@ public static class PageLibrary
         new[]
         {
             Panel(13f, new[] { R(0, 0, 13, 2.5f) },
-                "SPLASH METER FULL? PRESS F: EVERY INKIE IN THE BEAM GETS IT!",
+                "SPLASH METER FULL? PRESS {SPLASH}: EVERY INKIE IN THE BEAM GETS IT!",
                 "Time for a full-page spread!",
                 spawns: new[] { S(EnemyKind.DotShot, 10f, 2.6f) },
                 props: new[] { P(PropKind.Crate, 6f, 2.5f) },
@@ -335,7 +336,7 @@ public static class PageLibrary
                 flood: 1.2f, floodTop: 9f, floodRise: 0.55f, backdrop: 2),
             Panel(12f, new[] { R(0, 0, 2.5f, 5.3f), R(9.5f, 0, 2.5f, 6.4f) },
                 "BATS OVER THE INK. FREEZE ONE AND STAND ON IT... BUT DON'T LIGHT THE INK BELOW.",
-                spawns: new[] { S(EnemyKind.Splotch, 4.6f, 6.4f), S(EnemyKind.Splotch, 7.4f, 7.2f) },
+                spawns: new[] { S(EnemyKind.Splotch, 4.4f, 4.6f), S(EnemyKind.Splotch, 7.0f, 5.2f) },   // just below the ledge: step down onto them
                 stars: new[] { V(6f, 9.4f) },
                 flood: 1.0f, floodTop: 9f, floodRise: 0.55f, backdrop: 2),
         },

@@ -12,7 +12,7 @@ using UnityEngine;
 ///  - the LightMask material the torch beam and transitions use (Resources/Materials)
 ///  - the shell scenes, each just a camera + its screen component (the screens
 ///    build their UI in code, see UIKit), and the build order
-///  - product name, company and WebGL compression settings
+///  - product name, company and the web build's settings (compression, page template, quality tier)
 ///
 /// Safe to re-run. The Game scene is only created if it does not exist, so
 /// gameplay work there is never overwritten.
@@ -132,9 +132,20 @@ public static class ShellSetup
         PlayerSettings.productName = "Past Bedtime";
         PlayerSettings.companyName = "Studio Kamikaze";
         PlayerSettings.runInBackground = true;
-        // itch.io serves Brotli correctly only with the decompression fallback on.
-        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
+        // Gzip with the decompression fallback: itch.io spots gzip and serves it natively, and the loader
+        // decompresses it anywhere that doesn't (Brotli inside .unityweb files always unpacks in slow JavaScript)
+        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
         PlayerSettings.WebGL.decompressionFallback = true;
+        PlayerSettings.WebGL.dataCaching = true;
+        // the game opens on its own studio card; Unity 6 lets Personal projects drop the engine's (2.7 MB and seconds)
+        PlayerSettings.SplashScreen.show = false;
+        // the game fills itch.io's embed frame (Assets/WebGLTemplates/PastBedtime), 16:9 by default
+        PlayerSettings.WebGL.template = "PROJECT:PastBedtime";
+        PlayerSettings.defaultWebScreenWidth = 1280;
+        PlayerSettings.defaultWebScreenHeight = 720;
+        // the browser gets the PC tier the game is tuned on, never the Mobile one
+        int mobile = System.Array.IndexOf(QualitySettings.names, "Mobile");
+        if (mobile >= 0 && QualitySettings.IsPlatformIncluded("WebGL", mobile)) QualitySettings.TryExcludePlatformAt("WebGL", mobile, out _);
     }
 
     private static void EnsureFolder(string path)

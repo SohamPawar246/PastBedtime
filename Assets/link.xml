@@ -1,0 +1,10 @@
+<linker>
+  <!-- GameObject.CreatePrimitive adds a collider to each primitive (the game takes it off again at once), but
+       engine code stripping removes collider classes nothing names in code from web builds, and Unity then logs
+       "Can't add component because class 'MeshCollider' doesn't exist!" for every caption and backdrop quad. -->
+  <assembly fullname="UnityEngine.PhysicsModule">
+    <type fullname="UnityEngine.MeshCollider" preserve="all"/>
+    <type fullname="UnityEngine.SphereCollider" preserve="all"/>
+    <type fullname="UnityEngine.CapsuleCollider" preserve="all"/>
+  </assembly>
+</linker>

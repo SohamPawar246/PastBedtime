@@ -121,8 +121,7 @@ MonoBehaviour:
       - {x: 5.5, y: 5.4}
       backdrop: 0
     - width: 12
-      caption: A GREEN LENS! MIDDLE-CLICK SWAPS LENSES. GREEN HEALS... EVERYONE IN
-        IT.
+      caption: A GREEN LENS! {LENS} SWAPS LENSES. GREEN HEALS... EVERYONE IN IT.
       heroLine: A new lens! Green patches me up. Keep the Inkies out of it!
       floors:
       - serializedVersion: 2

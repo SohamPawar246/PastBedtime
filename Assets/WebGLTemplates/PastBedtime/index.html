@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+    <title>{{{ PRODUCT_NAME }}}</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="TemplateData/style.css">
+  </head>
+  <body>
+    <!-- The game fills the frame it's given (itch.io's embed, or the whole window in fullscreen). -->
+    <canvas id="unity-canvas" width={{{ WIDTH }}} height={{{ HEIGHT }}} tabindex="-1"></canvas>
+
+    <div id="pb-loading">
+      <div id="pb-title">PAST BEDTIME</div>
+      <div id="pb-bar"><div id="pb-fill"></div></div>
+      <div id="pb-caption">2 A.M. &nbsp;OPENING THE COMIC&hellip;</div>
+      <div id="pb-mobile">Best read with a mouse and keyboard.</div>
+    </div>
+    <div id="pb-banner"></div>
+
+    <script>
+      var canvas = document.querySelector("#unity-canvas");
+      var loading = document.querySelector("#pb-loading");
+
+      // Warnings come and go; an error stays, printed on the page instead of an alert box.
+      function showBanner(msg, type) {
+        var banner = document.querySelector("#pb-banner");
+        var div = document.createElement("div");
+        div.className = "pb-note " + (type || "info");
+        div.innerHTML = msg;
+        banner.appendChild(div);
+        banner.style.display = "block";
+        if (type != "error") setTimeout(function () {
+          banner.removeChild(div);
+          if (!banner.children.length) banner.style.display = "none";
+        }, 6000);
+      }
+
+      // The torch is the mouse: right click switches it, the wheel winds the crank, the middle button turns
+      // the lens. None of that should open a menu, scroll the page around the game, start autoscroll, or
+      // send the browser back a page (the side buttons).
+      canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+      canvas.addEventListener("wheel", function (e) { e.preventDefault(); }, { passive: false });
+      canvas.addEventListener("mousedown", function (e) {
+        if (e.button === 1) e.preventDefault();
+        canvas.focus();
+        window.focus();
+      });
+      canvas.addEventListener("mouseup", function (e) { if (e.button === 3 || e.button === 4) e.preventDefault(); });
+      canvas.addEventListener("auxclick", function (e) { e.preventDefault(); });
+
+      var mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (mobile) document.querySelector("#pb-mobile").style.display = "block";
+
+      var buildUrl = "Build";
+      var config = {
+        arguments: [],
+        dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+        frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_THREADS
+        workerUrl: buildUrl + "/{{{ WORKER_FILENAME }}}",
+#endif
+#if USE_WASM
+        codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+        symbolsUrl: buildUrl + "/{{{ SYMBOLS_FILENAME }}}",
+#endif
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+        productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+        showBanner: showBanner,
+        // sharp on a high-DPI screen, but not 4x the pixels on a 4K one
+        devicePixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
+      };
+
+      var script = document.createElement("script");
+      script.src = buildUrl + "/{{{ LOADER_FILENAME }}}";
+      script.onload = function () {
+        createUnityInstance(canvas, config, function (progress) {
+          document.querySelector("#pb-fill").style.width = (100 * progress) + "%";
+        }).then(function (unityInstance) {
+          loading.style.display = "none";
+          canvas.focus();
+        }).catch(function (message) {
+          loading.style.display = "none";
+          showBanner("The comic couldn't open: " + message, "error");
+        });
+      };
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>

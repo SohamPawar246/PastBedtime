@@ -99,6 +99,7 @@ public static class PageBuilder
         brain.MaxX = pl.rect.xMax;
         brain.Facing = faceRight ? 1f : -1f;
         brain.Panel = pl;
+        brain.Home = at;
         if (brain is DotShotBrain ds && A != null) ds.PelletMaterial = A.ink;
         var body = go.GetComponent<CharacterController>();
         InkShadow.Add(go, body != null ? body.radius * 2.7f : 1f);
@@ -143,6 +144,8 @@ public static class PageBuilder
                 float bw = Mathf.Min(1f, f.width - ex);
                 var b = Box(pl.root, "Erasable", new Vector3(r.xMin + f.x + ex + bw / 2f, r.yMin + f.y + f.height / 2f, 0.5f),
                             new Vector3(bw - 0.04f, f.height, 2.4f), A.wood);
+                if (b.TryGetComponent(out BoxCollider solid))                 // drawn with a hairline gap, solid edge to edge
+                    solid.size = new Vector3(bw / (bw - 0.04f), 1f, 1f);
                 b.AddComponent<ErasableBlock>();
             }
         }
@@ -154,7 +157,7 @@ public static class PageBuilder
         foreach (var s in p.stars) StarPickup.Create(pl.root, r.min + s, A.star);
         foreach (var s in p.ghostStars) InvisibleInk.Secret(StarPickup.Create(pl.root, r.min + s, A.star));
         if (p.flood >= 0f) pl.flood = InkFlood.Create(pl, p.flood, p.floodTop, p.floodRise, A.ink);
-        if (!string.IsNullOrEmpty(p.caption)) Caption.Create(pl.root, new Vector2(r.xMin + 0.35f, r.yMax - 0.35f), p.caption);
+        if (!string.IsNullOrEmpty(p.caption)) Caption.Create(pl.root, new Vector2(r.xMin + 0.35f, r.yMax - 0.35f), p.caption, r);
 
         BuildBorder(pl, A, firstInTier, lastInTier);
     }
@@ -324,7 +327,7 @@ public static class PageBuilder
                 Press.Create(pl, at, s, Mathf.Repeat(prop.at.x * 0.37f, 1f));
                 break;
             case PropKind.Conveyor:
-                Conveyor.Create(pl, at.x, at.x + Mathf.Abs(prop.size), at.y, 2.4f * Mathf.Sign(prop.size));
+                Conveyor.Create(pl, at.x, at.x + Mathf.Abs(prop.size), at.y, Conveyor.BeltSpeed * Mathf.Sign(prop.size));
                 break;
         }
     }

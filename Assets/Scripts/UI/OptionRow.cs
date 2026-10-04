@@ -10,13 +10,14 @@ using UnityEngine.UI;
 ///     Twist ................ [SCROLL]  circle  mash
 ///     Music ................ ■■■■■■■□□□
 /// Left/right (keys, d-pad, scroll wheel) changes the value; Enter or a click
-/// toggles/cycles; clicking a slider sets it where you click. The selected line
+/// toggles/cycles; clicking a slider sets it where you click. A link line
+/// ("Controls ...... [ CHANGE ]") opens its page on Enter or a click. The selected line
 /// gets a process-yellow highlighter stripe. The dot leaders are measured so they
 /// always run right up to the value column.
 /// </summary>
 public class OptionRow : Selectable, IPointerClickHandler, ISubmitHandler, IScrollHandler
 {
-    private enum Kind { Toggle, Choice, Slider }
+    private enum Kind { Toggle, Choice, Slider, Link }
 
     private const int Cells = 10;
     private const float ValueColumn = 0.56f;   // value column starts at this fraction of the row width
@@ -25,6 +26,7 @@ public class OptionRow : Selectable, IPointerClickHandler, ISubmitHandler, IScro
     private Func<bool> _getBool; private Action<bool> _setBool;
     private Func<int> _getIndex; private Action<int> _setIndex; private string[] _choices;
     private Func<float> _getValue; private Action<float> _setValue;
+    private Action _open; private string _linkText;
 
     private Image _highlight;
     private TMP_Text _value;
@@ -45,6 +47,14 @@ public class OptionRow : Selectable, IPointerClickHandler, ISubmitHandler, IScro
     {
         var row = Build(parent, label, pos, width);
         row._kind = Kind.Choice; row._choices = choices; row._getIndex = get; row._setIndex = set;
+        row.Refresh();
+        return row;
+    }
+
+    public static OptionRow Link(Transform parent, string label, string value, Action open, Vector2 pos, float width)
+    {
+        var row = Build(parent, label, pos, width);
+        row._kind = Kind.Link; row._open = open; row._linkText = value;
         row.Refresh();
         return row;
     }
@@ -132,6 +142,9 @@ public class OptionRow : Selectable, IPointerClickHandler, ISubmitHandler, IScro
             case Kind.Toggle:
                 _value.text = _getBool() ? "[ ON ]" : "[ OFF ]";
                 break;
+            case Kind.Link:
+                _value.text = "<b>[ " + _linkText + " ]</b>";
+                break;
             case Kind.Choice:
             {
                 int sel = _getIndex();
@@ -178,6 +191,7 @@ public class OptionRow : Selectable, IPointerClickHandler, ISubmitHandler, IScro
 
     public override void OnMove(AxisEventData e)
     {
+        if (_kind == Kind.Link) { base.OnMove(e); return; }
         if (e.moveDir == MoveDirection.Left) { Step(-1); e.Use(); return; }
         if (e.moveDir == MoveDirection.Right) { Step(1); e.Use(); return; }
         base.OnMove(e);
@@ -185,12 +199,21 @@ public class OptionRow : Selectable, IPointerClickHandler, ISubmitHandler, IScro
 
     public void OnSubmit(BaseEventData e)
     {
+        if (_kind == Kind.Link) { Open(); return; }
         if (_kind != Kind.Slider) Step(1);
+    }
+
+    private void Open()
+    {
+        if (!IsInteractable()) return;
+        AudioDirector.I?.Confirm();
+        _open?.Invoke();
     }
 
     public void OnPointerClick(PointerEventData e)
     {
         if (!IsInteractable() || e.button != PointerEventData.InputButton.Left) return;
+        if (_kind == Kind.Link) { Open(); return; }
         if (_kind != Kind.Slider) { Step(1); return; }
 
         if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_bar, e.position, e.pressEventCamera, out var local))
@@ -204,7 +227,7 @@ public class OptionRow : Selectable, IPointerClickHandler, ISubmitHandler, IScro
 
     public void OnScroll(PointerEventData e)
     {
-        if (!IsInteractable() || Mathf.Approximately(e.scrollDelta.y, 0f)) return;
+        if (!IsInteractable() || _kind == Kind.Link || Mathf.Approximately(e.scrollDelta.y, 0f)) return;
         Step(e.scrollDelta.y > 0f ? 1 : -1);
     }
 

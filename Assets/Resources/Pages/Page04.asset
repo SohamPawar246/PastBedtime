@@ -59,7 +59,8 @@ MonoBehaviour:
       - {x: 7.5, y: 9.6}
       backdrop: 1
     - width: 12
-      caption: KEEP MAX AT THE BEAM'S BOTTOM RIM SO THE BAT UNDER HIM STAYS DARK.
+      caption: 'STANDING ON A FROZEN BAT? KEEP IT DARK: AIM ABOVE MAX, OR HOLD {FOLLOW}
+        AND THE LIGHT RIDES HIGH.'
       heroLine: 
       floors:
       - serializedVersion: 2
@@ -88,8 +89,8 @@ MonoBehaviour:
       backdrop: 1
   - panels:
     - width: 15
-      caption: 'THE BRUISER. ARMOURED IN FRONT: HIT HIM FROM BEHIND. S + Q IN THE
-        AIR: GROUND SLAM!'
+      caption: 'THE BRUISER. ARMOURED IN FRONT: HIT HIM FROM BEHIND. {DOWN} + {KICK}
+        IN THE AIR: GROUND SLAM!'
       heroLine: Big fella. Freeze him at the top of his swing!
       floors:
       - serializedVersion: 2

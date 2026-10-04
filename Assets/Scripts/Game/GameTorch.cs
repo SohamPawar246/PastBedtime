@@ -197,7 +197,7 @@ public class GameTorch : MonoBehaviour
 
         // the hint by the crank: wind me when low, the ratchet when overwound, the bulb cooling
         bool low = c.Share < 0.25f && !c.Dead;
-        string hint = c.Dead ? "COOLING..." : c.Overwind > 0 ? "CLICK-CLICK!" : low && Mathf.Repeat(Time.unscaledTime, 0.8f) < 0.5f ? "TWIST! (SCROLL)" : "";
+        string hint = c.Dead ? "COOLING..." : c.Overwind > 0 ? "CLICK-CLICK!" : low && Mathf.Repeat(Time.unscaledTime, 0.8f) < 0.5f ? Bindings.Format("TWIST! ({CRANK})") : "";
         _hint.text = hint;
         _hint.color = c.Overwind > 0 || c.Dead ? Palette.HeroRed : Palette.Yellow;
         _hint.alpha = k;

@@ -64,14 +64,13 @@ public class EraserBrain : EnemyBrain
     /// <summary>No character controller: the rubber block slides along the floor and is solid when frozen.</summary>
     protected override void Move(float dt)
     {
+        dt = Mathf.Min(dt, 1f / 30f);                     // a hitch (a browser stall) can't drop it into the floor
         Vector3 p = transform.position;
         p.x += Velocity.x * dt;
-        // a short probe from just above its base (inside its own box, so the box never answers)
         float reach = 0.35f + Mathf.Max(0f, -Velocity.y * dt);                // long enough not to fall through when dropping fast
-        if (Physics.Raycast(p + Vector3.up * 0.2f, Vector3.down, out var floor, reach, ~0, QueryTriggerInteraction.Ignore)
-            && !floor.collider.transform.IsChildOf(transform))
+        if (FloorUnder(p, reach, out float floorY))
         {
-            p.y = floor.point.y;
+            p.y = floorY;
             Velocity.y = 0f;
             Grounded = true;
         }
@@ -85,5 +84,19 @@ public class EraserBrain : EnemyBrain
         p.x = Mathf.Clamp(p.x, MinX + BodyRadius, MaxX - BodyRadius);
         transform.position = p;
         if (Mode == State.Hurt) Velocity.x = Mathf.MoveTowards(Velocity.x, 0f, 25f * dt);
+    }
+
+    private static readonly float[] Feet = { -0.3f, 0f, 0.3f };
+
+    /// <summary>Short probes from just above its base, across it (inside its own box, so the box never
+    /// answers): the highest floor under any of them. One probe could slip down a seam in the bridge.</summary>
+    private bool FloorUnder(Vector3 p, float reach, out float y)
+    {
+        y = float.NegativeInfinity;
+        foreach (float dx in Feet)
+            if (Physics.Raycast(p + new Vector3(dx, 0.2f, 0f), Vector3.down, out var floor, reach, ~0, QueryTriggerInteraction.Ignore)
+                && !floor.collider.transform.IsChildOf(transform))
+                y = Mathf.Max(y, floor.point.y);
+        return !float.IsNegativeInfinity(y);
     }
 }

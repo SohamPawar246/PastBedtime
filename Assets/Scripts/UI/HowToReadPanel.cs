@@ -4,10 +4,13 @@ using UnityEngine;
 
 /// <summary>
 /// "How to read": the controls from GDD section 3 as a two-column comic page.
-/// Left hand plays Max, right hand plays the reader.
+/// Left hand plays Max, right hand plays the reader. The keys are the player's own
+/// (<see cref="Bindings"/>), re-read whenever the page opens or the controls change.
 /// </summary>
 public static class HowToReadPanel
 {
+    private static string N(Bindings.Act a) => Bindings.Name(a);
+
     public static CaptionButton Build(Transform parent, Action onBack)
     {
         const float w = 1320f, h = 800f;
@@ -23,26 +26,28 @@ public static class HowToReadPanel
         title.characterSpacing = 6f;
 
         // left hand only: everything Max does is in reach of W A S D (the right hand holds the mouse)
-        Column(root, new Vector2(-w * 0.25f + 10f, 110f), "THE KEYBOARD IS MAX", Palette.HeroRed, new[]
+        var live = root.gameObject.AddComponent<HowToReadLive>();
+        live.Add(Column(root, new Vector2(-w * 0.25f + 10f, 110f), "THE KEYBOARD IS MAX", Palette.HeroRed, 7), () => new[]
         {
-            ("A / D", "run"),
-            ("SPACE", "jump (hold = higher)"),
-            ("E", "punch, x3 = haymaker"),
-            ("Q", "kick (W+Q launches)"),
-            ("SHIFT", "dodge"),
-            ("W / S", "look up / drop down"),
-            ("F", "splash page (meter full)"),
+            (N(Bindings.Act.Left) + " / " + N(Bindings.Act.Right), "run"),
+            (N(Bindings.Act.Jump), "jump (hold = higher)"),
+            (N(Bindings.Act.Punch), "punch, x3 = haymaker"),
+            (N(Bindings.Act.Kick), $"kick ({N(Bindings.Act.Up)}+{N(Bindings.Act.Kick)} launches)"),
+            (N(Bindings.Act.Dodge), "dodge"),
+            (N(Bindings.Act.Up) + " / " + N(Bindings.Act.Down), "up / slam (with kick)"),
+            (N(Bindings.Act.Splash), "splash page (meter full)"),
         });
-
-        Column(root, new Vector2(w * 0.25f - 10f, 110f), "THE MOUSE IS THE TORCH", Palette.Cyan, new[]
+        live.Add(Column(root, new Vector2(w * 0.25f - 10f, 110f), "THE MOUSE IS THE TORCH", Palette.Cyan, 6), () => new[]
         {
             ("MOVE", "aim the beam"),
-            ("HOLD LEFT", "beam follows Max"),
-            ("RIGHT CLICK", "torch on / off"),
-            ("SCROLL", "twist the crank"),
-            ("MIDDLE CLICK", "twist the lens"),
+            ("HOLD " + N(Bindings.Act.Follow), "beam follows Max"),
+            (N(Bindings.Act.Torch), "torch on / off"),
+            (N(Bindings.Act.Crank), "twist the crank"),
+            (N(Bindings.Act.Lens), "twist the lens (1-4 pick)"),
             ("ESC", "bookmark (pause)"),
         });
+        var change = UIKit.Text(root, "Rebind", "Change the keys: SETTINGS > CONTROLS", UIKit.Mono, 22f, Palette.Ink.Alpha(0.6f));
+        UIKit.Place(change.rectTransform, new Vector2(0f, -h * 0.5f + 245f), new Vector2(w - 120f, 30f));
 
         // The one rule, as a caption strip along the bottom.
         var strip = UIKit.Panel(root, "Rule", new Vector2(0f, -h * 0.5f + 175f), new Vector2(w - 120f, 96f),
@@ -58,7 +63,7 @@ public static class HowToReadPanel
         return back;
     }
 
-    private static void Column(Transform root, Vector2 center, string heading, Color accent, (string key, string what)[] rows)
+    private static TMP_Text[] Column(Transform root, Vector2 center, string heading, Color accent, int count)
     {
         const float colW = 560f;
         var head = UIKit.Text(root, "Head " + heading, heading, UIKit.Display, 44f, accent);
@@ -66,15 +71,49 @@ public static class HowToReadPanel
         head.rectTransform.localRotation = Quaternion.Euler(0, 0, -1.5f);
         head.characterSpacing = 3f;
 
+        var lines = new TMP_Text[count];
         float y = center.y + 100f;
-        foreach (var (key, what) in rows)
+        for (int i = 0; i < count; i++)
         {
-            string lead = key + " " + new string('.', Mathf.Max(2, 14 - key.Length));
-            var line = UIKit.Text(root, "Line " + key, "<b>" + lead + "</b> " + what, UIKit.Mono, 26f, Palette.Ink,
-                TextAlignmentOptions.Left);
+            var line = UIKit.Text(root, "Line " + i, "", UIKit.Mono, 26f, Palette.Ink, TextAlignmentOptions.Left);
             line.textWrappingMode = TextWrappingModes.NoWrap;
             UIKit.Place(line.rectTransform, new Vector2(center.x, y), new Vector2(colW, 40f));
+            lines[i] = line;
             y -= 44f;
+        }
+        return lines;
+    }
+
+    /// <summary>"KEY .......... what it does": the dots run out to a column (and shrink for long names).</summary>
+    public static string Line(string key, string what) =>
+        "<b>" + key + " " + new string('.', Mathf.Max(2, 14 - key.Length)) + "</b> " + what;
+}
+
+/// <summary>Re-letters the How to Read lines from the bindings whenever the page is shown or they change.</summary>
+public class HowToReadLive : MonoBehaviour
+{
+    private readonly System.Collections.Generic.List<(TMP_Text[] lines, Func<(string key, string what)[]> rows)> _columns = new();
+
+    public void Add(TMP_Text[] lines, Func<(string key, string what)[]> rows)
+    {
+        _columns.Add((lines, rows));
+        Refresh();
+    }
+
+    private void OnEnable()
+    {
+        Bindings.Changed += Refresh;
+        Refresh();
+    }
+
+    private void OnDisable() => Bindings.Changed -= Refresh;
+
+    private void Refresh()
+    {
+        foreach (var (lines, rows) in _columns)
+        {
+            var r = rows();
+            for (int i = 0; i < lines.Length && i < r.Length; i++) lines[i].text = HowToReadPanel.Line(r[i].key, r[i].what);
         }
     }
 }

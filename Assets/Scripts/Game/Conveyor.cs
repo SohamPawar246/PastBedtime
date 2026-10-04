@@ -10,7 +10,9 @@ public class Conveyor : MonoBehaviour
 {
     public static readonly List<Conveyor> All = new();
 
-    public float Speed = 2.4f;                   // lane units a second; the sign is the direction
+    /// <summary>Faster than Max can run (7): while it runs, the only way along it is to stop its motor.</summary>
+    public const float BeltSpeed = 8.5f;
+    public float Speed = BeltSpeed;              // lane units a second; the sign is the direction
     public bool Running => _motor != null && _motor.IsAwake;
 
     private Lightable _motor;

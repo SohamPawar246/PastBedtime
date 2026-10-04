@@ -33,8 +33,9 @@ public class TitleScreen : MonoBehaviour
     private readonly List<CaptionButton> _items = new();
     private RectTransform _cover;
     private TorchBeam _beam;
-    private Modal _settingsModal, _howToModal;
+    private Modal _settingsModal, _howToModal, _controlsModal;
     private SettingsPanel _settings;
+    private ControlsPanel _controls;
     private CaptionButton _howToBack;
     private GameObject _reselectOnClose;
     private bool _leaving;
@@ -59,9 +60,11 @@ public class TitleScreen : MonoBehaviour
 
         var modalCanvas = UIKit.Canvas("TitleModals", 20);
         _settingsModal = Modal.Create(modalCanvas.transform, "SettingsModal");
-        _settings = SettingsPanel.Build(_settingsModal.Content, Vector2.zero, withButtons: true, onBack: CloseModal);
+        _settings = SettingsPanel.Build(_settingsModal.Content, Vector2.zero, withButtons: true, onBack: CloseModal, onControls: OpenControls);
         _howToModal = Modal.Create(modalCanvas.transform, "HowToModal");
         _howToBack = HowToReadPanel.Build(_howToModal.Content, CloseModal);
+        _controlsModal = Modal.Create(modalCanvas.transform, "ControlsModal");          // over the settings card
+        _controls = ControlsPanel.Build(_controlsModal.Content, CloseControls);
 
         StartCoroutine(Intro());
     }
@@ -380,7 +383,8 @@ public class TitleScreen : MonoBehaviour
 
     private void Update()
     {
-        if (_leaving) return;
+        // the Controls page answers its own Esc (and the Esc that closed it isn't this card's too)
+        if (_leaving || _controlsModal.IsOpen || Time.frameCount == _controlsClosed) return;
         bool modalOpen = _settingsModal.IsOpen || _howToModal.IsOpen;
         if (modalOpen && ShellInput.BackPressed()) CloseModal();
     }
@@ -457,8 +461,22 @@ public class TitleScreen : MonoBehaviour
         modal.Open(first);
     }
 
+    private void OpenControls() => _controlsModal.Open(_controls.First);
+
+    /// <summary>Back from the Controls page to the settings card it was opened from.</summary>
+    private int _controlsClosed = -1;
+
+    private void CloseControls()
+    {
+        _controlsModal.Close();
+        _controlsClosed = Time.frameCount;
+        AudioDirector.I?.Back();
+        UIKit.Select(_settings.ControlsRow.gameObject);
+    }
+
     private void CloseModal()
     {
+        _controlsModal.Close();
         _settingsModal.Close();
         _howToModal.Close();
         _menuGroup.interactable = true;

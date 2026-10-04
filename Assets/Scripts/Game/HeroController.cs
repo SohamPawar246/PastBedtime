@@ -30,6 +30,9 @@ public class HeroController : MonoBehaviour
     public bool Dead => _health != null && _health.Dead;
     /// <summary>Movement is handed over (combat moves, cutscenes, tier sweeps).</summary>
     public bool Locked;
+    /// <summary>Mom's door is open: Max holds his breath. He can't move or fight, and nothing lands on
+    /// him (the torch is still Roshan's to switch off).</summary>
+    public bool Hushed => MomDirector.I != null && MomDirector.I.HoldingStill;
     /// <summary>Lane bounds Max can't leave (the page edges).</summary>
     public float MinX = -1e4f, MaxX = 1e4f;
 
@@ -143,6 +146,8 @@ public class HeroController : MonoBehaviour
     private void Update()
     {
         Contacts();
+        bool hushed = Hushed;
+        if (hushed) _health.Invulnerable = Mathf.Max(_health.Invulnerable, 0.2f);   // set before her light can wake him
         float dt = Light.Delta;
         if (dt <= 0f) return;                       // frozen: everything waits, velocity kept
 
@@ -156,11 +161,11 @@ public class HeroController : MonoBehaviour
         if (_dodgeCooldown > 0f) _dodgeCooldown -= dt;
         Mend(dt);
 
-        float input = Locked || _hurt > 0f ? 0f : GameInput.MoveX;
+        float input = Locked || hushed || _hurt > 0f ? 0f : GameInput.MoveX;
         bool attacking = _combat != null && _combat.Busy;
 
         // ---- dodge ---------------------------------------------------------------------------
-        if (!Locked && _hurt <= 0f && _dodge <= 0f && _dodgeCooldown <= 0f && GameInput.DodgePressed)
+        if (!Locked && !hushed && _hurt <= 0f && _dodge <= 0f && _dodgeCooldown <= 0f && GameInput.DodgePressed)
         {
             _combat?.Interrupt();
             _dodge = DodgeTime;
@@ -193,7 +198,7 @@ public class HeroController : MonoBehaviour
 
         // ---- jump: coyote time, buffer, hold for height ----------------------------------------
         _coyote = Grounded ? Coyote : _coyote - dt;
-        _buffer = !Locked && GameInput.JumpPressed ? Buffer : _buffer - dt;
+        _buffer = !Locked && !hushed && GameInput.JumpPressed ? Buffer : _buffer - dt;
         if (_buffer > 0f && _coyote > 0f && !attacking && _hurt <= 0f && _dodge <= 0f)
         {
             Velocity.y = Mathf.Sqrt(2f * Gravity * JumpHigh);

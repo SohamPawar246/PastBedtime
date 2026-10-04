@@ -1,0 +1,96 @@
+/* Past Bedtime's web page: the game fills its frame; while it loads, a comic caption box fills up. */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0b1026;            /* the night outside Roshan's window (Palette.Night) */
+}
+
+#unity-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #0b1026;
+  outline: none;
+}
+
+#pb-loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  font-family: "Arial Black", Impact, "Helvetica Neue", Arial, sans-serif;
+}
+
+#pb-title {
+  font-size: clamp(34px, 7vw, 88px);
+  letter-spacing: 0.04em;
+  color: #ffd400;                 /* process yellow (Palette.Yellow) */
+  transform: rotate(-3deg);
+  text-shadow:
+    -3px -3px 0 #141414, 3px -3px 0 #141414, -3px 3px 0 #141414, 3px 3px 0 #141414,
+    8px 8px 0 #000;
+}
+
+#pb-bar {
+  width: min(60vw, 520px);
+  height: 26px;
+  background: #f2e8cf;            /* paper */
+  border: 4px solid #141414;
+  box-shadow: 7px 7px 0 #000;
+  transform: rotate(-1deg);
+}
+
+#pb-fill {
+  width: 0%;
+  height: 100%;
+  background: #ffd400;
+  border-right: 4px solid #141414;
+  box-sizing: border-box;
+  transition: width 0.15s;
+}
+
+#pb-caption {
+  font-family: "Courier New", Courier, monospace;
+  font-weight: bold;
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  color: #f2e8cf;
+  opacity: 0.8;
+}
+
+#pb-mobile {
+  display: none;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 14px;
+  color: #ffd400;
+}
+
+#pb-banner {
+  display: none;
+  position: fixed;
+  left: 50%;
+  top: 16px;
+  transform: translateX(-50%);
+  max-width: 80vw;
+  z-index: 10;
+}
+
+.pb-note {
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 15px;
+  color: #141414;
+  background: #f2e8cf;
+  border: 3px solid #141414;
+  box-shadow: 5px 5px 0 #000;
+}
+
+.pb-note.warning { background: #ffd400; }
+.pb-note.error { background: #e8402a; color: #fff; }

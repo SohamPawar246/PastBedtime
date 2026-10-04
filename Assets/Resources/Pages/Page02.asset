@@ -28,7 +28,7 @@ MonoBehaviour:
   tiers:
   - panels:
     - width: 11
-      caption: THE TORCH IS RUNNING DOWN! SCROLL TO TWIST THE CRANK.
+      caption: 'THE TORCH IS RUNNING DOWN! TWIST THE CRANK: {CRANK}.'
       heroLine: Kid, it's getting dark in here. Give that crank a twist!
       floors:
       - serializedVersion: 2
@@ -126,7 +126,8 @@ MonoBehaviour:
       - {x: 7, y: 9.8}
       backdrop: 0
     - width: 13
-      caption: 'W + Q: LAUNCHER. FREEZE AN INKIE IN THE AIR AND STAND ON IT.'
+      caption: '{UP} + {KICK}: LAUNCHER. FREEZE AN INKIE IN THE AIR AND STAND ON
+        IT.'
       heroLine: Pop him up with W and K!
       floors:
       - serializedVersion: 2

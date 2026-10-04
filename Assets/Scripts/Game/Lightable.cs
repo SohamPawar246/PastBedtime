@@ -88,6 +88,13 @@ public class Lightable : MonoBehaviour
         return _world;
     }
 
+    /// <summary>Forget the motion a frozen rigidbody would wake with (a prop drawn back in starts still).</summary>
+    public void ClearStoredMotion()
+    {
+        _storedVelocity = Vector3.zero;
+        _storedAngular = Vector3.zero;
+    }
+
     private void Evaluate(bool force)
     {
         if (!_started || LightField.I == null) return;

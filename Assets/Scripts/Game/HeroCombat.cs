@@ -95,8 +95,13 @@ public class HeroCombat : MonoBehaviour
     private void Update()
     {
         float dt = _light.Delta;
-        if (dt <= 0f || _hero.Dead) return;
-        if (_hero.Hurting || _hero.Dodging || _hero.Locked)
+        if (dt <= 0f) return;
+        if (_hero.Dead)
+        {
+            if (Busy) Interrupt();                       // a swing (or a slam on its way down) dies with him
+            return;
+        }
+        if (_hero.Hurting || _hero.Dodging || _hero.Locked || _hero.Hushed)
         {
             if (Busy) Interrupt();
             return;
@@ -169,6 +174,7 @@ public class HeroCombat : MonoBehaviour
     /// <summary>Called by the controller when Max touches down.</summary>
     public void Landed()
     {
+        if (_hero.Dead) { Interrupt(); return; }         // a body landing is no slam
         if (_move == Move.DiveKick) Interrupt();
         if (_move == Move.GroundSlam && !_slammed)
         {
