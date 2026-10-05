@@ -150,7 +150,7 @@ public class PageView : MonoBehaviour
     public IEnumerator TakeAway(float seconds)
     {
         Vector2 from = _comic.anchoredPosition, to = from + new Vector2(-640f, 330f);
-        for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime)
+        for (float t = 0f; t < seconds; t += BookmarkPause.UnpausedDelta)             // a cutscene: it waits for the menu
         {
             float k = Mathf.SmoothStep(0f, 1f, t / seconds);
             _comic.anchoredPosition = Vector2.Lerp(from, to, k);
@@ -168,7 +168,7 @@ public class PageView : MonoBehaviour
     {
         float z0 = Zoomed.localScale.x;
         Vector2 p0 = Zoomed.anchoredPosition, p1 = atScreen - onto * zoom;
-        for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime)
+        for (float t = 0f; t < seconds; t += BookmarkPause.UnpausedDelta)
         {
             float k = Mathf.SmoothStep(0f, 1f, t / seconds);
             float z = Mathf.Lerp(z0, zoom, k);

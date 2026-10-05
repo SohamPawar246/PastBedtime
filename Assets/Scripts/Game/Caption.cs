@@ -49,6 +49,7 @@ public static class Caption
 public class CaptionWords : MonoBehaviour
 {
     public float Width { get; private set; }
+    public float Height { get; private set; }
     private TextMeshPro _text;
     private Transform _box, _edge;
     private string _raw;
@@ -80,6 +81,7 @@ public class CaptionWords : MonoBehaviour
         _edge.localPosition = new Vector3(sz.x / 2f, -sz.y / 2f, 0.04f);
         _edge.localScale = new Vector3(sz.x + 0.12f, sz.y + 0.12f, 1f);
         Width = sz.x;
+        Height = sz.y;
     }
 }
 

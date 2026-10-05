@@ -51,7 +51,6 @@ public class SmudgeBrain : EnemyBrain
                 return;
         }
 
-        if (SeekGreen(Speed)) return;
         if (Hero == null || Hero.Dead || !HeroInPanel || HeroDistance > Aggro)
         {
             Velocity.x = 0f;

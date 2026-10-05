@@ -24,7 +24,6 @@ MonoBehaviour:
   momTutorial: 0
   momFirstVisit: 24
   momFirstOpens: 0
-  momLens: -1
   tiers:
   - panels:
     - width: 13
@@ -98,7 +97,7 @@ MonoBehaviour:
         faceRight: 0
       props: []
       stars:
-      - {x: 6, y: 9.4}
+      - {x: 6, y: 8.6}
       backdrop: 2
   - panels:
     - width: 13

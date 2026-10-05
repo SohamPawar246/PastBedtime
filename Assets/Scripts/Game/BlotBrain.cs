@@ -7,7 +7,7 @@ using UnityEngine;
 /// of his cane (ink like everything else: they freeze in the dark), calls geysers up through the
 /// floor round Max ("WELL, WELL, WELL..."), lunges with the cane ("EN GARDE!": jump it or dodge
 /// through), and summons help. Pile on the damage and he melts into his ink and pops up across the
-/// room. Green light heals him 2 HP a second. Nobody leaves his panel while he's in it.
+/// room. Nobody leaves his panel while he's in it.
 ///   Phase 1, the Office (page 6)  150 to 75: Smudges. Then he dives into his pool: "TO BE CONTINUED".
 ///   Phase 2, the Vat (page 8)      75 to 40: he slips into invisible ink every few seconds (only his
 ///                                  eyes and monocle show; the Ghost lens finds him); bats. Then up to the roof.
@@ -22,13 +22,12 @@ public class BlotBrain : EnemyBrain
     public const float SummonLength = 1.25f, SummonRelease = 0.71f, DiveLength = 1.5f;
 
     protected override float TurnYaw => 40f;                             // he plays to the reader
-    protected override float GreenHealRate => 2f;
 
     public const float LungeWindup = 0.55f, LungeFor = 0.65f, LungeSpeed = 9f;
     /// <summary>This much damage in quick succession (it drains 8 a second) and he blinks away.</summary>
     public const float BlinkAfter = 28f, BlinkFor = 0.55f;
 
-    private enum Move { None, Throw, Summon, Laugh, Geysers, Lunge }
+    private new enum Move { None, Throw, Summon, Laugh, Geysers, Lunge }      // (his own moves, not EnemyBrain.Move)
     private Move _move, _last;
     private float _hurtTally, _blinkFor, _secondWave;
     private bool _blinking;
@@ -263,7 +262,7 @@ public class BlotBrain : EnemyBrain
             _fired = true;
             FaceHero();
             Clips?.Play("Move", 0.05f, 2.2f, restart: true);
-            Attack.Begin(Melee(15f, new Vector2(9f, 3f), 0.6f, "WHACK!"), new Vector2(1.2f, 1.3f), new Vector2(1.7f, 1.9f));
+            Attack.Begin(Melee(15f, new Vector2(9f, 3f), 0.6f, "WHACK!", hearts: 2), new Vector2(1.2f, 1.3f), new Vector2(1.7f, 1.9f));   // the boss: 2 hearts (GDD section 5)
             MangaFx.Dash(transform, Facing, LungeFor);
             GameAudio.Play("whoosh", 0.6f);
         }
@@ -420,12 +419,27 @@ public class BlotBrain : EnemyBrain
         if (_hurtTally >= BlinkAfter && !_blinking && !_finale && _move != Move.Lunge) BeginBlink();
     }
 
+    /// <summary>His help melts without him (when he escapes, and when he falls for good: nothing's left to
+    /// fight through Mom's lines at the end).</summary>
+    private void MeltSummons()
+    {
+        foreach (var e in _summoned)
+        {
+            if (e == null || e.Health.Dead) continue;
+            SfxLettering.Spawn("SPLOOSH!", (Vector2)e.transform.position + Vector2.up * 1.4f, Palette.Paper, 0.8f);
+            PageManager.I?.EnemyDown(e);
+            Destroy(e.gameObject);
+        }
+        _summoned.Clear();
+    }
+
     protected override void OnDied(Hit hit)
     {
         if (Phase < 3) { BeginEscape(); return; }                       // the first two always end in a getaway
         ShowAll();
+        MeltSummons();
         base.OnDied(hit);
-        SfxLettering.Spawn("NOOOO...!", (Vector2)transform.position + Vector2.up * 3.4f, Palette.Paper, 1.2f, burst: true);
+        SfxLettering.Spawn("NOOOO...!", (Vector2)transform.position + Vector2.up * 3.4f, Palette.Paper, 1.2f, burst: true, after: 0.35f);   // after the blow's own word
         Finale.I?.Defeated();
     }
 
@@ -495,14 +509,7 @@ public class BlotBrain : EnemyBrain
             foreach (var c in GetComponentsInChildren<Collider>()) c.enabled = false;
             SfxLettering.Spawn("GLORP!", (Vector2)transform.position + Vector2.up * 1.2f, Palette.Paper, 1.2f, burst: true);
             GameAudio.Play("splat", 0.9f);
-            foreach (var e in _summoned)                                 // his Smudges melt without him
-            {
-                if (e == null || e.Health.Dead) continue;
-                SfxLettering.Spawn("SPLOOSH!", (Vector2)e.transform.position + Vector2.up * 1.4f, Palette.Paper, 0.8f);
-                PageManager.I?.EnemyDown(e);
-                Destroy(e.gameObject);
-            }
-            _summoned.Clear();
+            MeltSummons();
         }
         if (_gone && !_finished && _escapeFor >= DiveLength + 0.8f)
         {

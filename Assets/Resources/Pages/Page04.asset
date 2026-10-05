@@ -24,7 +24,6 @@ MonoBehaviour:
   momTutorial: 0
   momFirstVisit: 18
   momFirstOpens: 0
-  momLens: -1
   tiers:
   - panels:
     - width: 13
@@ -56,7 +55,7 @@ MonoBehaviour:
         text: 
         tail: {x: 0, y: 0}
       stars:
-      - {x: 7.5, y: 9.6}
+      - {x: 7.5, y: 8.9}
       backdrop: 1
     - width: 12
       caption: 'STANDING ON A FROZEN BAT? KEEP IT DARK: AIM ABOVE MAX, OR HOLD {FOLLOW}

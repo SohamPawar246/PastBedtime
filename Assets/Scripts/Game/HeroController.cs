@@ -112,25 +112,6 @@ public class HeroController : MonoBehaviour
         if (Mathf.Abs(dir) > 0.01f) Facing = Mathf.Sign(dir);
     }
 
-    /// <summary>The Green lens ("Mend", GDD section 4): a heart back for every 3 s Max spends in its beam.</summary>
-    private void Mend(float dt)
-    {
-        var f = LightField.I;
-        Vector2 chest = (Vector2)transform.position + Vector2.up * 0.9f;
-        bool inGreen = f != null && f.Lens == Lens.Green && f.BeamLive && _health.hp < _health.maxHp &&
-                       (chest - f.BeamCentre).magnitude <= f.BeamRadius + LightField.HeroGrace;   // the green beam, not a wedge or flare
-        if (!inGreen) { _mend = 0f; return; }
-        _mend += dt;
-        if (_mend < MendEvery) return;
-        _mend = 0f;
-        _health.Heal(1f);
-        GameState.I?.Notify();
-        SfxLettering.Spawn("+1", (Vector2)transform.position + Vector2.up * 2.2f, Palette.LensGreen, 0.8f);
-        GameAudio.Play("star", 0.5f);
-    }
-
-    public const float MendEvery = 3f;
-    private float _mend;
 
     private void OnHurt(Hit hit)
     {
@@ -159,13 +140,15 @@ public class HeroController : MonoBehaviour
 
         if (_hurt > 0f) _hurt -= dt;
         if (_dodgeCooldown > 0f) _dodgeCooldown -= dt;
-        Mend(dt);
 
         float input = Locked || hushed || _hurt > 0f ? 0f : GameInput.MoveX;
         bool attacking = _combat != null && _combat.Busy;
 
         // ---- dodge ---------------------------------------------------------------------------
-        if (!Locked && !hushed && _hurt <= 0f && _dodge <= 0f && _dodgeCooldown <= 0f && GameInput.DodgePressed)
+        // on the ground only: a dash in mid-air (with gravity paused) carried him over gaps that are meant to
+        // need a frozen step (no double jump, GDD section 7). A press that can't dodge is gone, not saved for later.
+        bool dodgePressed = GameInput.DodgePressed;
+        if (dodgePressed && !Locked && !hushed && Grounded && _hurt <= 0f && _dodge <= 0f && _dodgeCooldown <= 0f)
         {
             _combat?.Interrupt();
             _dodge = DodgeTime;
@@ -221,7 +204,8 @@ public class HeroController : MonoBehaviour
     private void Fall(float dt)
     {
         float vy = Velocity.y;
-        if (_dodge <= 0f && !(_combat != null && _combat.OverridesGravity)) Velocity.y -= Gravity * dt;
+        // the dodge holds him to the floor, but a dash that runs off a ledge falls like anything else
+        if ((_dodge <= 0f || !Grounded) && !(_combat != null && _combat.OverridesGravity)) Velocity.y -= Gravity * dt;
         if (Grounded && Velocity.y < 0f) Velocity.y = -2f;
         Velocity.y = Mathf.Max(Velocity.y, -24f);
         if (Grounded && vy < 0f) vy = Velocity.y;

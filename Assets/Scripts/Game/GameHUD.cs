@@ -167,6 +167,7 @@ public class GameHUD : MonoBehaviour
         _countBox.gameObject.SetActive(_countdown > 0f);
         if (_countdown > 0f) _countText.text = $"ROOM LIGHT ON: {Mathf.CeilToInt(_countdown)}";
         BossBar();
+        TeachTick();
         var hero = HeroController.I;
         var gs = GameState.I;
         if (hero != null)
@@ -186,10 +187,7 @@ public class GameHUD : MonoBehaviour
         var torch = TorchController.I;
         if (torch != null)
         {
-            Color lens = torch.Lenses.Current switch
-            {
-                Lens.Green => Palette.LensGreen, Lens.Red => Palette.LensRed, Lens.Ghost => Palette.LensGhost, _ => Palette.LensClear,
-            };
+            Color lens = torch.Lenses.Current == Lens.Ghost ? Palette.LensGhost : Palette.LensClear;
 
             // the dotted ring: where the beam lands when you switch on
             bool off = !torch.On && PageView.I != null && (PageManager.I == null || !PageManager.I.Busy);
@@ -315,14 +313,16 @@ public class GameHUD : MonoBehaviour
     {
         _cardText.text = text;
         yield return FadeCard(1f, 0.2f);
-        yield return new WaitForSecondsRealtime(seconds);
+        yield return BookmarkPause.Wait(seconds);                     // a card stays put while the game is bookmarked
         yield return FadeCard(0f, 0.25f);
     }
 
     public IEnumerator PageCleared(PageDef def)
     {
         var gs = GameState.I;
-        string style = gs != null ? $"\n<size=40%>CHOREOGRAPHY {gs.Choreography}   STARS {gs.StarsThisPage}/5</size>" : "";
+        // the style counter, for this page (GDD section 5): Inkie-on-Inkie hits, Mom's visits survived, stars
+        string style = gs != null
+            ? $"\n<size=40%>CHOREOGRAPHY {gs.ChoreographyThisPage}   LIGHTS OUT {gs.LightsOutThisPage}   STARS {gs.StarsThisPage}/5</size>" : "";
         string lens = def.unlockLens >= 0 ? $"\n<size=40%>NEW LENS: {LensWheel.Name((Lens)def.unlockLens)} ({Bindings.Name(Bindings.Act.Lens)})</size>" : "";
         yield return Card($"PAGE {def.number} DONE!{style}{lens}", 2.4f);
     }
@@ -340,6 +340,48 @@ public class GameHUD : MonoBehaviour
 
     /// <summary>A tutorial or warning caption across the top of the page (no pause).</summary>
     public void Warn(string text) => StartCoroutine(Banner(Bindings.Format(text), Palette.Yellow, Palette.Ink, 2.6f));
+
+    // ---- a tutorial step: an instruction that stays up until it's done ------------------------------------------
+
+    private RectTransform _teach;
+    private TextMeshProUGUI _teachText;
+    private CanvasGroup _teachGroup;
+    private string _teachRaw;
+
+    /// <summary>Puts up a tutorial instruction at the top of the page that stays until it's done (null takes it
+    /// down). "{TORCH}" and the like say the player's own controls.</summary>
+    public void Teach(string text)
+    {
+        if (text == _teachRaw) return;
+        _teachRaw = text;
+        if (_teach == null)
+        {
+            // between the hearts (top left) and the stars (top right), over neither
+            var box = UIKit.Panel(_page, "Teach", Vector2.zero, new Vector2(940f, 100f), Palette.Yellow, shadow: 7f, tilt: -0.8f);
+            _teach = (RectTransform)box.transform.parent;
+            _teach.anchorMin = _teach.anchorMax = new Vector2(0.5f, 1f);
+            _teach.anchoredPosition = new Vector2(0f, -94f);
+            _teachText = UIKit.Text(box.transform, "Text", "", UIKit.Display, 36f, Palette.Ink);
+            _teachText.lineSpacing = -10f;
+            UIKit.Stretch(_teachText.rectTransform, 10f);
+            PageBuilder.SetLayer(_teach);                    // printed on the page: the page camera draws it
+            _teachGroup = _teach.gameObject.AddComponent<CanvasGroup>();
+            _teachGroup.alpha = 0f;
+        }
+        if (text != null)
+        {
+            _teachText.text = Bindings.Format(text);
+            _teach.localScale = Vector3.one * 1.12f;            // each new step lands with a little stamp
+        }
+    }
+
+    private void TeachTick()
+    {
+        if (_teach == null) return;
+        float dt = Time.unscaledDeltaTime;
+        _teachGroup.alpha = Mathf.MoveTowards(_teachGroup.alpha, _teachRaw != null ? 1f : 0f, dt * 5f);
+        _teach.localScale = Vector3.one * Mathf.MoveTowards(_teach.localScale.x, 1f, dt * 1.2f);
+    }
 
     /// <summary>Mom's line through the door: a real-world voice, so it's spoken at the door, not printed on the page.</summary>
     public void MomSays(string text)

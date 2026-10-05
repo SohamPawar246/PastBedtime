@@ -6,8 +6,8 @@
 
 A 2.5D action-platformer brawler for the **TGC Game Jam × GDAI × Infinium '26** (themes: **Comic · Twist · Light**).
 The mouse is Roshan's torch and the keyboard is Max Voltage, the comic's hero. Everything inside the beam is alive;
-everything outside it is frozen mid-panel. Twist the crank to keep the light alive, twist the lens wheel to change
-what it does, and switch it off when Mom's door opens.
+everything outside it is frozen mid-panel. Twist the crank to keep the light alive, flip to the purple Ghost lens to
+see what's drawn in invisible ink, and switch it off when Mom's door opens.
 
 - Proposal: [proposal.pdf](proposal.pdf)
 
@@ -30,18 +30,18 @@ control per action and a **DEFAULTS** button to put them back.
 | Jump (hold for higher) | Space |
 | Punch (3-hit chain: jab, cross, haymaker) | E |
 | Kick (W + Q launcher, Q in the air dive kick, S + Q in the air ground slam) | Q |
-| Dodge (passes through enemies) | Left Shift |
+| Dodge (on the ground; passes through enemies) | Left Shift |
 | Splash Page super | F |
 | Aim the torch | Mouse |
 | Beam follows Max | Hold left mouse |
 | Torch on / off | Right click |
-| Twist the crank (charge) | Scroll wheel (or R) |
-| Twist the lens wheel | Middle click, mouse side buttons or Tab (1 to 4 pick a lens) |
+| Twist the crank (charge) | Scroll wheel or trackpad (or tap R) |
+| Ghost lens on / off (from page 7) | Middle click, mouse side buttons or Tab (or 1 clear, 2 ghost) |
 | Pause ("Bookmark") | Esc or P |
 
 Menus also work with arrow keys + Enter. Settings include the controls, follow assist, easy suspicion,
-flat page view, screen shake, reduce flashing and sound captions. Esc / P (the Bookmark) and 1 to 4 (pick a lens)
-stay as they are. In the browser, clicking outside the game opens the Bookmark, so Mom never catches you away.
+flat page view, screen shake, reduce flashing and sound captions. Esc / P (the Bookmark) and 1 / 2 (clear / ghost
+lens) stay as they are. In the browser, clicking outside the game opens the Bookmark, so Mom never catches you away.
 
 ## Run from source
 
@@ -53,7 +53,7 @@ stay as they are. In the browser, clicking outside the game opens the Bookmark, 
 ## Build for the web
 
 1. **File > Build Profiles**, switch to **Web**. The scene order is already set: Boot, StudioIntro, EpilepsyWarning,
-   Title, Game, Credits.
+   MouseKeyboard, Title, Game, Credits.
 2. Run **Past Bedtime > Build Web (itch.io)**. It applies the release settings (Gzip with decompression fallback:
    itch.io serves gzip natively and the loader copes on hosts that don't; Code Optimization *Runtime Speed*, since
    *with LTO* links for over an hour), builds to `Builds/Web` and zips the folder's contents to

@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// An ink wave Baron Blot sends rolling along the floor with a sweep of his cane (GDD section 6).
 /// It is ink like everything else: it freezes in the dark, so pull the light off it, or jump it.
-/// It knocks Max back a heart and slams any Inkie in its way; it breaks on the panel's edge or
+/// It knocks Max back two hearts (it's the boss's) and slams any Inkie in its way; it breaks on the panel's edge or
 /// where the floor ends.
 /// </summary>
 [RequireComponent(typeof(Lightable))]
@@ -37,7 +37,7 @@ public class InkWave : MonoBehaviour
     {
         _light = GetComponent<Lightable>();
         _hit = new Hitbox(gameObject, Team.Inkie);
-        _hit.Begin(new Hit { damage = 10f, hearts = 1, knockback = new Vector2(7f, 6f), stun = 0.5f, word = "SPLASH!" },
+        _hit.Begin(new Hit { damage = 10f, hearts = 2, knockback = new Vector2(7f, 6f), stun = 0.5f, word = "SPLASH!" },   // Blot's own: 2 hearts
             new Vector2(0.15f, 0.65f), new Vector2(1.45f, 1.3f));
         _hit.Landed += (h, hit) =>
         {

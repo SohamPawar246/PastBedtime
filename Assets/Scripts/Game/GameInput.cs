@@ -87,6 +87,12 @@ public static class GameInput
         }
     }
 
+    /// <summary>This frame's twists came off the scroll wheel (a scripted pad's twists are taps, like R).</summary>
+    public static bool CrankByWheel => Virtual == null && Bindings.UsesWheel(Act.Crank) && Bindings.WheelTurned;
+
+    /// <summary>The wheel (as the crank) started a new turn this frame, after a pause.</summary>
+    public static bool CrankStreamStarted => Virtual == null && Bindings.UsesWheel(Act.Crank) && Bindings.WheelTurnStarted;
+
     /// <summary>The lens wheel is on the torch, so it's on the mouse: the middle button twists it on a
     /// step (Tab for a mouse without). The side buttons step it on and back while nothing else has them.</summary>
     public static int LensStep
@@ -110,7 +116,7 @@ public static class GameInput
         }
     }
 
-    /// <summary>1 to 4 jump straight to a lens (0-based), or -1.</summary>
+    /// <summary>1 picks the Clear lens, 2 the Ghost lens (as a lens index), or -1.</summary>
     public static int LensPick
     {
         get
@@ -121,10 +127,8 @@ public static class GameInput
                 Virtual.lensPick = -1;
                 return p;
             }
-            if (Pressed(Key.Digit1)) return 0;
-            if (Pressed(Key.Digit2)) return 1;
-            if (Pressed(Key.Digit3)) return 2;
-            if (Pressed(Key.Digit4)) return 3;
+            if (Pressed(Key.Digit1)) return (int)Lens.Clear;
+            if (Pressed(Key.Digit2)) return (int)Lens.Ghost;
             return -1;
         }
     }

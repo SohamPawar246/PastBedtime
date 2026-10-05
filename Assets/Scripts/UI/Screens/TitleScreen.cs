@@ -422,8 +422,7 @@ public class TitleScreen : MonoBehaviour
 
     private void OnStartOver()
     {
-        Settings.HighestPage = 0;
-        Settings.Commit();
+        Settings.ResetProgress();                    // a fresh comic: no stars or torch upgrades carried over
         OnRead();
     }
 

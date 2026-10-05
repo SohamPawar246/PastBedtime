@@ -41,7 +41,7 @@ public class PageManager : MonoBehaviour
         if (gs != null)
         {
             gs.Page = number;
-            gs.StarsThisPage = 0;
+            gs.PageStarted();
             gs.Notify();
         }
         Layout = PageBuilder.Build(def, transform);
@@ -71,7 +71,6 @@ public class PageManager : MonoBehaviour
                 var before = LoadDef(n);
                 if (before == null) continue;
                 if (before.unlockLens >= 0) torch.Lenses.Unlock((Lens)before.unlockLens);
-                if (before.momLens >= 0) torch.Lenses.Unlock((Lens)before.momLens);
             }
         }
         PageCamera.I?.Frame(Layout.tiers[0], Layout.start.x, snap: true);
@@ -114,6 +113,7 @@ public class PageManager : MonoBehaviour
     {
         var hero = HeroController.I;
         if (Layout == null || hero == null || Busy) return;
+        if (Finale.I != null && Finale.I.Ended) return;                // the comic's finished: no restarts under the ending
         var tier = Layout.tiers[TierIndex];
         Vector2 hp = hero.transform.position;
 
@@ -224,11 +224,7 @@ public class PageManager : MonoBehaviour
         health.hp = Mathf.Min(health.maxHp, health.hp + 1f);         // one heart back per page
         gs?.Notify();
         yield return GameHUD.I?.PageCleared(Def);
-        if (gs != null)
-        {
-            Settings.Stars = gs.StarsTotal;
-            Settings.Save();
-        }
+        gs?.BankStars();                                               // this page's stars, kept for good
         // between acts: the Nightstand, where the stars buy torch upgrades
         if (Def.number == 3 || Def.number == 6) yield return Nightstand.Visit();
         int next = Def.number + 1;
@@ -279,6 +275,7 @@ public class PageManager : MonoBehaviour
         {
             yield return GameHUD.I?.Card("GROUNDED!\n<size=45%>(FOR A WEEK)</size>", 2.6f);
             gs.Slippers = 3;
+            gs.StarsTotal = Settings.Stars;                            // stars from the unfinished page go back on it
             int first = Def.number <= 3 ? 1 : Def.number <= 6 ? 4 : 7;
             Busy = false;
             Load(first);

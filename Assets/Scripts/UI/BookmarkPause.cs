@@ -15,6 +15,16 @@ public class BookmarkPause : MonoBehaviour
     public static bool IsPaused { get; private set; }
     public static event Action<bool> PauseChanged;
 
+    /// <summary>Real time that stops while the game is bookmarked: for the cutscenes, which run on real time
+    /// (hit-stop can't slow them) but mustn't play on behind the menu.</summary>
+    public static float UnpausedDelta => IsPaused ? 0f : Time.unscaledDeltaTime;
+
+    /// <summary>Waits this many seconds of <see cref="UnpausedDelta"/>.</summary>
+    public static System.Collections.IEnumerator Wait(float seconds)
+    {
+        for (float t = 0f; t < seconds; t += UnpausedDelta) yield return null;
+    }
+
     private GameObject _root;
     private Modal _howTo, _controlsModal;
     private ControlsPanel _controls;
@@ -176,6 +186,7 @@ public class BookmarkPause : MonoBehaviour
     {
         Unfreeze();
         AudioDirector.I?.TapeStop(false, 0.01f);
+        if (GameState.I != null) GameDirector.StartPage = GameState.I.Page;   // this page, not the one the sitting began on
         App.I.Flow.Reload();
     }
 

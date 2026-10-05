@@ -24,7 +24,6 @@ MonoBehaviour:
   momTutorial: 0
   momFirstVisit: 0
   momFirstOpens: 0
-  momLens: -1
   tiers:
   - panels:
     - width: 11
@@ -128,7 +127,7 @@ MonoBehaviour:
     - width: 13
       caption: '{UP} + {KICK}: LAUNCHER. FREEZE AN INKIE IN THE AIR AND STAND ON
         IT.'
-      heroLine: Pop him up with W and K!
+      heroLine: Pop him up with {UP} and {KICK}!
       floors:
       - serializedVersion: 2
         x: 0

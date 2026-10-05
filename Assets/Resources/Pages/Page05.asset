@@ -24,7 +24,6 @@ MonoBehaviour:
   momTutorial: 0
   momFirstVisit: 9
   momFirstOpens: 1
-  momLens: 2
   tiers:
   - panels:
     - width: 14

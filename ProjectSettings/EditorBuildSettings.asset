@@ -15,6 +15,9 @@ EditorBuildSettings:
     path: Assets/Scenes/EpilepsyWarning.unity
     guid: b808ed930b87bb74283767985b12b34f
   - enabled: 1
+    path: Assets/Scenes/MouseKeyboard.unity
+    guid: 54aa6f43cc3ab6d4fab34fe76aaff8c9
+  - enabled: 1
     path: Assets/Scenes/Title.unity
     guid: b90c20493bc2d3d43ab8bc44d6731d1e
   - enabled: 1

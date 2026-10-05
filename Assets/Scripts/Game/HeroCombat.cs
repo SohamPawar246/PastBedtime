@@ -198,13 +198,15 @@ public class HeroCombat : MonoBehaviour
     {
         GameState.I?.HeroLanded();
         Vector2 at = (Vector2)target.transform.position + new Vector2(0f, 1.9f);
+        // a blow on the Bruiser's armoured front: a dull grey CLANK! and the clank, no burst (go round behind him)
+        bool clank = hit.word == "CLANK!";
         if (_move != Move.GroundSlam)
-            SfxLettering.Spawn(hit.word ?? "POW!", at, hit.word == "CLANK!" ? Palette.PaperDim : Palette.Yellow, hit.heavy ? 1.25f : 0.9f, burst: hit.heavy);
-        if ((hit.heavy || _move == Move.Launcher) && _move != Move.GroundSlam && hit.word != "CLANK!")
+            SfxLettering.Spawn(hit.word ?? "POW!", at, clank ? Palette.PaperDim : Palette.Yellow, hit.heavy ? 1.25f : 0.9f, burst: hit.heavy && !clank);
+        if ((hit.heavy || _move == Move.Launcher) && _move != Move.GroundSlam && !clank)
             MangaFx.Focus(at - new Vector2(0f, 0.9f), hit.heavy ? 1.1f : 0.8f);
-        GameEvents.HitStop(hit.heavy ? 0.09f : 0.05f);
-        GameEvents.Impact(hit.heavy ? 0.5f : 0.2f);
-        GameAudio.Play(hit.heavy ? "punch_heavy" : "punch", 0.8f);
+        GameEvents.HitStop(hit.heavy && !clank ? 0.09f : 0.05f);
+        GameEvents.Impact(hit.heavy && !clank ? 0.5f : 0.2f);
+        GameAudio.Play(clank ? "clank" : hit.heavy ? "punch_heavy" : "punch", 0.8f);
         if (_move == Move.DiveKick)
         {
             _hero.Velocity = new Vector2(_hero.Facing * 3f, Mathf.Sqrt(2f * HeroController.Gravity * 2f));

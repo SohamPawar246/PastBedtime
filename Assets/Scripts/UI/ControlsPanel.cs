@@ -116,7 +116,7 @@ public class ControlsPanel : MonoBehaviour
                 _caps[a, s].Show(Bindings.SlotName((Act)a, s), false);
         if (_noteFor <= 0f)
             _note.text = "PICK A SLOT, THEN PRESS THE NEW KEY OR MOUSE BUTTON (SCROLL FOR THE CRANK OR LENS).\n" +
-                         "ESC CANCELS, DELETE CLEARS.  KEPT AS THEY ARE: ESC / P BOOKMARK, 1-4 PICK A LENS.";
+                         "ESC CANCELS, DELETE CLEARS.  KEPT AS THEY ARE: ESC / P BOOKMARK, 1 / 2 CLEAR / GHOST LENS.";
     }
 
     private void Say(string text)

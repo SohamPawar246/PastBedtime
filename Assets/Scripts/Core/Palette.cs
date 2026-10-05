@@ -36,8 +36,6 @@ public static class Palette
 
     // ---- Lenses -------------------------------------------------------------------------
     public static readonly Color LensClear = Hex("#FFE3A3");
-    public static readonly Color LensGreen = Hex("#3DDC84");
-    public static readonly Color LensRed = Hex("#FF3B3B");
     public static readonly Color LensGhost = Hex("#B26BFF");
 
     public static Color Alpha(this Color c, float a) { c.a = a; return c; }

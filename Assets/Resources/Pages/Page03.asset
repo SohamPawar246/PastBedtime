@@ -16,7 +16,7 @@ MonoBehaviour:
   title: Billboard alley
   act: 'PART 1: NIGHT OF THE BLOT'
   startCharge: 1
-  unlockLens: 1
+  unlockLens: -1
   start: {x: 1.5, y: 2.6}
   momVisits: 1
   momOpenChance: 0
@@ -24,7 +24,6 @@ MonoBehaviour:
   momTutorial: 1
   momFirstVisit: 22
   momFirstOpens: 0
-  momLens: -1
   tiers:
   - panels:
     - width: 13
@@ -121,8 +120,8 @@ MonoBehaviour:
       - {x: 5.5, y: 5.4}
       backdrop: 0
     - width: 12
-      caption: A GREEN LENS! {LENS} SWAPS LENSES. GREEN HEALS... EVERYONE IN IT.
-      heroLine: A new lens! Green patches me up. Keep the Inkies out of it!
+      caption: 'WORDS ARE SOLID IN A COMIC: STAND ON A SPEECH BUBBLE TO REACH HIGHER.'
+      heroLine: Hop on the bubble, kid. Comic words hold you up!
       floors:
       - serializedVersion: 2
         x: 0

@@ -96,11 +96,12 @@ public static class ShellSetup
         MakeScene(Scenes.Boot, typeof(BootScreen), Palette.Night, overwrite: true);
         MakeScene(Scenes.StudioIntro, typeof(StudioIntroScreen), Color.white, overwrite: true);
         MakeScene(Scenes.Warning, typeof(WarningScreen), Color.black, overwrite: true);
+        MakeScene(Scenes.MouseKeyboard, typeof(MouseKeyboardScreen), Palette.Night, overwrite: true);
         MakeScene(Scenes.Title, typeof(TitleScreen), Palette.Bedroom, overwrite: true);
         MakeScene(Scenes.Credits, typeof(CreditsScreen), Palette.Night, overwrite: true);
         MakeScene(Scenes.Game, typeof(GameDirector), Palette.Bedroom, overwrite: false);
 
-        var order = new[] { Scenes.Boot, Scenes.StudioIntro, Scenes.Warning, Scenes.Title, Scenes.Game, Scenes.Credits };
+        var order = new[] { Scenes.Boot, Scenes.StudioIntro, Scenes.Warning, Scenes.MouseKeyboard, Scenes.Title, Scenes.Game, Scenes.Credits };
         var list = new List<EditorBuildSettingsScene>();
         foreach (var s in order) list.Add(new EditorBuildSettingsScene($"{SceneDir}/{s}.unity", true));
         EditorBuildSettings.scenes = list.ToArray();

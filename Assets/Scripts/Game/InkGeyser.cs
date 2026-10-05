@@ -4,7 +4,7 @@ using UnityEngine;
 /// An ink geyser Baron Blot calls up through the floor ("WELL, WELL, WELL..."). First a puddle bubbles
 /// up where it'll come through (the warning), then it spouts a column of ink taller than Max and sinks
 /// away. Ink like everything else: a puddle in the dark never comes up, and a spout frozen mid-gush is
-/// a harmless pillar until it's lit again. It pops Max up for a heart, and any Inkie in it gets the same
+/// a harmless pillar until it's lit again. It pops Max up for two hearts (it's the boss's), and any Inkie in it gets the same
 /// (Blot is never caught in his own).
 /// </summary>
 [RequireComponent(typeof(Lightable))]
@@ -69,7 +69,7 @@ public class InkGeyser : MonoBehaviour
         {
             _spouted = true;
             _column.gameObject.SetActive(true);
-            _hit.Begin(new Hit { damage = 10f, hearts = 1, knockback = new Vector2(3f, 11f), stun = 0.45f, word = "GLUG!" },
+            _hit.Begin(new Hit { damage = 10f, hearts = 2, knockback = new Vector2(3f, 11f), stun = 0.45f, word = "GLUG!" },   // Blot's own: 2 hearts
                 new Vector2(0f, Height * 0.5f), new Vector2(Width, Height));
             if (_letters) SfxLettering.Spawn("SPURT!", (Vector2)transform.position + new Vector2(0f, Height + 0.4f), Palette.Paper, 0.8f);
             GameAudio.Play("splat", 0.5f);

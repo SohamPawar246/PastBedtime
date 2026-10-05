@@ -10,9 +10,9 @@ using UnityEngine;
 /// (x from 0 to the panel's width, y from 0 to 11, floors as Rect(x, y, width, height)).
 ///   1  Rooftop at night      Max moves only in the light; follow assist; the edge freezes  1 Smudge
 ///   2  Water-tower roofs     Choreography; freeze steps; twist to charge (starts low)     3 Smudges
-///   3  Billboard alley       Frozen bullets; overwind and flare; ends with the Green lens 2 Dot-Shots, 2 Smudges
+///   3  Billboard alley       Frozen bullets; overwind and flare; bubbles to stand on   2 Dot-Shots, 2 Smudges
 ///   4  Factory floor         Bats as steps; the Bruiser; slam                             Bruiser, 4 Splotches
-///   5  Press room            Red lens at the first door opening; Bruiser choreography;    Bruiser, 3 Smudges, 2 Dot-Shots
+///   5  Press room            Mom's first door opening, mid-fight; Bruiser choreography; Bruiser, 3 Smudges, 2 Dot-Shots
 ///                            Splash Page
 ///   6  Blot's office         Boss phase 1: ink waves, summons, a chandelier; he escapes  Baron Blot (+ Smudges)
 ///                            into invisible ink, and Max picks up the Ghost lens
@@ -35,9 +35,9 @@ public static class PageLibrary
         // Act 1: one scripted pass on page 3 with a 6 s warning; the door never opens.
         Save(Mom(Page3(), 1, tutorial: true, first: 22f));
         // Act 2: 2 to 3 visits a page, the cat on page 4 (2 visits + the cat), and on page 5 the first
-        // door opening lands mid-fight, with the Red lens turning up just in time.
+        // door opening lands mid-fight.
         Save(Mom(Page4(), 3, cat: true, first: 18f));
-        Save(Mom(Page5(), 3, openChance: 0.5f, first: 9f, firstOpens: true, lens: (int)Lens.Red));
+        Save(Mom(Page5(), 3, openChance: 0.5f, first: 9f, firstOpens: true));
         // Page 6: one visit before the boss, then Baron Blot himself.
         Save(Mom(Page6(), 1, first: 12f));
         // Act 3: 2 visits a page, openings common (her wedge lights the flood: it surges).
@@ -84,7 +84,7 @@ public static class PageLibrary
     }
 
     private static PageDef Mom(PageDef p, int visits, float openChance = 0f, bool cat = false, bool tutorial = false, float first = 0f,
-        bool firstOpens = false, int lens = -1)
+        bool firstOpens = false)
     {
         p.momVisits = visits;
         p.momOpenChance = openChance;
@@ -92,7 +92,6 @@ public static class PageLibrary
         p.momTutorial = tutorial;
         p.momFirstVisit = first;
         p.momFirstOpens = firstOpens;
-        p.momLens = lens;
         return p;
     }
 
@@ -169,12 +168,12 @@ public static class PageLibrary
                 stars: new[] { V(2f, 4.6f), V(7f, 9.8f) }),
             Panel(13f, new[] { R(0, 0, 13, 6f) },
                 "{UP} + {KICK}: LAUNCHER. FREEZE AN INKIE IN THE AIR AND STAND ON IT.",
-                "Pop him up with W and K!",
+                "Pop him up with {UP} and {KICK}!",
                 spawns: new[] { S(EnemyKind.Smudge, 9f, 6.1f) },
                 stars: new[] { V(11.5f, 10.2f) }),
         });
 
-    private static PageDef Page3() => Page(3, "Billboard alley", Act1, 1f, (int)Lens.Green,
+    private static PageDef Page3() => Page(3, "Billboard alley", Act1, 1f, -1,
         new[]
         {
             Panel(13f, new[] { R(0, 0, 13, 2.5f) },
@@ -198,8 +197,8 @@ public static class PageLibrary
                 props: new[] { P(PropKind.Vent, 5.5f, 2.5f), P(PropKind.Antenna, 2f, 2.5f) },
                 stars: new[] { V(5.5f, 5.4f) }),
             Panel(12f, new[] { R(0, 0, 12, 2.5f) },
-                "A GREEN LENS! {LENS} SWAPS LENSES. GREEN HEALS... EVERYONE IN IT.",
-                "A new lens! Green patches me up. Keep the Inkies out of it!",
+                "WORDS ARE SOLID IN A COMIC: STAND ON A SPEECH BUBBLE TO REACH HIGHER.",
+                "Hop on the bubble, kid. Comic words hold you up!",
                 props: new[] { P(PropKind.Billboard, 8f, 2.5f), Say(3.9f, 4.9f, 3.2f, "INK-O! INKREDIBLE!", 2.6f, 0.1f) },
                 stars: new[] { V(1.4f, 4.6f), V(3.9f, 7.6f) }),
         });
@@ -214,7 +213,7 @@ public static class PageLibrary
                 "Bats! Freeze one under me and I'll hop on it.",
                 spawns: new[] { S(EnemyKind.Splotch, 5.5f, 7f), S(EnemyKind.Splotch, 9.5f, 6.5f) },
                 props: new[] { P(PropKind.Vent, 2f, 2.5f) },
-                stars: new[] { V(7.5f, 9.6f) }, backdrop: 1),
+                stars: new[] { V(7.5f, 8.9f) }, backdrop: 1),
             Panel(12f, new[] { R(0, 0, 4.5f, 2.5f), R(8, 0, 4, 4.2f) },
                 "STANDING ON A FROZEN BAT? KEEP IT DARK: AIM ABOVE MAX, OR HOLD {FOLLOW} AND THE LIGHT RIDES HIGH.",
                 spawns: new[] { S(EnemyKind.Splotch, 6.3f, 7.4f) },
@@ -277,7 +276,7 @@ public static class PageLibrary
                 "A DOOR WITH A GOLD PLATE: \"B. BLOT, ESQ. KNOCK AND PERISH.\"",
                 "Shh... I can hear him monologuing.",
                 props: new[] { Say(6.9f, 6.7f, 3.6f, "...AND THEN THE CITY IS MINE! MWAHAHA!", 5.8f, -1.2f) },
-                stars: new[] { V(2.5f, 4.8f), V(11f, 7.6f), V(6.9f, 9.6f) }, backdrop: 1),
+                stars: new[] { V(2.5f, 4.8f), V(11f, 7.6f), V(6.9f, 8.9f) }, backdrop: 1),
         },
         new[]
         {
@@ -296,7 +295,7 @@ public static class PageLibrary
         {
             // a 7.5-unit gap: too far to jump (a running jump makes 6.5), so the Ghost lens is the way over
             Panel(13f, new[] { R(0, 0, 3f, 2.5f), R(10.5f, 0, 2.5f, 2.5f) },
-                "BLOT ESCAPED INTO INVISIBLE INK. THE GHOST LENS (4) SHOWS IT... BUT IT DRAINS TWICE AS FAST.",
+                "BLOT ESCAPED INTO INVISIBLE INK. ONLY THE PURPLE GHOST LENS ({LENS}) SHOWS IT.",
                 "The floor's gone... but I can FEEL it's there. Try the purple lens!",
                 stars: new[] { V(11.8f, 4.6f) },
                 ghost: new[] { R(3.8f, 2.1f, 1.6f, 0.4f), R(6.9f, 2.1f, 1.6f, 0.4f) },
@@ -337,7 +336,7 @@ public static class PageLibrary
             Panel(12f, new[] { R(0, 0, 2.5f, 5.3f), R(9.5f, 0, 2.5f, 6.4f) },
                 "BATS OVER THE INK. FREEZE ONE AND STAND ON IT... BUT DON'T LIGHT THE INK BELOW.",
                 spawns: new[] { S(EnemyKind.Splotch, 4.4f, 4.6f), S(EnemyKind.Splotch, 7.0f, 5.2f) },   // just below the ledge: step down onto them
-                stars: new[] { V(6f, 9.4f) },
+                stars: new[] { V(6f, 8.6f) },
                 flood: 1.0f, floodTop: 9f, floodRise: 0.55f, backdrop: 2),
         },
         new[]

@@ -24,12 +24,11 @@ MonoBehaviour:
   momTutorial: 0
   momFirstVisit: 20
   momFirstOpens: 0
-  momLens: -1
   tiers:
   - panels:
     - width: 13
-      caption: BLOT ESCAPED INTO INVISIBLE INK. THE GHOST LENS (4) SHOWS IT... BUT
-        IT DRAINS TWICE AS FAST.
+      caption: BLOT ESCAPED INTO INVISIBLE INK. ONLY THE PURPLE GHOST LENS ({LENS})
+        SHOWS IT.
       heroLine: The floor's gone... but I can FEEL it's there. Try the purple lens!
       floors:
       - serializedVersion: 2

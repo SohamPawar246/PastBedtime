@@ -17,9 +17,12 @@ public enum MomState { Asleep, Stirring, Approaching, AtDoor, Opening, Leaving }
 ///   At the door  3 to 6 s: +45/s if the torch is on (light leaks under the door), +30/s twisting
 ///   Opening      4 s: the door swings open, her silhouette; +90/s if the torch is on
 ///   Leaving      2 s: the door closes, "...kids."
-/// The Red lens cuts torch-on suspicion to a third; a flare while she's coming adds 50. At 100
+/// A flare while she's coming adds 50. At 100
 /// you're Caught: BUSTED, a slipper lost, the panel restarts. The "easy" setting halves the rates.
 /// A cat sometimes pads up instead: paws in the strip, a scratch, "mrrp". No need to hide.
+/// Her first visit ever (once per save, Settings.MomTaught) is a tutorial: the page says to switch the torch
+/// off before she reaches the door, she waits out in the hall up to 10 s while it's on, and afterwards it asks
+/// for the torch back on.
 /// </summary>
 public class MomDirector : MonoBehaviour
 {
@@ -47,9 +50,17 @@ public class MomDirector : MonoBehaviour
 
     public event Action<MomState> Changed;
 
-    private int _visitsLeft, _lens = -1;
+    private int _visitsLeft;
     private float _openChance, _approach = 4f, _atDoor = 4f, _next;
-    private bool _catLeft, _opens, _scripted, _shownTutorial, _firstOpens, _first, _quietLeave;
+    private bool _catLeft, _opens, _firstOpens, _first, _quietLeave;
+
+    /// <summary>Her first visit ever (once per save) is a tutorial: the page says what to do and when, and she
+    /// waits out in the hall a while for the torch to go off before she comes on to the door.</summary>
+    public bool Teaching { get; private set; }
+    /// <summary>What the torch in Roshan's hand says while she's teaching ("OFF!", "ON!"), or null.</summary>
+    public string TorchHint { get; private set; }
+    private float _hold;
+    private const float HoldUpTo = 10f;                 // the longest she waits in the hall for the light to go off
     private float _t, _step;
     private Vector2 _wedgeAt;                // the spot her light falls on, picked as the door opens
     private bool _shh;
@@ -76,10 +87,8 @@ public class MomDirector : MonoBehaviour
         _visitsLeft = def.momVisits;
         _openChance = def.momOpenChance;
         _catLeft = def.catFakeout;
-        _scripted = def.momTutorial;
-        _shownTutorial = false;
+        EndTeaching(taught: false);                      // a new page: an unfinished lesson starts again on her next visit
         _firstOpens = def.momFirstOpens;
-        _lens = def.momLens;
         _first = true;
         _approach = def.number <= 3 ? 6f : 4f;
         _next = def.momFirstVisit > 0f ? def.momFirstVisit : UnityEngine.Random.Range(25f, 55f);
@@ -97,6 +106,7 @@ public class MomDirector : MonoBehaviour
         IsCat = cat;
         _opens = opens && !cat;
         _atDoor = UnityEngine.Random.Range(3f, 6f);
+        BeginTeaching();
         Go(cat ? MomState.Approaching : MomState.Stirring);
     }
 
@@ -106,6 +116,7 @@ public class MomDirector : MonoBehaviour
     {
         if (Watching == on) return;
         Watching = on;
+        EndTeaching(taught: true);
         Suspicion = 0f;
         _visitsLeft = 0;
         LightField.I?.Wedges.Clear();
@@ -157,7 +168,6 @@ public class MomDirector : MonoBehaviour
         _t += dt;
         var torch = TorchController.I;
         bool torchOn = torch != null && torch.On && LightField.I != null && LightField.I.BeamLive;
-        float red = torch != null && torch.Lenses.Current == Lens.Red ? 1f / 3f : 1f;
         bool twisting = torch != null && torch.Charge.SinceTwist < 0.3f;
 
         switch (State)
@@ -175,27 +185,27 @@ public class MomDirector : MonoBehaviour
                     _opens = !IsCat && (scriptedOpen || UnityEngine.Random.value < _openChance);
                     _first = false;
                     _atDoor = UnityEngine.Random.Range(3f, 6f);
+                    BeginTeaching();
                     Go(IsCat ? MomState.Approaching : MomState.Stirring);
                 }
                 break;
 
             case MomState.Stirring:                       // the hall light clicks on
                 Strip = Mathf.MoveTowards(Strip, 1f, dt / 0.4f);
-                if (_lens >= 0 && _t > 0.4f) HandOverLens();
                 if (_t >= 1.5f) Go(MomState.Approaching);
                 break;
 
             case MomState.Approaching:                    // your warning window
+                if (Teaching && torchOn && _t > _approach * 0.7f && _hold < HoldUpTo)
+                {
+                    _hold += dt;                          // the first time, she waits out in the hall (her steps keep
+                    _t = _approach * 0.7f;                // coming) until the light goes off, or for a good while
+                }
                 Feet = Mathf.Clamp01(_t / _approach);
                 if ((_step -= dt) <= 0f)
                 {
                     _step = IsCat ? 0.3f : 0.5f;
                     AudioDirector.I?.Footstep(Mathf.Lerp(0.05f, IsCat ? 0.12f : 0.32f, Feet));
-                }
-                if (_scripted && !_shownTutorial && _t > 0.5f)
-                {
-                    _shownTutorial = true;
-                    GameHUD.I?.Warn("MOM'S COMING! LIGHTS OUT! ({TORCH})");
                 }
                 if (_t >= _approach) Go(MomState.AtDoor);
                 break;
@@ -208,7 +218,7 @@ public class MomDirector : MonoBehaviour
                     if (_t >= 1.5f) Go(MomState.Leaving);
                     break;
                 }
-                Add(((torchOn ? 45f * red : 0f) + (twisting ? 30f : 0f)) * dt);
+                Add(((torchOn ? 45f : 0f) + (twisting ? 30f : 0f)) * dt);
                 if (_opens && _t >= 1.2f) { _wedgeAt = PickWedgeTarget(); Go(MomState.Opening); AudioDirector.I?.DoorCreak(); }
                 else if (_t >= _atDoor) Go(MomState.Leaving);
                 break;
@@ -216,7 +226,7 @@ public class MomDirector : MonoBehaviour
             case MomState.Opening:                        // her silhouette, and a wedge of hall light on the page
                 Handle = 0f;
                 Open = Mathf.Clamp01(_t / 1.2f);
-                Add(((torchOn ? 90f * red : 0f) + (twisting ? 30f : 0f)) * dt);
+                Add(((torchOn ? 90f : 0f) + (twisting ? 30f : 0f)) * dt);
                 SetWedge(Open);
                 var hero = HeroController.I;
                 if (!_shh && hero != null && hero.Light.IsAwake)        // in the light, and holding his breath
@@ -252,6 +262,63 @@ public class MomDirector : MonoBehaviour
         }
 
         if (Suspicion >= 100f) Caught();
+        else Teach(torchOn);
+    }
+
+    // ---- the first visit: a tutorial ----------------------------------------------------------------------------
+
+    private const string Coming = "<color=#E10600>MOM'S COMING!</color>  SWITCH THE TORCH OFF: {TORCH}\n" +
+                                  "<size=68%>BEFORE SHE GETS TO THE DOOR, OR SHE'LL SEE THE LIGHT AND CATCH YOU!</size>";
+
+    private void BeginTeaching()
+    {
+        Teaching = !IsCat && !Settings.MomTaught;
+        _hold = 0f;
+        if (!Teaching) return;
+        GameHUD.I?.Teach(Coming);
+        GameHUD.I?.HeroSays("Psst! The hall light! It's your mom! Quick, kid, kill the light!", 4f);
+    }
+
+    /// <summary>The lesson, step by step: the torch off before she's at the door, off while she's there, then on
+    /// again once she's gone (and that's it learned, for good).</summary>
+    private void Teach(bool torchOn)
+    {
+        if (!Teaching) return;
+        switch (State)
+        {
+            case MomState.Stirring:
+            case MomState.Approaching:
+                TorchHint = torchOn ? "OFF! ({TORCH})" : null;
+                GameHUD.I?.Teach(torchOn ? Coming
+                    : "GOOD! THE COMIC'S FROZEN, BUT YOU'RE SAFE.\n<size=68%>KEEP THE TORCH OFF UNTIL SHE'S GONE.</size>");
+                break;
+            case MomState.AtDoor:
+            case MomState.Opening:
+                TorchHint = torchOn ? "OFF! ({TORCH})" : null;
+                GameHUD.I?.Teach(torchOn ? "<color=#E10600>OFF! SHE'LL SEE IT UNDER THE DOOR!</color>  {TORCH}"
+                                         : "SHHH... SHE'S AT THE DOOR.\n<size=68%>KEEP THE TORCH OFF UNTIL SHE'S GONE.</size>");
+                break;
+            default:                                      // leaving, or gone
+                if (!torchOn)
+                {
+                    TorchHint = "ON! ({TORCH})";
+                    GameHUD.I?.Teach("PHEW! SHE'S GONE.  TORCH BACK ON: {TORCH}\n<size=68%>WATCH THE DOOR: THE HALL LIGHT MEANS SHE'S COMING.</size>");
+                }
+                else EndTeaching(taught: true);
+                break;
+        }
+    }
+
+    private void EndTeaching(bool taught)
+    {
+        if (Teaching) GameHUD.I?.Teach(null);
+        Teaching = false;
+        TorchHint = null;
+        if (taught && !Settings.MomTaught)
+        {
+            Settings.MomTaught = true;
+            Settings.Save();
+        }
     }
 
     /// <summary>The wedge of hallway light: a band slanting down the page in view from the upper left
@@ -314,21 +381,10 @@ public class MomDirector : MonoBehaviour
         GameHUD.I?.Unsay(ShhLine);
     }
 
-    /// <summary>Page 5: the Red lens turns up just as Mom does, so the player learns it under pressure.</summary>
-    private void HandOverLens()
-    {
-        var lens = (Lens)_lens;
-        _lens = -1;
-        var wheel = TorchController.I != null ? TorchController.I.Lenses : null;
-        if (wheel == null || wheel.Unlocked[(int)lens]) return;
-        wheel.Unlock(lens);
-        GameHUD.I?.Warn($"THE {lens.ToString().ToUpper()} LENS! MOM CAN BARELY SEE IT. (PRESS {(int)lens + 1})");
-        GameHUD.I?.HeroSays("The red lens, kid! Mom can barely see red!", 4f);
-    }
-
     private void Caught()
     {
         Unhush();
+        EndTeaching(taught: true);                        // told, and caught anyway: it isn't shown again
         Suspicion = 0f;
         LightField.I?.Wedges.Clear();
         Bust = 2.6f;

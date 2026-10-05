@@ -15,10 +15,39 @@ public static class GameAudio
         if (!_clips.TryGetValue(name, out var set))
         {
             set = Resources.LoadAll<AudioClip>("Audio/Game/" + name);
+            if (set.Length == 0 && name == "whoosh") set = new[] { Whoosh() };   // no file for this one: it's made in code
             _clips[name] = set;
         }
         if (set == null || set.Length == 0) return;
         AudioDirector.I.PlaySfx(set[Random.Range(0, set.Length)], volume, pitchJitter);
+    }
+
+    /// <summary>A swing's whoosh, made in code: white noise through a band-pass that falls from 2.4 kHz to 600 Hz,
+    /// swelling and dying away over a quarter of a second (the air a fist moves).</summary>
+    private static AudioClip Whoosh()
+    {
+        const int rate = 44100;
+        const float length = 0.24f;
+        int n = (int)(rate * length);
+        var data = new float[n];
+        var rng = new System.Random(11);
+        float low = 0f, band = 0f, peak = 0.0001f;
+        for (int i = 0; i < n; i++)
+        {
+            float k = i / (float)n;
+            float f = 2f * Mathf.Sin(Mathf.PI * Mathf.Lerp(2400f, 600f, k) / rate);   // a state-variable filter's tuning
+            float x = (float)(rng.NextDouble() * 2.0 - 1.0);
+            low += f * band;
+            float high = x - low - 0.7f * band;
+            band += f * high;
+            float env = Mathf.Pow(Mathf.Sin(Mathf.PI * Mathf.Pow(k, 0.6f)), 2f);
+            data[i] = band * env;
+            peak = Mathf.Max(peak, Mathf.Abs(data[i]));
+        }
+        for (int i = 0; i < n; i++) data[i] *= 0.7f / peak;
+        var clip = AudioClip.Create("whoosh", n, 1, rate, false);
+        clip.SetData(data, 0);
+        return clip;
     }
 
     private static AudioClip _thump;

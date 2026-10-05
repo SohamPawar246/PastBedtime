@@ -9,7 +9,7 @@ using UnityEngine.InputSystem.Controls;
 /// scroll wheel. Gameplay reads them through <see cref="GameInput"/>; captions and hints name them
 /// through <see cref="Format"/>, so "HOLD {FOLLOW}" always says what the player has set. DEFAULTS
 /// puts the jam layout back: the left hand on W A S D is Max, the right hand on the mouse is the torch.
-/// Fixed, whatever the bindings: Esc and P (Bookmark), 1 to 4 (pick a lens).
+/// Fixed, whatever the bindings: Esc and P (Bookmark), 1 and 2 (pick a lens).
 /// </summary>
 public static class Bindings
 {
@@ -51,7 +51,7 @@ public static class Bindings
     public static readonly string[] Labels =
     {
         "Run left", "Run right", "Up (+ kick: launcher)", "Down (+ kick: slam)", "Jump", "Punch", "Kick", "Dodge",
-        "Splash page", "Torch on / off", "Beam follows Max", "Twist the crank", "Next lens",
+        "Splash page", "Torch on / off", "Beam follows Max", "Twist the crank", "Ghost lens on / off",
     };
 
     private static readonly string[][] Defaults =
@@ -104,19 +104,57 @@ public static class Bindings
                     if (Button(c) is ButtonControl b && b.wasPressedThisFrame) n++;
                     break;
                 case Kind.Wheel:
-                    var ms = Mouse.current;
-                    if (ms == null) break;
-                    float y = ms.scroll.ReadValue().y;
-                    // desktop reports 120 a notch; browsers vary (3 to 120): count at least one
-                    if (Mathf.Abs(y) > 0.01f)
-                    {
-                        int notches = Mathf.Max(1, Mathf.RoundToInt(Mathf.Abs(y) / 120f));
-                        n += signedWheel && y < 0f ? -notches : notches;
-                    }
+                    int w = ReadWheel();
+                    if (w != 0) n += signedWheel ? w : Mathf.Abs(w);
                     break;
             }
         }
         return n;
+    }
+
+    // ---- the wheel -----------------------------------------------------------------------------------------
+    // A mouse wheel turns notch by notch; a trackpad (or a free-spinning wheel) scrolls a little every frame and
+    // coasts on after the fingers lift, and browsers report a notch as anything from 3 to 120. So the wheel is
+    // read by time, not size: a frame's scroll is one notch (two when a desktop wheel reports a double notch at
+    // once), at most one every WheelGap seconds, and scrolling that runs on without a StreamGap pause is one
+    // "turn" of the wheel (the torch lets a turn that starts at full overwind just one notch). Scrolling that carries
+    // on from the frame before is always the same turn, however long that frame took (a hitch isn't a pause).
+    public const float WheelGap = 0.06f, StreamGap = 0.15f;
+    private static int _wheelFrame = -1, _wheelNotches, _scrollFrame = -10;
+    private static float _lastScroll = -1f, _lastNotch = -1f;
+    private static bool _turnStarted;
+
+    /// <summary>The wheel started turning this frame, after a pause: a new twist, not more of the last one.</summary>
+    public static bool WheelTurnStarted { get { ReadWheel(); return _turnStarted; } }
+
+    /// <summary>The wheel counted a notch this frame.</summary>
+    public static bool WheelTurned { get { ReadWheel(); return _wheelNotches != 0; } }
+
+    /// <summary>Is the wheel one of this action's controls?</summary>
+    public static bool UsesWheel(Act a) => _bound[(int)a, 0].kind == Kind.Wheel || _bound[(int)a, 1].kind == Kind.Wheel;
+
+    /// <summary>Is this control one of the action's (main or spare)?</summary>
+    public static bool Uses(Act a, Control c) => _bound[(int)a, 0].Equals(c) || _bound[(int)a, 1].Equals(c);
+
+    /// <summary>This frame's wheel notches (signed: scrolling down is negative), read once a frame however many ask.</summary>
+    private static int ReadWheel()
+    {
+        if (_wheelFrame == Time.frameCount) return _wheelNotches;
+        _wheelFrame = Time.frameCount;
+        _wheelNotches = 0;
+        _turnStarted = false;
+        var ms = Mouse.current;
+        float y = ms != null ? ms.scroll.ReadValue().y : 0f;
+        if (Mathf.Abs(y) <= 0.01f) return 0;
+        float now = Time.unscaledTime;
+        _turnStarted = now - _lastScroll > StreamGap && Time.frameCount - _scrollFrame > 1;
+        _lastScroll = now;
+        _scrollFrame = Time.frameCount;
+        if (!_turnStarted && now - _lastNotch < WheelGap) return 0;
+        _lastNotch = now;
+        int notches = Mathf.Clamp(Mathf.RoundToInt(Mathf.Abs(y) / 120f), 1, 2);
+        _wheelNotches = y < 0f ? -notches : notches;
+        return _wheelNotches;
     }
 
     /// <summary>Is this control bound to anything? (Spare mouse buttons keep their old jobs only while free.)</summary>
@@ -194,9 +232,9 @@ public static class Bindings
     public static bool TakesWheel(Act a) => a == Act.Crank || a == Act.Lens;
 
     /// <summary>Keys that keep their own jobs: Esc and P (Bookmark), Backspace and Delete (clear a slot
-    /// on the Controls page), 1 to 4 (pick a lens).</summary>
+    /// on the Controls page), 1 and 2 (pick a lens).</summary>
     public static bool Reserved(Key k) =>
-        k is Key.Escape or Key.P or Key.Backspace or Key.Delete or Key.Digit1 or Key.Digit2 or Key.Digit3 or Key.Digit4 or Key.None ||
+        k is Key.Escape or Key.P or Key.Backspace or Key.Delete or Key.Digit1 or Key.Digit2 or Key.None ||
         (int)k == 111;                                   // the IME's dummy "key"
 
     /// <summary>The control the player is pressing this frame (for the Controls page), if any.</summary>

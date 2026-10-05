@@ -32,6 +32,30 @@ public static class Settings
     public static int HighestPage;
     /// <summary>Stars in hand, and the torch's upgrade levels from the Nightstand (0 to 2 each).</summary>
     public static int Stars, Spring, Gear, Ratchet;
+    /// <summary>Mom's first visit has taught the player to switch the torch off (it's a tutorial once per save).</summary>
+    public static bool MomTaught;
+    /// <summary>The Ghost lens has been taught (once per save, on page 7).</summary>
+    public static bool GhostTaught;
+    /// <summary>Which stars have been found on each page (bit i = the page's star i): found stars aren't drawn
+    /// again, so each counts once.</summary>
+    private static readonly int[] _starsFound = new int[MaxPages + 1];
+    private const int MaxPages = 12;
+
+    public static int StarsFound(int page) => page >= 1 && page <= MaxPages ? _starsFound[page] : 0;
+    public static void SetStarsFound(int page, int mask)
+    {
+        if (page >= 1 && page <= MaxPages) _starsFound[page] = mask;
+    }
+
+    /// <summary>START OVER: back to page 1 with no stars, no upgrades and every star to find again.</summary>
+    public static void ResetProgress()
+    {
+        HighestPage = 0;
+        Stars = Spring = Gear = Ratchet = 0;
+        System.Array.Clear(_starsFound, 0, _starsFound.Length);
+        MomTaught = GhostTaught = false;
+        Commit();
+    }
 
     /// <summary>Raised after any option changes, so live systems can re-read them.</summary>
     public static event Action Changed;
@@ -72,6 +96,9 @@ public static class Settings
         Spring = PlayerPrefs.GetInt(Prefix + "progress.spring", 0);
         Gear = PlayerPrefs.GetInt(Prefix + "progress.gear", 0);
         Ratchet = PlayerPrefs.GetInt(Prefix + "progress.ratchet", 0);
+        for (int p = 1; p <= MaxPages; p++) _starsFound[p] = PlayerPrefs.GetInt(Prefix + "progress.found" + p, 0);
+        MomTaught = GetBool("progress.momtaught", false);
+        GhostTaught = GetBool("progress.ghosttaught", false);
     }
 
     public static void Save()
@@ -91,6 +118,9 @@ public static class Settings
         PlayerPrefs.SetInt(Prefix + "progress.spring", Spring);
         PlayerPrefs.SetInt(Prefix + "progress.gear", Gear);
         PlayerPrefs.SetInt(Prefix + "progress.ratchet", Ratchet);
+        for (int p = 1; p <= MaxPages; p++) PlayerPrefs.SetInt(Prefix + "progress.found" + p, _starsFound[p]);
+        SetBool("progress.momtaught", MomTaught);
+        SetBool("progress.ghosttaught", GhostTaught);
         PlayerPrefs.Save(); // flush now: a browser tab can close at any moment
     }
 

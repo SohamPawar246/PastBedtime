@@ -6,18 +6,20 @@ public class StarPickup : MonoBehaviour
 {
     private Lightable _light;
     private float _spin;
+    /// <summary>Which of its page's stars this is (stars found once aren't drawn again).</summary>
+    public int Index;
 
-    public static GameObject Create(Transform parent, Vector2 at, Material m)
+    public static GameObject Create(Transform parent, Vector2 at, Material m, int index)
     {
         var go = new GameObject("Star");
         go.transform.SetParent(parent, false);
-        go.transform.position = new Vector3(at.x, at.y, 0f);
+        go.transform.position = new Vector3(at.x, at.y, -2.4f);     // in front of the captions (-2.2), behind the borders (-2.5)
         var mf = go.AddComponent<MeshFilter>();
         mf.sharedMesh = StarMesh();
         go.AddComponent<MeshRenderer>().sharedMaterial = m;
         var l = go.AddComponent<Lightable>();
         l.points = new[] { Vector3.zero };
-        go.AddComponent<StarPickup>();
+        go.AddComponent<StarPickup>().Index = index;
         return go;
     }
 
@@ -34,7 +36,7 @@ public class StarPickup : MonoBehaviour
         if (Mathf.Abs(d.x) < 0.7f && Mathf.Abs(d.y) < 1.1f)
         {
             var gs = GameState.I;
-            if (gs != null) { gs.StarsThisPage++; gs.StarsTotal++; gs.Notify(); }
+            gs?.FindStar(Index);
             SfxLettering.Spawn("TWINKLE!", (Vector2)transform.position + Vector2.up, Palette.Yellow, 0.8f);
             GameAudio.Play("star", 0.7f);
             Destroy(gameObject);

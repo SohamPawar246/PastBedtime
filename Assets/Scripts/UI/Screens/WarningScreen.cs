@@ -68,6 +68,6 @@ public class WarningScreen : MonoBehaviour
         if (_advancing) return;
         _advancing = true;
         App.WarningShown = true;
-        App.I.Flow.Load(Scenes.Title);
+        App.I.Flow.Load(Scenes.MouseKeyboard);                 // then the mouse-and-keyboard card, then the title
     }
 }

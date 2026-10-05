@@ -43,7 +43,7 @@ public static class HowToReadPanel
             ("HOLD " + N(Bindings.Act.Follow), "beam follows Max"),
             (N(Bindings.Act.Torch), "torch on / off"),
             (N(Bindings.Act.Crank), "twist the crank"),
-            (N(Bindings.Act.Lens), "twist the lens (1-4 pick)"),
+            (N(Bindings.Act.Lens), "ghost lens on / off (page 7 on)"),
             ("ESC", "bookmark (pause)"),
         });
         var change = UIKit.Text(root, "Rebind", "Change the keys: SETTINGS > CONTROLS", UIKit.Mono, 22f, Palette.Ink.Alpha(0.6f));

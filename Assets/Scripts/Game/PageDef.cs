@@ -37,8 +37,6 @@ public class PageDef : ScriptableObject
     public float momFirstVisit;
     [Tooltip("Her first visit opens the door (page 5: the first opening, mid-fight).")]
     public bool momFirstOpens;
-    [Tooltip("Lens handed to Max as her first visit begins (-1 for none). Page 5: Red.")]
-    public int momLens = -1;
     public Tier[] tiers = Array.Empty<Tier>();
 
     [Serializable]

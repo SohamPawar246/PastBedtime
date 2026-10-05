@@ -66,6 +66,15 @@ public class SceneFlow : MonoBehaviour
         StartCoroutine(LoadRoutine(scene, focusScreenPx, startRadius));
     }
 
+    /// <summary>The old cartoon ending: the light closes slowly onto one spot, holds there on a small circle
+    /// for a moment, then shuts, and the next scene opens.</summary>
+    /// <param name="holdRadius">The circle it holds on, in screen heights.</param>
+    public void IrisOut(string scene, Vector2 focusScreenPx, float holdRadius, float closeOver, float hold)
+    {
+        if (_loading) return;
+        StartCoroutine(LoadRoutine(scene, focusScreenPx, -1f, holdRadius, closeOver, hold));
+    }
+
     public void Reload() => Load(SceneManager.GetActiveScene().name);
 
     /// <summary>Change scenes with no visible transition: the last frame holds on screen while the
@@ -105,7 +114,7 @@ public class SceneFlow : MonoBehaviour
         _loading = false;
     }
 
-    private IEnumerator LoadRoutine(string scene, Vector2? focusPx, float startRadius)
+    private IEnumerator LoadRoutine(string scene, Vector2? focusPx, float startRadius, float holdRadius = 0f, float closeOver = 0f, float hold = 0f)
     {
         _loading = true;
         Vector2 focus = focusPx.HasValue
@@ -114,6 +123,12 @@ public class SceneFlow : MonoBehaviour
 
         _overlay.gameObject.SetActive(true);
         float from = startRadius > 0f ? startRadius : OpenRadius;
+        if (holdRadius > 0f)
+        {
+            yield return Iris(focus, from, holdRadius, closeOver, easeIn: false);
+            yield return new WaitForSecondsRealtime(hold);
+            from = holdRadius;
+        }
         yield return Iris(focus, from, -Soft, closeSeconds, easeIn: true);
 
         Time.timeScale = 1f; // a pause must never leak into the next scene

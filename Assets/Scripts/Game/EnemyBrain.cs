@@ -4,7 +4,6 @@ using UnityEngine;
 /// Shared Inkie behaviour (GDD section 6): a small state machine (Idle, Approach, Wind-up,
 /// Attack, Recover, Hurt) driven by the Inkie's own clock, so freezing pauses it exactly.
 ///  - On waking, 0.3 s of "reorient" before acting, so re-entry is never an instant hit.
-///  - In green light Inkies regain 4 HP a second, and a hurt Inkie steps toward green light.
 ///  - Inkies can't cross gutters: each panel is its own arena.
 ///  - Attacks have friendly fire, and an Inkie frozen mid-swing keeps its hitbox armed.
 /// Subclasses fill in <see cref="Think"/>.
@@ -14,7 +13,7 @@ public abstract class EnemyBrain : MonoBehaviour
 {
     public enum State { Idle, Approach, Windup, Attack, Recover, Hurt, Dead }
 
-    public const float Reorient = 0.3f, Gravity = 30f, GreenHeal = 4f;
+    public const float Reorient = 0.3f, Gravity = 30f;
 
     [Tooltip("Panel bounds on the lane: this Inkie never leaves them.")]
     public float MinX = -1e4f, MaxX = 1e4f;
@@ -38,8 +37,6 @@ public abstract class EnemyBrain : MonoBehaviour
     protected float StateTime;
     protected Hitbox Attack;
     protected virtual bool Flies => false;
-    /// <summary>HP a second this Inkie regains in green light (Baron Blot: 2).</summary>
-    protected virtual float GreenHealRate => GreenHeal;
     protected virtual float BodyRadius => Body != null ? Body.radius : 0.4f;
     protected virtual float TurnYaw => 70f;
 
@@ -50,6 +47,7 @@ public abstract class EnemyBrain : MonoBehaviour
 
     private float _yaw;
     private float _deadFor;
+    private bool _melted;
     private float _lowest = -1e4f;
 
     protected virtual void Awake()
@@ -87,14 +85,6 @@ public abstract class EnemyBrain : MonoBehaviour
             return;
         }
 
-        // green light heals Inkies too (GDD section 4)
-        if (LightField.I != null && LightField.I.Lens == Lens.Green && LightField.I.BeamLive &&
-            LightField.I.IsLit((Vector2)transform.position + Vector2.up) && Health.hp < Health.maxHp)
-        {
-            Health.Heal(GreenHealRate * dt);
-            if (Random.value < dt * 3f) SfxLettering.Spawn("+", (Vector2)transform.position + new Vector2(Random.Range(-0.4f, 0.4f), 2f), Palette.LensGreen, 0.6f);
-        }
-
         StateTime += dt;
         Attack.Tick(Facing);                                // a swing frozen mid-air lands when it wakes
         if (Light.AwakeFor >= Reorient) Think(dt);
@@ -124,18 +114,6 @@ public abstract class EnemyBrain : MonoBehaviour
         if (Hero != null && Mathf.Abs(ToHeroX) > 0.1f) Facing = Mathf.Sign(ToHeroX);
     }
 
-    /// <summary>A hurt Inkie walks toward green light if it can see it.</summary>
-    protected bool SeekGreen(float speed)
-    {
-        var f = LightField.I;
-        if (f == null || f.Lens != Lens.Green || !f.BeamLive || Health.hp >= Health.maxHp * 0.7f) return false;
-        float dx = f.BeamCentre.x - transform.position.x;
-        if (Mathf.Abs(dx) < 0.6f || Mathf.Abs(dx) > 10f) { Velocity.x = 0f; return Mathf.Abs(dx) < 0.6f; }
-        Facing = Mathf.Sign(dx);
-        Velocity.x = Facing * speed;
-        Clips?.Play("Move", 0.1f);
-        return true;
-    }
 
     protected virtual void Move(float dt)
     {
@@ -219,7 +197,6 @@ public abstract class EnemyBrain : MonoBehaviour
         Clips?.Play("Death", 0.05f, 1f, restart: true);
         if (Body != null) Body.enabled = false;
         foreach (var c in GetComponentsInChildren<Collider>()) c.enabled = false;
-        SfxLettering.Spawn("SPLOOSH!", (Vector2)transform.position + Vector2.up * 1.6f, Palette.Yellow, 1f, burst: true);
         PageManager.I?.EnemyDown(this);
     }
 
@@ -231,6 +208,12 @@ public abstract class EnemyBrain : MonoBehaviour
         Velocity = Vector2.MoveTowards(Velocity, Vector2.zero, 10f * dt);
         if (_deadFor > 1.6f)
         {
+            // the blow that did it printed its own word; the melt gets one of its own, a beat later at the puddle
+            if (!_melted)
+            {
+                _melted = true;
+                SfxLettering.Spawn("SPLOOSH!", (Vector2)transform.position + Vector2.up * 0.8f, Palette.Paper, 0.85f);
+            }
             float k = Mathf.Clamp01((_deadFor - 1.6f) / 0.5f);
             Model.localScale = Vector3.one * (1f - k);
             if (k >= 1f) Destroy(gameObject);

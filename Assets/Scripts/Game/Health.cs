@@ -63,8 +63,13 @@ public class Health : MonoBehaviour
         _ => true,
     };
 
-    public bool Apply(Hit hit)
+    public bool Apply(Hit hit) => Apply(hit, out _);
+
+    /// <param name="landed">The hit as it landed: front armour turns a blow into a CLANK! (a quarter of the
+    /// damage, no stun, little knockback), and whoever lettered the blow should say so.</param>
+    public bool Apply(Hit hit, out Hit landed)
     {
+        landed = hit;
         if (Dead || Invulnerable > 0f || !IsAwake) return false;
         if (team == Team.Hero)
         {
@@ -87,14 +92,9 @@ public class Health : MonoBehaviour
             hp -= dmg;
         }
         hp = Mathf.Max(0f, hp);
+        landed = hit;
         Hurt?.Invoke(hit);
         if (hp <= 0f) Died?.Invoke(hit);
         return true;
-    }
-
-    public void Heal(float amount)
-    {
-        if (Dead) return;
-        hp = Mathf.Min(maxHp, hp + amount);
     }
 }

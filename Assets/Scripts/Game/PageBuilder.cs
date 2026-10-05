@@ -38,11 +38,13 @@ public static class PageBuilder
 {
     private static int _layer;
     private static System.Random _rng;
+    private static int _star;                // the next star's number on the page being drawn
 
     public static PageLayout Build(PageDef def, Transform parent)
     {
         _layer = LayerMask.NameToLayer("Comic");
         _rng = new System.Random(def.number * 7919);
+        _star = 0;
         var A = GameAssets.I;
         var layout = new PageLayout { root = new GameObject($"Page {def.number}").transform };
         layout.root.SetParent(parent, false);
@@ -154,8 +156,19 @@ public static class PageBuilder
                                    new Vector3(f.width, f.height, 2.4f), A.ink));
 
         foreach (var prop in p.props) BuildProp(pl, prop, A);
-        foreach (var s in p.stars) StarPickup.Create(pl.root, r.min + s, A.star);
-        foreach (var s in p.ghostStars) InvisibleInk.Secret(StarPickup.Create(pl.root, r.min + s, A.star));
+        // each of the page's stars has its number (in drawing order); one already found isn't drawn again. They're
+        // placed clear of the caption's box, and printed in front of it when it slides over them as the camera pans
+        var gs = GameState.I;
+        foreach (var s in p.stars)
+        {
+            int n = _star++;
+            if (gs == null || !gs.StarFound(gs.Page, n)) StarPickup.Create(pl.root, r.min + s, A.star, n);
+        }
+        foreach (var s in p.ghostStars)
+        {
+            int n = _star++;
+            if (gs == null || !gs.StarFound(gs.Page, n)) InvisibleInk.Secret(StarPickup.Create(pl.root, r.min + s, A.star, n));
+        }
         if (p.flood >= 0f) pl.flood = InkFlood.Create(pl, p.flood, p.floodTop, p.floodRise, A.ink);
         if (!string.IsNullOrEmpty(p.caption)) Caption.Create(pl.root, new Vector2(r.xMin + 0.35f, r.yMax - 0.35f), p.caption, r);
 

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum Lens { Clear, Green, Red, Ghost }
+public enum Lens { Clear, Green, Red, Ghost }    // Green and Red were cut (see LensWheel); the numbering stays
 
 /// <summary>
 /// The one rule (GDD section 2): only what's lit is alive.
@@ -104,13 +104,7 @@ public class LightField : MonoBehaviour
     {
         float r = BeamLive ? BeamRadius : 0f;
         Shader.SetGlobalVector(BeamId, new Vector4(BeamCentre.x, BeamCentre.y, r, Feather));
-        Color lens = Lens switch
-        {
-            Lens.Green => Palette.LensGreen,
-            Lens.Red => Palette.LensRed,
-            Lens.Ghost => Palette.LensGhost,
-            _ => Palette.LensClear,
-        };
+        Color lens = Lens == Lens.Ghost ? Palette.LensGhost : Palette.LensClear;
         float strength = Lens == Lens.Clear ? 0.18f : 0.5f;
         Shader.SetGlobalVector(LensId, new Vector4(lens.r, lens.g, lens.b, strength * Brightness));
         float wake = RoomLight ? 1f : Mathf.Clamp01(FlareTime / 0.25f);

@@ -7,6 +7,7 @@ public static class Scenes
     public const string Boot = "Boot";
     public const string StudioIntro = "StudioIntro";
     public const string Warning = "EpilepsyWarning";
+    public const string MouseKeyboard = "MouseKeyboard";
     public const string Title = "Title";
     public const string Game = "Game";
     public const string Credits = "Credits";
@@ -20,7 +21,7 @@ public static class Scenes
 /// scene can be played straight from the editor) and owns the scene transitions,
 /// the audio and the loaded settings.
 ///
-/// Boot flow: Boot → StudioIntro → EpilepsyWarning → Title → Game (→ Credits → Title).
+/// Boot flow: Boot → StudioIntro → EpilepsyWarning → MouseKeyboard → Title → Game (→ Credits → Title).
 /// </summary>
 public class App : MonoBehaviour
 {
@@ -28,6 +29,9 @@ public class App : MonoBehaviour
 
     /// <summary>The photosensitivity warning shows once per launch.</summary>
     public static bool WarningShown;
+
+    /// <summary>So does the "best with a mouse and keyboard" card that follows it.</summary>
+    public static bool MouseKeyboardShown;
 
     public SceneFlow Flow { get; private set; }
     public AudioDirector Audio { get; private set; }

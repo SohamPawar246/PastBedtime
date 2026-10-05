@@ -65,11 +65,11 @@ public class Hitbox
             float dx = h.transform.position.x - owner.transform.position.x;
             float away = Mathf.Abs(dx) > 0.05f ? Mathf.Sign(dx) : facing;   // knockback always pushes away
             dealt.knockback.x = Mathf.Abs(hit.knockback.x) * away;
-            if (h.Apply(dealt))
+            if (h.Apply(dealt, out var asLanded))
             {
                 _struck.Add(h);
                 landed++;
-                Landed?.Invoke(h, dealt);
+                Landed?.Invoke(h, asLanded);                           // as it landed: armour makes it a CLANK!
             }
         }
         return landed;

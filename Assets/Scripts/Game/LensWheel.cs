@@ -2,13 +2,13 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// The torch's four-colour lens wheel (GDD section 4). Lenses never change who is awake:
-/// each only adds one side effect and one catch. Middle-click (or Tab) twists the wheel a step (0.25 s, the
-/// beam stays on); 1 to 4 jump straight to a lens.
+/// The torch's lens wheel (GDD section 4). The game uses two of its windows: Clear, and the purple Ghost lens
+/// (found at the end of page 6), which shows invisible ink. Lenses never change who is awake. Middle-click (or
+/// Tab) twists the wheel to the other lens (0.25 s, the beam stays on); 1 picks Clear, 2 the Ghost lens.
 ///   Clear  baseline                          drain 1x
-///   Green  heals everything awake in it      drain 1.5x  (Inkies heal too)
-///   Red    Mom barely sees it                drain 1x    (beam shrinks to 3.0)
 ///   Ghost  reveals invisible ink             drain 2x
+/// (The Green and Red lenses were cut after playtesting: two more colours to juggle made it too much. Their
+/// slots stay in <see cref="Lens"/>, the shaders' lens index, but nothing unlocks them.)
 /// </summary>
 public class LensWheel : MonoBehaviour
 {
@@ -21,22 +21,14 @@ public class LensWheel : MonoBehaviour
 
     private float _swap;
 
-    public static float DrainRate(Lens lens) => lens switch
-    {
-        Lens.Green => 1.5f,
-        Lens.Ghost => 2f,
-        _ => 1f,
-    };
+    public static float DrainRate(Lens lens) => lens == Lens.Ghost ? 2f : 1f;
 
-    public static string Name(Lens lens) => lens switch
-    {
-        Lens.Green => "MEND",
-        Lens.Red => "HUSH",
-        Lens.Ghost => "GHOST",
-        _ => "CLEAR",
-    };
+    public static string Name(Lens lens) => lens == Lens.Ghost ? "GHOST" : "CLEAR";
 
-    public void Unlock(Lens lens) => Unlocked[(int)lens] = true;
+    public void Unlock(Lens lens)
+    {
+        if (lens == Lens.Clear || lens == Lens.Ghost) Unlocked[(int)lens] = true;
+    }
 
     public void Step(int dir)
     {

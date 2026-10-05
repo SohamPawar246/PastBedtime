@@ -28,6 +28,9 @@ public class AudioDirector : MonoBehaviour
 
     private AudioSource CurrentMusic => _usingA ? _musicA : _musicB;
 
+    /// <summary>The music is tape-stopped (wound down or paused), or nothing is playing.</summary>
+    public bool MusicStopped => CurrentMusic.clip == null || !CurrentMusic.isPlaying || CurrentMusic.pitch < 0.5f;
+
     private void Awake()
     {
         I = this;
@@ -79,12 +82,14 @@ public class AudioDirector : MonoBehaviour
 
     // ---- Music ------------------------------------------------------------------------
 
-    public void PlayMusic(AudioClip clip)
+    /// <param name="spinUp">Start it from a standstill and spin it up to speed, like a tape (the comic's
+    /// music coming back with the torch).</param>
+    public void PlayMusic(AudioClip clip, bool spinUp = false)
     {
         if (clip == null) return;
         if (CurrentMusic.clip == clip && CurrentMusic.isPlaying) return;
         if (_crossfade != null) StopCoroutine(_crossfade);
-        _crossfade = StartCoroutine(CrossfadeTo(clip));
+        _crossfade = StartCoroutine(CrossfadeTo(clip, spinUp));
     }
 
     public void StopMusic()
@@ -93,17 +98,18 @@ public class AudioDirector : MonoBehaviour
         _crossfade = StartCoroutine(CrossfadeTo(null));
     }
 
-    private IEnumerator CrossfadeTo(AudioClip clip)
+    private IEnumerator CrossfadeTo(AudioClip clip, bool spinUp = false)
     {
         var from = CurrentMusic;
         var to = _usingA ? _musicB : _musicA;
         _usingA = !_usingA;
+        spinUp &= clip != null;
 
         if (clip != null)
         {
             to.clip = clip;
             to.volume = 0f;
-            to.pitch = 1f;
+            to.pitch = spinUp ? 0.05f : 1f;
             to.Play();
         }
 
@@ -112,11 +118,13 @@ public class AudioDirector : MonoBehaviour
         {
             float k = t / musicFadeSeconds;
             if (clip != null) to.volume = MusicVolume * k;
+            if (spinUp) to.pitch = Mathf.Lerp(0.05f, 1f, 1f - (1f - k) * (1f - k));
             from.volume = fromStart * (1f - k);
             yield return null;
         }
         from.Stop();
         to.volume = clip != null ? MusicVolume : 0f;
+        if (spinUp) to.pitch = 1f;
         _crossfade = null;
     }
 
@@ -164,7 +172,7 @@ public class AudioDirector : MonoBehaviour
     public void Confirm() => PlaySfx(_confirm, 0.8f);
     public void Back() => PlaySfx(_back, 0.7f);
     public void Toggle() => PlaySfx(_toggle, 0.7f);
-    public void TorchOn() => PlaySfx(_torchOn, 0.9f, 0.02f);
+    public void TorchOn(float volume = 0.9f) => PlaySfx(_torchOn, volume, 0.02f);
     public void TorchOff() => PlaySfx(_torchOff, 0.9f, 0.02f);
     public void DoorCreak() => PlaySfx(_doorCreak, 0.55f, 0.03f);
     public void DoorClose() => PlaySfx(_doorClose, 0.5f, 0.03f);

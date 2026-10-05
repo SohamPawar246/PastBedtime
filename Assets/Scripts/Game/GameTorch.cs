@@ -172,7 +172,7 @@ public class GameTorch : MonoBehaviour
 
         // the lens: its colour, its window lit on the wheel, the bulb's glow and the shaft of light
         Lens lens = torch.Lenses.Current;
-        Color lc = lens switch { Lens.Green => Palette.LensGreen, Lens.Red => Palette.LensRed, Lens.Ghost => Palette.LensGhost, _ => Palette.LensClear };
+        Color lc = lens == Lens.Ghost ? Palette.LensGhost : Palette.LensClear;
         float power = field.BeamLive ? field.Brightness : 0f;
         if (field.FlareTime > 0f) power = 1.6f;
         _lensGlow.color = lc.Alpha(Mathf.Clamp01(0.6f * power));
@@ -195,11 +195,16 @@ public class GameTorch : MonoBehaviour
         _lensName.alpha = Mathf.Clamp01(_nameFor / 0.3f) * k;
         _lensName.rectTransform.anchoredPosition = lensAt + new Vector2(-40f, 78f);
 
-        // the hint by the crank: wind me when low, the ratchet when overwound, the bulb cooling
+        // the hint by the crank: wind me when low, the ratchet when overwound, the bulb cooling; and, on Mom's
+        // first visit, the torch itself says OFF! (then ON! once she's gone), flashing
         bool low = c.Share < 0.25f && !c.Dead;
-        string hint = c.Dead ? "COOLING..." : c.Overwind > 0 ? "CLICK-CLICK!" : low && Mathf.Repeat(Time.unscaledTime, 0.8f) < 0.5f ? Bindings.Format("TWIST! ({CRANK})") : "";
+        bool blink = Mathf.Repeat(Time.unscaledTime, 0.8f) < 0.5f;
+        string lesson = MomDirector.I != null && MomDirector.I.TorchHint != null ? MomDirector.I.TorchHint : torch.LessonHint;
+        string hint = lesson != null ? (blink ? Bindings.Format(lesson) : "")
+                    : c.Dead ? "COOLING..." : c.Overwind > 0 ? "CLICK-CLICK!" : low && blink ? Bindings.Format("TWIST! ({CRANK})") : "";
         _hint.text = hint;
-        _hint.color = c.Overwind > 0 || c.Dead ? Palette.HeroRed : Palette.Yellow;
+        _hint.color = lesson != null ? (lesson.StartsWith("OFF") ? Palette.HeroRed : lesson.StartsWith("PURPLE") ? Palette.LensGhost : Palette.Yellow)
+                    : c.Overwind > 0 || c.Dead ? Palette.HeroRed : Palette.Yellow;
         _hint.alpha = k;
         _hint.rectTransform.anchoredPosition = HandToFront(LensPx) + new Vector2(-40f, 120f);   // above the torch head
     }
