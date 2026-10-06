@@ -26,6 +26,21 @@ public class Lightable : MonoBehaviour
     public bool isHero;
 
     public bool IsAwake { get; private set; } = true;
+    /// <summary>Lit by a wake-light. The same as <see cref="IsAwake"/> except while it's <see cref="Dropping"/>.</summary>
+    public bool Lit { get; private set; } = true;
+    /// <summary>Dropping out of its panel with nothing left in the comic to land on: the dark doesn't hold it.
+    /// Frozen there it would only hang over the drop till the beam went looking for it (6 Oct playtest).</summary>
+    public bool Dropping
+    {
+        get => _dropping;
+        set
+        {
+            if (_dropping == value) return;
+            _dropping = value;
+            Evaluate(false);
+        }
+    }
+    private bool _dropping;
     public float Delta => IsAwake ? Time.deltaTime : 0f;
     public float FixedDelta => IsAwake ? Time.fixedDeltaTime : 0f;
     /// <summary>Seconds since this thing last woke (Inkies "reorient" for 0.3 s).</summary>
@@ -98,7 +113,8 @@ public class Lightable : MonoBehaviour
     private void Evaluate(bool force)
     {
         if (!_started || LightField.I == null) return;
-        bool awake = LightField.I.IsAwake(WorldPoints(), isHero);
+        Lit = LightField.I.IsAwake(WorldPoints(), isHero);
+        bool awake = Lit || _dropping;
         if (!force && awake == IsAwake) return;
         if (awake) Wake(); else Freeze();
     }

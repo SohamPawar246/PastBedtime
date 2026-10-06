@@ -90,11 +90,13 @@ public abstract class EnemyBrain : MonoBehaviour
         Clips?.Play("Idle", 0f);
         ApplyYaw(1f, snap: true);
         _lowest = transform.position.y - 12f;
+        _groundY = transform.position.y;
         _bornAt = Time.time;
     }
 
     private void Update()
     {
+        Light.Dropping = DroppingOut();
         float dt = Light.Delta;
         if (dt <= 0f) return;                                // frozen: armed, silent, still
 
@@ -103,6 +105,7 @@ public abstract class EnemyBrain : MonoBehaviour
             _deadFor += dt;
             DeadTick(dt);
             if (_flung) FlungDepth(dt);
+            if (FallsOut && Panel != null && transform.position.y < Panel.rect.yMin - PageManager.OutOfPanel) Destroy(gameObject);
             return;
         }
 
@@ -114,11 +117,28 @@ public abstract class EnemyBrain : MonoBehaviour
         else if (Mode is State.Idle or State.Approach or State.Recover) Velocity.x = 0f;
         Move(dt);
         ApplyYaw(dt, false);
-        if (transform.position.y < _lowest)                // fell out of its panel (down an erased gap)
+        if (Grounded) _groundY = transform.position.y;
+        float lowest = Panel != null ? Panel.rect.yMin - PageManager.OutOfPanel : _lowest;
+        if (FallsOut && transform.position.y < lowest)    // fell out of its panel (knocked off a ledge, down an erased gap)
         {
             PageManager.I?.EnemyDown(this);
             Destroy(gameObject);
         }
+    }
+
+    /// <summary>Can it drop out of its panel (Blot makes his own exits)?</summary>
+    protected virtual bool FallsOut => true;
+    private float _groundY;                                  // where it last stood (or was knocked out)
+
+    /// <summary>Coming down below where it last stood with nothing under it in its panel: it's dropping out of the
+    /// comic, and the dark doesn't hold it (frozen, it would only hang over the pit till the beam came down for
+    /// it). Up in the air above that (a launched Inkie, frozen as a step) it hangs in the dark like anything else.</summary>
+    private bool DroppingOut()
+    {
+        if (!FallsOut || Panel == null || Velocity.y > -1f) return false;
+        bool airborne = Mode == State.Dead ? _flying || Flies : !Flies && !Grounded;
+        if (!airborne || transform.position.y > _groundY - 0.002f) return false;
+        return !PageManager.SomethingBelow(transform.position, Panel.rect.yMin - 1f, transform);
     }
 
     /// <summary>The Inkie's decisions for this frame (only when awake and reoriented).</summary>
@@ -220,6 +240,7 @@ public abstract class EnemyBrain : MonoBehaviour
         foreach (var c in GetComponentsInChildren<Collider>()) c.enabled = false;
         PageManager.I?.EnemyDown(this);
         EndMark();
+        _groundY = transform.position.y;
         // knocked out by Max: off the panel, spinning, toward the reader (on its own clock: out of the light it
         // hangs where it is, like anything else)
         if (Flings && hit.team == Team.Hero)
@@ -320,6 +341,7 @@ public abstract class EnemyBrain : MonoBehaviour
     private void OnLightChanged(bool awake)
     {
         if (!ShowsWaking || Mode == State.Dead || Time.time - _bornAt < 0.5f) return;   // not the page drawing itself in
+        if (Light.Dropping) return;                                // let fall out of the panel, not woken
         if (PageManager.I != null && PageManager.I.Busy) return;
         float now = Time.unscaledTime;
         if (now - _markAt < 0.3f) return;                          // the beam's edge flickering over it: once is enough

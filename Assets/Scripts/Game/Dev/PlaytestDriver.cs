@@ -133,6 +133,7 @@ public class PlaytestDriver : MonoBehaviour
             case "starcaptions": yield return StarsCaptionTest(); break;
             case "polish": yield return PolishTest(); break;
             case "blotdark": yield return BlotDarkTest(); break;
+            case "falls": yield return FallsTest(); break;
         }
     }
 
@@ -825,6 +826,148 @@ public class PlaytestDriver : MonoBehaviour
         }
         Log($"escaping at hp {(blot != null ? blot.Health.hp : -1f):0}, the beam off him all the while {unlit}: page {(pm.Def != null ? pm.Def.number : -1)} after {Time.time - started:0.0} s (expect True, 7)");
         torch.AimOverride = null;
+        _followHero = true;
+    }
+
+    // Falls never wait on the torch (6 Oct: Max ran off into a pit, out of the beam, and hung there frozen at the
+    // panel's bottom edge until the beam was dragged all the way down to him; crates and Inkies the same). Below the
+    // ledge they left with nothing under them, the dark doesn't hold them: they drop out of the panel. Up in the air
+    // (a jump, a launched Inkie, a crate at the pit's lip) they still hang in the dark as steps.
+    private IEnumerator FallsTest()
+    {
+        var pm = PageManager.I;
+        var hero = HeroController.I;
+        var torch = TorchController.I;
+        var h = hero.GetComponent<Health>();
+        pm.Load(1);
+        yield return Wait(0.3f);
+        while (hero.Locked) yield return null;
+        MomDirector.I.Schedule(ScriptableObject.CreateInstance<PageDef>());
+        pm.GoToTier(1);
+        var flat = pm.Layout.tiers[1].panels[0];
+        var pit = pm.Layout.tiers[1].panels[1];                     // a pit from 3.5 to 11, the crate in it
+        Log($"pit panel floor line {pit.floorLine - pit.rect.yMin:0.0} above its bottom (expect 2.5)");
+
+        // 1. Max runs off the ledge and the torch goes off as he drops: he falls on out, and the page takes a heart
+        hero.Teleport(pit.rect.min + new Vector2(1.5f, 2.6f));
+        yield return Wait(0.6f);
+        h.hp = h.maxHp;
+        float hp0 = h.hp;
+        _pad.moveX = 1f;
+        for (float t = 0f; t < 2f && (hero.Grounded || hero.transform.position.x < pit.rect.xMin + 3.6f); t += Time.deltaTime) yield return null;
+        _followHero = false;
+        torch.SetOn(false);
+        _pad.moveX = 0f;
+        float dark = Time.time;
+        yield return Wait(0.2f);
+        DevCapture.Shot("falls_max");
+        Log($"in the dark over the pit: dropping {hero.Light.Dropping}, awake {hero.Light.IsAwake}, lit {hero.Light.Lit}, feet {hero.transform.position.y - pit.rect.yMin:0.00} above the panel's bottom (expect True, True, False)");
+        for (float t = 0f; t < 3f && h.hp >= hp0; t += Time.deltaTime) yield return null;
+        Log($"fell out of the panel in the dark: heart lost {h.hp < hp0} after {Time.time - dark:0.00} s (expect True, under 0.8)");
+        yield return Wait(1.0f);
+        torch.SetOn(true);
+        _followHero = true;
+        yield return Wait(0.6f);
+
+        // 2. a jump over a floor, the torch off on the way up: he hangs in the dark (as ever)
+        hero.Teleport(flat.rect.min + new Vector2(4f, 2.6f));
+        yield return Wait(0.5f);
+        _pad.jump = true;
+        _pad.jumpHeld = true;
+        yield return Wait(0.15f);
+        torch.SetOn(false);
+        _followHero = false;
+        yield return null;
+        Vector3 hang = hero.transform.position;
+        yield return Wait(0.6f);
+        _pad.jumpHeld = false;
+        Log($"jump over a floor, torch off going up: hangs {Vector3.Distance(hero.transform.position, hang) < 0.05f}, in the air {hang.y - flat.rect.yMin - 2.5f:0.00} up (expect True, > 0.5)");
+
+        // 3. a jump out over the pit, the torch off on the way up: he hangs too (still above the ledge he left)
+        torch.SetOn(true);
+        _followHero = true;
+        yield return Wait(1.2f);
+        hero.Teleport(pit.rect.min + new Vector2(2.6f, 2.6f));
+        yield return Wait(0.5f);
+        _pad.moveX = 1f;
+        _pad.jump = true;
+        _pad.jumpHeld = true;
+        yield return Wait(0.15f);
+        torch.SetOn(false);
+        _followHero = false;
+        yield return null;
+        hang = hero.transform.position;
+        yield return Wait(0.6f);
+        _pad.moveX = 0f;
+        _pad.jumpHeld = false;
+        Log($"jump out over the pit, torch off going up: hangs {Vector3.Distance(hero.transform.position, hang) < 0.05f}, dropping {hero.Light.Dropping} (expect True, False)");
+        hero.Teleport(pit.rect.min + new Vector2(1f, 2.6f));
+        torch.SetOn(true);
+        yield return Wait(0.8f);
+
+        // 4. the crate: lit, it drops into the pit; the torch off with it down there, it falls on out and is drawn back
+        var crate = pit.root.GetComponentInChildren<FallingProp>();
+        Vector3 home = crate.transform.position;
+        torch.AimOverride = (Vector2)home;
+        for (float t = 0f; t < 3f && crate.transform.position.y > home.y - 0.6f; t += Time.deltaTime) yield return null;
+        torch.SetOn(false);
+        float off = Time.time;
+        Vector3 sank = crate.transform.position;
+        bool redrawn = false;
+        for (float t = 0f; t < 3f; t += Time.deltaTime)
+        {
+            yield return null;
+            if ((crate.transform.position - home).magnitude < 0.05f) { redrawn = true; break; }
+        }
+        Log($"crate sank {home.y - sank.y:0.00} into the pit, torch off: drawn back in {redrawn} after {Time.time - off:0.00} s (expect True, under 1.6)");
+        yield return Wait(1.2f);
+        Log($"back at its lip in the dark: still there {(crate.transform.position - home).magnitude < 0.05f}, frozen {!crate.GetComponent<Lightable>().IsAwake} (expect True, True)");
+        torch.SetOn(true);
+
+        // 5. a Smudge knocked off the ledge, the torch off as it goes over: it drops out of the panel
+        var smudge = PageBuilder.Spawn(EnemyKind.Smudge, pit.rect.min + new Vector2(2.6f, 2.6f), pit, pm.transform);
+        torch.AimOverride = pit.rect.min + new Vector2(2f, 3.6f);
+        yield return Wait(1.0f);
+        h.Invulnerable = 600f;
+        smudge.Health.Apply(new Hit { damage = 1f, team = Team.Hero, source = hero.gameObject, knockback = new Vector2(9f, 4f), stun = 0.8f });
+        for (float t = 0f; t < 1.5f && smudge != null && (smudge.Grounded || smudge.transform.position.y > pit.rect.yMin + 2.4f); t += Time.deltaTime) yield return null;
+        torch.SetOn(false);
+        off = Time.time;
+        for (float t = 0f; t < 3f && smudge != null; t += Time.deltaTime) yield return null;
+        Log($"smudge knocked into the pit, torch off: gone {smudge == null} after {Time.time - off:0.00} s, off the panel's list {!pit.enemies.Contains(smudge)} (expect True, under 0.8, True)");
+        torch.SetOn(true);
+
+        // 6. a Smudge launched up at the pit's edge, the torch off on its way up: it hangs as a step
+        smudge = PageBuilder.Spawn(EnemyKind.Smudge, pit.rect.min + new Vector2(3.0f, 2.6f), pit, pm.transform);
+        yield return Wait(1.0f);
+        smudge.Health.Apply(new Hit { damage = 1f, team = Team.Hero, source = hero.gameObject, knockback = new Vector2(2f, 11f), stun = 0.8f });
+        yield return Wait(0.12f);
+        torch.SetOn(false);
+        yield return null;
+        hang = smudge.transform.position;
+        yield return Wait(0.8f);
+        Log($"smudge launched at the edge, torch off going up: hangs {smudge != null && Vector3.Distance(smudge.transform.position, hang) < 0.05f} (expect True)");
+        torch.SetOn(true);
+        if (smudge != null) { pm.EnemyDown(smudge); Destroy(smudge.gameObject); }
+
+        // 7. a Smudge knocked out over the pit, the torch off as its body comes down: it drops out too
+        smudge = PageBuilder.Spawn(EnemyKind.Smudge, pit.rect.min + new Vector2(3.0f, 2.6f), pit, pm.transform);
+        yield return Wait(1.0f);
+        float died = smudge.transform.position.y;
+        smudge.Health.Apply(new Hit { damage = 999f, team = Team.Hero, source = hero.gameObject, knockback = new Vector2(6f, 2f), heavy = true });
+        for (float t = 0f; t < 2f && smudge != null && smudge.transform.position.y > died - 0.3f; t += Time.deltaTime)
+        {
+            torch.AimOverride = (Vector2)smudge.transform.position;            // lit through its flight, up and over
+            yield return null;
+        }
+        torch.SetOn(false);
+        off = Time.time;
+        for (float t = 0f; t < 3f && smudge != null; t += Time.deltaTime) yield return null;
+        Log($"knocked-out body over the pit, torch off: gone {smudge == null} after {Time.time - off:0.00} s (expect True, under 0.8)");
+
+        torch.SetOn(true);
+        torch.AimOverride = null;
+        h.Invulnerable = 0f;
         _followHero = true;
     }
 

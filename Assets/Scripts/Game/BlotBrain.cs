@@ -28,6 +28,7 @@ public class BlotBrain : EnemyBrain
 
     protected override float TurnYaw => 40f;                             // he plays to the reader
     protected override bool Flings => false;                             // he makes his own exits
+    protected override bool FallsOut => false;
     protected override bool ShowsWaking => false;
 
     public const float LungeWindup = 0.55f, LungeFor = 0.65f, LungeSpeed = 9f;

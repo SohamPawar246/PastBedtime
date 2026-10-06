@@ -98,7 +98,7 @@ public class HeroCombat : MonoBehaviour
     private void Update()
     {
         float dt = _light.Delta;
-        if (dt <= 0f) return;
+        if (dt <= 0f || !_light.Lit) return;            // frozen, or dropping out of the panel in the dark
         if (_hero.Dead)
         {
             if (Busy) Interrupt();                       // a swing (or a slam on its way down) dies with him

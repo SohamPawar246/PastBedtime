@@ -52,6 +52,7 @@ public class HeroController : MonoBehaviour
     private Transform _model;
 
     private float _coyote, _buffer, _dodge, _dodgeCooldown, _hurt, _airTime, _guard;
+    private float _groundY;                  // where his feet last stood (a drop below it, over nothing, is out)
     private readonly Dictionary<Collider, bool> _passing = new();     // Inkie bodies Max passes through now (bats' boxes too)
     private readonly List<Collider> _gone = new();
     private bool _jumpCut = true;            // true when no jump is waiting to be cut short
@@ -93,7 +94,25 @@ public class HeroController : MonoBehaviour
         transform.position = new Vector3(p.x, p.y, 0f);
         Body.enabled = true;
         Velocity = Vector2.zero;
+        _groundY = p.y;
+        Light.Dropping = false;
         _passing.Clear();                     // re-enabling the body resets which bodies it ignores
+    }
+
+    /// <summary>
+    /// Coming down below the ledge he left with nothing under him in the panel: he's dropping out of the comic.
+    /// The dark doesn't hold him there (frozen, he'd only hang over the pit till the beam came down for him), so
+    /// he falls on out, on his own momentum, and the page takes the heart. Over a floor, or on his way up, or
+    /// still above the ledge he jumped from, he hangs in the dark like everything else.
+    /// </summary>
+    private bool DroppingOut()
+    {
+        if (Grounded || Dead || Velocity.y > -1f) return false;
+        var pm = PageManager.I;
+        if (pm == null || pm.Layout == null) return false;
+        Vector3 feet = transform.position;
+        if (feet.y > _groundY - 0.002f) return false;          // (sliding off a ledge's corner he's barely below it)
+        return !PageManager.SomethingBelow(feet, pm.Layout.tiers[pm.TierIndex].y0 - 1f, transform);
     }
 
     /// <summary>
@@ -188,6 +207,7 @@ public class HeroController : MonoBehaviour
         Contacts();
         bool hushed = Hushed;
         if (hushed) _health.Invulnerable = Mathf.Max(_health.Invulnerable, 0.2f);   // set before her light can wake him
+        Light.Dropping = DroppingOut();
         float dt = Light.Delta;
         HurtLook(dt);
         if (dt <= 0f) return;                       // frozen: everything waits, velocity kept
@@ -196,6 +216,14 @@ public class HeroController : MonoBehaviour
         if (Dead)
         {
             Fall(dt);
+            return;
+        }
+        if (!Light.Lit)
+        {
+            // dropping out of the panel in the dark: only the fall, the way he was going (no steering, no blows)
+            if (_combat != null && _combat.Busy) _combat.Interrupt();
+            Fall(dt);
+            Animate(dt, 0f, false);
             return;
         }
 
@@ -286,6 +314,7 @@ public class HeroController : MonoBehaviour
 
         bool was = Grounded;
         Grounded = (flags & CollisionFlags.Below) != 0;
+        if (Grounded) _groundY = transform.position.y;
         if ((flags & CollisionFlags.Above) != 0 && Velocity.y > 0f) Velocity.y = 0f;
         if ((flags & CollisionFlags.Sides) != 0 && _dodge <= 0f) Velocity.x *= 0.5f;
         if (Grounded && !was)

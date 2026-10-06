@@ -61,16 +61,22 @@ public class FallingProp : MonoBehaviour
         _homeRot = transform.rotation;
         _startHeld = held;
         _homeConstraints = _rb.constraints;
-        // the panel's floor line: below it a prop has dropped into a pit (lit or frozen, it's no use there)
+        // its panel's floor line (the lowest top anything stands on): sunk below it, a prop has dropped into a pit,
+        // where it's no use to anyone, lit or not; and the panel's bottom edge, where it leaves the comic
         _pit = _home.y - 10f;
+        _bottom = _pit - 2f;
         var layout = PageManager.I != null ? PageManager.I.Layout : null;
         if (layout != null)
             foreach (var tier in layout.tiers)
                 foreach (var pl in tier.panels)
-                    if (pl.rect.Contains((Vector2)_home)) _pit = pl.rect.yMin + 1.0f;
+                    if (pl.rect.Contains((Vector2)_home)) { _pit = pl.floorLine - 0.35f; _bottom = pl.rect.yMin; }
+        // its top, from its middle (props don't turn)
+        var box = new Bounds(transform.position, Vector3.zero);
+        foreach (var c in GetComponentsInChildren<Collider>()) box.Encapsulate(c.bounds);
+        _top = box.max.y - transform.position.y;
     }
 
-    private float _pit;
+    private float _pit, _bottom, _top;
 
     /// <summary>Back where the page drew it, as it was (a panel restart; or it fell out of its panel).</summary>
     public void Redraw()
@@ -85,6 +91,7 @@ public class FallingProp : MonoBehaviour
         else _rb.isKinematic = kin;
         held = _startHeld;
         _rb.constraints = _homeConstraints;
+        _light.Dropping = false;                           // back in the comic: the light's rule again
         _light.ClearStoredMotion();
         _spent = false;
         _gone = 0f;
@@ -99,12 +106,15 @@ public class FallingProp : MonoBehaviour
             float k = 1f - (1f - _pop) * (1f - _pop);
             transform.localScale = _scale * Mathf.LerpUnclamped(0.2f, 1f, k);
         }
-        // down a gap, below its panel's floor line (falling, or frozen down there): the page draws it
-        // back in where it was a moment later
-        if (transform.position.y < _pit)
+        // sunk below its panel's floor line, down a gap: the dark doesn't hold it there (frozen, it would only hang
+        // in the pit till the beam came down for it); it drops out of the panel and the page draws it back in where
+        // it was (or after a moment, if something down there caught it)
+        bool sunk = !held && transform.position.y + _top < _pit;
+        _light.Dropping = sunk;
+        if (sunk)
         {
             _gone += Time.deltaTime;
-            if (_gone > 1.5f) Redraw();
+            if (_gone > 1.5f || transform.position.y + _top < _bottom) Redraw();
         }
         else _gone = 0f;
     }

@@ -11,6 +11,7 @@ public class PanelLayout
     public bool visited;
     public Vector2 entry;                     // where Max respawns in this panel
     public InkFlood flood;                    // Act 3's rising ink, if the panel has it
+    public float floorLine;                   // the lowest top anything can stand on (world y): below it is a pit
 }
 
 public class TierLayout
@@ -65,6 +66,7 @@ public static class PageBuilder
                 pl.root = new GameObject($"Tier {t + 1} Panel {i + 1}").transform;
                 pl.root.SetParent(layout.root, false);
                 pl.entry = FindEntry(pl);
+                pl.floorLine = FloorLine(pl);
                 BuildPanel(pl, A, i == 0, i == panels.Length - 1);
                 tier.panels.Add(pl);
                 x += p.width + PageDef.Gutter;
@@ -78,6 +80,15 @@ public static class PageBuilder
         layout.start = first.rect.min + def.start;
         SetLayer(layout.root);
         return layout;
+    }
+
+    private static float FloorLine(PanelLayout pl)
+    {
+        float low = float.MaxValue;
+        foreach (var f in pl.def.floors) low = Mathf.Min(low, f.yMax);
+        foreach (var f in pl.def.erasable) low = Mathf.Min(low, f.yMax);
+        foreach (var f in pl.def.ghost) low = Mathf.Min(low, f.yMax);
+        return pl.rect.yMin + (low < float.MaxValue ? low : 2.5f);
     }
 
     /// <summary>Instantiates a panel's Inkies (used again when a panel restarts).</summary>

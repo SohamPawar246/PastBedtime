@@ -27,6 +27,30 @@ public class PageManager : MonoBehaviour
 
     public static PageDef LoadDef(int number) => Resources.Load<PageDef>($"Pages/Page{number:00}");
 
+    /// <summary>How far below its panel's bottom border a body's feet are when it has left the comic (Max loses a
+    /// heart; an Inkie is gone). Most of him is out of the panel by then.</summary>
+    public const float OutOfPanel = 1.2f;
+
+    private static readonly RaycastHit[] _below = new RaycastHit[8];
+
+    /// <summary>Is there anything under `feet`, down to `bottom`, that a falling body could land on: a floor, a
+    /// bridge, an inked-in ghost ledge, a prop, a frozen Inkie? (Awake bodies pass through each other.)</summary>
+    public static bool SomethingBelow(Vector3 feet, float bottom, Transform self)
+    {
+        float depth = feet.y - bottom;
+        if (depth <= 0f) return false;
+        int n = Physics.RaycastNonAlloc(new Vector3(feet.x, feet.y + 0.3f, 0f), Vector3.down, _below, depth + 0.3f, ~0, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+        {
+            var c = _below[i].collider;
+            if (c.transform.IsChildOf(self)) continue;
+            var h = c.GetComponentInParent<Health>();
+            if (h != null && (h.Dead || h.IsAwake || h.team == Team.Hero)) continue;
+            return true;
+        }
+        return false;
+    }
+
     public void Load(int number)
     {
         var def = LoadDef(number);
@@ -122,7 +146,7 @@ public class PageManager : MonoBehaviour
             StartCoroutine(Restart("TO BE CONTINUED..."));
             return;
         }
-        if (hp.y < tier.y0 - 4f)
+        if (hp.y < tier.y0 - OutOfPanel)
         {
             StartCoroutine(FellOff());
             return;
