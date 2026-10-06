@@ -43,6 +43,53 @@ Menus also work with arrow keys + Enter. Settings include the controls, follow a
 flat page view, screen shake, reduce flashing and sound captions. Esc / P (the Bookmark) and 1 / 2 (clear / ghost
 lens) stay as they are. In the browser, clicking outside the game opens the Bookmark, so Mom never catches you away.
 
+## Features
+
+- **The light rule.** Only what the torch lights is alive: Inkies, hazards and platforms move in the beam and freeze
+  mid-panel outside it. The torch runs on a wind-up crank, so the light is something you spend.
+- **Nine pages in three acts**, ending in a three-round fight with Baron Blot (his office, the ink vat, the roof)
+  and a quiet twist ending in Roshan's room.
+- **Brawler combat.** A three-hit punch chain, a launcher, dive kick, ground slam, a dodge that passes through
+  enemies, and the **Splash Page** super, which fills the whole page with one panel.
+- **Five Inkies** (Splotch, Smudge, Dot-Shot, Eraser, Bruiser), each with its own way to fight, and frozen ones become tools (a frozen ink bat is a stepping stone).
+- **The purple Ghost lens** (from page 7) shows platforms and secrets drawn in invisible ink, with a short tutorial.
+- **Mom.** Her footsteps and the shadow under the door are the warning; get the torch off before the door opens
+  or she catches you. Suspicion builds across a page.
+- **Stars and the Nightstand.** Hidden stars on the pages buy torch upgrades (Spring, Gear, Ratchet) between acts.
+- **Comic feel.** Impact frames and hit-stop on big blows, SFX lettering that leans with the hit, Inkies knocked
+  out toward the reader, a hurt flash and blink, squash and stretch on landing, the room darkening as Mom comes,
+  and a halftone/ink shader that prints the page as you play.
+- **Accessibility.** Fully rebindable controls (keyboard, mouse and trackpad), follow assist, easy suspicion, flat
+  page view, screen shake and flashing toggles, and sound captions.
+- **Built for the browser.** A WebGL build with a comic-style loading page; right click, wheel and side buttons
+  stay inside the game.
+
+## Developer cheats
+
+Available in the Unity editor and in Development builds only (a release build doesn't include them). They work
+while a comic page is open. Press **F1** for an on-screen list showing what's switched on, plus the current page,
+torch charge, Mom's state and fps.
+
+| Key | Cheat |
+|---|---|
+| F1 | Show / hide the cheat list |
+| F2 | Fill the Splash meter |
+| F3 | God mode (Max can't be hurt or knocked out) |
+| F4 | Refill the torch (a flared bulb cools at once) |
+| F5 | Endless torch (the charge never runs down) |
+| F6 | Mom comes now and opens the door |
+| Shift + F6 | Mom off / on for this page |
+| F7 | Mom catches you (BUSTED) |
+| F8 | Knock out every awake Inkie in the light (Baron Blot takes 40 per press) |
+| F9 | Finish this page (its end card, the Nightstand between acts) |
+| Page Up / Page Down | Jump to the next / previous page |
+| F10 | Unlock the Ghost lens and add 5 stars |
+| F11 | Slow motion (quarter speed) |
+| F12 | Room light on / off (the whole page awake) |
+
+In the editor, **Assets/Scripts/Game/Dev/PlaytestDriver.cs** also runs scripted playtests that check the game's
+rules and take screenshots.
+
 ## Run from source
 
 1. Install **Unity 6000.3.10f1** (Unity 6) with **WebGL Build Support**.
