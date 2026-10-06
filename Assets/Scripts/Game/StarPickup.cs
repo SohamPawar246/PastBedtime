@@ -37,6 +37,7 @@ public class StarPickup : MonoBehaviour
         {
             var gs = GameState.I;
             gs?.FindStar(Index);
+            GameHUD.I?.StarFound(transform.position);                   // it flies up into the counter
             SfxLettering.Spawn("TWINKLE!", (Vector2)transform.position + Vector2.up, Palette.Yellow, 0.8f);
             GameAudio.Play("star", 0.7f);
             Destroy(gameObject);

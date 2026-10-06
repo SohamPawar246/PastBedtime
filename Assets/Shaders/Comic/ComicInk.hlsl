@@ -132,6 +132,7 @@ float _PB_GameLight;
 float4 _PB_WedgeA;    // Mom's door wedge on the page: xy p0, zw p1
 float4 _PB_WedgeB;    //                                 xy p2, zw p3
 float _PB_WedgeOn;
+float _PB_Impact;     // 1 for an impact frame: what's lit prints as a negative for a moment (ComicFx.cs)
 
 float PB_EdgeSide(float2 a, float2 b, float2 p)
 {
@@ -168,6 +169,11 @@ half3 PB_Grade(half3 col, float3 posWS)
     float rim = r > 0.001 ? smoothstep(r - f * 1.8, r - f * 0.6, d) * (1.0 - smoothstep(r - f * 0.6, r, d)) : 0.0;
     read += rim * (1.0 - _PB_Wake) * half3(0.2, 0.11, 0.0) * lum;
     read = lerp(read, read * half3(1.0, 0.8, 0.5), wedge * (1.0 - beam * 0.6) * 0.75);   // the hallway's amber
+    // the impact frame: the lit page flips to a negative (paper goes to ink, ink to paper), the way manga
+    // punctuates a blow; the dark around it stays dark, so the frame darkens rather than flashes
+    float tone = dot(read, half3(0.299, 0.587, 0.114));
+    half3 negative = lerp(half3(0.957, 0.945, 0.918), half3(0.035, 0.035, 0.045), saturate((tone - 0.06) / 0.86));
+    read = lerp(read, negative, _PB_Impact);
     return lerp(night, read, lit);
 }
 

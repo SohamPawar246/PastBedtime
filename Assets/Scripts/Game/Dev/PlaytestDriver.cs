@@ -86,6 +86,8 @@ public class PlaytestDriver : MonoBehaviour
             var h = HeroController.I != null ? HeroController.I.GetComponent<Health>() : null;
             if (h != null) { h.hp = h.maxHp; h.Invulnerable = 0f; }
             if (GameState.I != null) GameState.I.Slippers = 3;
+            // a flare at the end of the last one (basics ends on one) leaves the bulb cooling: start in the light
+            for (float t = 0f; t < 4f && TorchController.I != null && TorchController.I.Charge.Dead; t += Time.unscaledDeltaTime) yield return null;
             yield return Scenario(one.Trim());
         }
         GameInput.Virtual = null;
@@ -129,6 +131,8 @@ public class PlaytestDriver : MonoBehaviour
             case "momtutorial": yield return MomTutorialTest(); break;
             case "ghostlesson": yield return GhostLessonTest(); break;
             case "starcaptions": yield return StarsCaptionTest(); break;
+            case "polish": yield return PolishTest(); break;
+            case "blotdark": yield return BlotDarkTest(); break;
         }
     }
 
@@ -468,6 +472,359 @@ public class PlaytestDriver : MonoBehaviour
         TorchController.I.AimOverride = door.rect.min + new Vector2(6.9f, 7.8f);
         yield return Wait(1.2f);
         DevCapture.Shot("stars_page6_door");
+        _followHero = true;
+    }
+
+    // the polish of 5 Oct: the hang-and-drop jump (same reach), squash and dust, impact frames, a knockout flung
+    // off the panel, leaning lettering, combo pitch, the hurt flash and blink with the hearts popping, the marks of
+    // waking and freezing, the crank's tick and pulse, Mom's vignette, the star fly-in, and the Splash Page
+    private IEnumerator PolishTest()
+    {
+        var hero = HeroController.I;
+        var torch = TorchController.I;
+        var pm = PageManager.I;
+        var gs = GameState.I;
+        var hh = hero.GetComponent<Health>();
+        bool flashing = Settings.ReduceFlashing, shake = Settings.ScreenShake;
+        Settings.ReduceFlashing = false;
+        Settings.ScreenShake = true;
+        var pitched = typeof(AudioDirector).GetField("_pitched", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        string Pitches()
+        {
+            var set = pitched?.GetValue(AudioDirector.I) as AudioSource[];
+            if (set == null) return "none";
+            string p = "";
+            foreach (var a in set) p += $"{a.pitch:0.00} ";
+            return p.Trim();
+        }
+
+        // 1. a running jump: the same reach and time in the air as the plain arc, the same apex, squashed on landing
+        // (page 1, tier 2's first panel: one long roof, nothing overhead)
+        Settings.SetStarsFound(1, 0);                                    // its star drawn (OnDestroy puts the save back)
+        pm.Load(1);
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        MomDirector.I.Schedule(ScriptableObject.CreateInstance<PageDef>());
+        pm.GoToTier(1);
+        var pl = pm.Layout.tiers[1].panels[0];
+        foreach (var e in pl.enemies.ToArray()) if (e != null) { pm.EnemyDown(e); Destroy(e.gameObject); }
+        float floor = pl.rect.yMin + 2.5f;
+        hero.Teleport(new Vector2(pl.rect.xMin + 1f, floor + 0.1f));
+        hh.Invulnerable = 0f;
+        yield return Wait(0.4f);
+        var model = hero.transform.GetChild(0);
+        float baseY = model.localScale.y;
+        _pad.moveX = 1f;
+        yield return Wait(0.35f);
+        _pad.jump = true;
+        _pad.jumpHeld = true;
+        float x0 = hero.transform.position.x, top = 0f, air = 0f, stretch = 1f;
+        bool off = false;
+        for (float t = 0f; t < 2f; t += Time.deltaTime)
+        {
+            yield return null;
+            if (!off && !hero.Grounded) { off = true; x0 = hero.transform.position.x; air = 0f; }
+            if (off) air += Time.deltaTime;
+            stretch = Mathf.Max(stretch, model.localScale.y / baseY);
+            top = Mathf.Max(top, hero.transform.position.y - floor);
+            if (off && hero.Grounded) break;
+        }
+        float reach = hero.transform.position.x - x0, squash = 1f;
+        for (int i = 0; i < 4; i++) { squash = Mathf.Min(squash, model.localScale.y / baseY); yield return null; }
+        _pad.moveX = 0f;
+        _pad.jumpHeld = false;
+        Log($"running jump: reach {reach:0.00} in {air:0.00} s, apex {top:0.00}, stretched to {stretch:0.00}, squashed to {squash:0.00} (expect about 6.4, about 0.92, 3.2, > 1.05, < 0.92)");
+        yield return Wait(0.4f);
+
+        // 2. a long drop kicks up dust
+        hero.Teleport(new Vector2(pl.rect.xMin + 5f, floor + 5f));
+        bool dust = false;
+        for (float t = 0f; t < 1.5f && !dust; t += Time.deltaTime)
+        {
+            yield return null;
+            dust = GameObject.Find("DustPuff") != null;
+        }
+        for (int i = 0; i < 4; i++) yield return null;
+        DevCapture.Shot("polish_dust");
+        Log($"a 5-unit drop: dust puff {dust} (expect True)");
+        yield return Wait(0.5f);
+
+        // 3. J, J, J on a Smudge near the panel's right edge: an impact frame on the haymaker that knocks it out,
+        //    the words leaning right, the combo climbing, and the body flung off over the border toward the reader
+        hero.Teleport(new Vector2(pl.rect.xMax - 3.3f, floor + 0.1f));
+        hero.Face(1f);
+        hh.Invulnerable = 300f;                                          // this is about his blows, not its
+        var smudge = PageBuilder.Spawn(EnemyKind.Smudge, new Vector2(pl.rect.xMax - 2f, floor + 0.1f), pl, pm.transform);
+        _followHero = false;
+        torch.AimOverride = new Vector2(pl.rect.xMax - 2.5f, floor + 1.2f);
+        yield return Wait(0.8f);
+        int impacts0 = ComicFx.ImpactFrames;
+        bool sawNegative = false, sawFlying = false, crossed = false;
+        float minZ = 0f, leanSum = 0f;
+        int leaned = 0;
+        string pitchAfterCross = "";
+        for (float t = 0f; t < 3f; t += Time.unscaledDeltaTime)
+        {
+            if (t < 0.7f && Mathf.Repeat(t, 0.15f) < Time.unscaledDeltaTime) _pad.punch = true;
+            yield return null;
+            if (!sawNegative && Shader.GetGlobalFloat("_PB_Impact") > 0.5f) { sawNegative = true; yield return null; DevCapture.Shot("polish_impact"); }
+            foreach (var w in FindObjectsByType<TMPro.TextMeshPro>(FindObjectsSortMode.None))
+                if ((w.name == "SFX POW!" || w.name == "SFX BIFF!") && w.alpha > 0.5f) { leanSum += Mathf.DeltaAngle(0f, w.transform.eulerAngles.z); leaned++; }
+            if (pitchAfterCross == "" && gs.Combo >= 2) pitchAfterCross = Pitches();
+            if (smudge != null && smudge.Health.Dead)
+            {
+                minZ = Mathf.Min(minZ, smudge.transform.position.z);
+                if (smudge.transform.position.z < -2.6f && !sawFlying) { sawFlying = true; yield return null; DevCapture.Shot("polish_fling"); }
+                if (smudge.transform.position.x > pl.rect.xMax) crossed = true;
+            }
+        }
+        Log($"haymaker knockout: impact frames {ComicFx.ImpactFrames - impacts0} (seen {sawNegative}), words leaning {(leaned > 0 ? leanSum / leaned : 0f):0} deg, pitches after the cross {pitchAfterCross} (expect 1, True, < 0 (leaning right), one above 1.0)");
+        Log($"the body: flew toward the reader to z {minZ:0.0}, over the panel's border {crossed}, gone {smudge == null} (expect about -3.3, True, True)");
+        _followHero = true;
+
+        // 4. hurt: a red flash, a blink through the i-frames, a heart popping out of the box
+        foreach (var e in pl.enemies.ToArray()) if (e != null) { pm.EnemyDown(e); Destroy(e.gameObject); }
+        hh.hp = hh.maxHp;
+        hh.Invulnerable = 0f;
+        hero.Teleport(new Vector2(pl.rect.xMin + 6f, floor + 0.1f));
+        yield return Wait(0.4f);
+        var skin = model.GetComponentsInChildren<Renderer>(true);
+        hh.Apply(new Hit { hearts = 1, knockback = new Vector2(-3f, 0f), stun = 0.3f, team = Team.Inkie });
+        yield return null;
+        bool flashed = skin.Length > 0 && skin[0].HasPropertyBlock();
+        var lostHeart = GameObject.Find("Heart4");
+        float heartScale = lostHeart != null ? lostHeart.transform.localScale.x : 0f;
+        yield return null;                                               // (the page shows the frame before)
+        DevCapture.Shot("polish_hurt");
+        int hiddenFrames = 0, frames = 0;
+        for (float t = 0f; t < 1.2f; t += Time.deltaTime)
+        {
+            yield return null;
+            frames++;
+            if (skin.Length > 0 && !skin[0].enabled) hiddenFrames++;
+        }
+        Log($"hurt: flashed {flashed}, blinked {hiddenFrames}/{frames} frames, visible after {(skin.Length > 0 && skin[0].enabled)}, the lost heart popped to {heartScale:0.00} (expect True, about a third, True, > 1.2)");
+
+        // 5. waking and freezing: a Smudge in the dark, lit (drops, a stretch, a snap), then left (a flatten, a tick);
+        //    three switched off at once by the torch: no sound of their own (the torch clicks)
+        foreach (var e in pl.enemies.ToArray()) if (e != null) { pm.EnemyDown(e); Destroy(e.gameObject); }
+        hero.Teleport(new Vector2(pl.rect.xMin + 1.5f, floor + 0.1f));
+        _followHero = false;
+        torch.AimOverride = new Vector2(pl.rect.xMin + 1.5f, floor + 1f);
+        var dark = PageBuilder.Spawn(EnemyKind.Smudge, new Vector2(pl.rect.xMin + 8f, floor + 0.1f), pl, pm.transform);
+        yield return Wait(1.2f);
+        int cues0 = ComicFx.Cues;
+        torch.AimOverride = new Vector2(pl.rect.xMin + 8f, floor + 1f);
+        bool drops = false;
+        float grown = 1f;
+        var darkModel = dark.transform.GetChild(0);
+        for (float t = 0f; t < 0.5f; t += Time.deltaTime)
+        {
+            yield return null;
+            drops |= GameObject.Find("InkDrops") != null;
+            grown = Mathf.Max(grown, darkModel.localScale.y);
+            if (drops && t > 0.08f && !_shotWake) { _shotWake = true; DevCapture.Shot("polish_wake"); }
+        }
+        int wakeCues = ComicFx.Cues - cues0;
+        torch.AimOverride = new Vector2(pl.rect.xMin + 1.5f, floor + 1f);
+        float flat = 1f;
+        bool greyed = false;
+        var darkSkin = darkModel.GetComponentsInChildren<Renderer>(true);
+        for (float t = 0f; t < 0.5f; t += Time.deltaTime)
+        {
+            yield return null;
+            flat = Mathf.Min(flat, darkModel.localScale.y);
+            greyed |= darkSkin.Length > 0 && darkSkin[0].HasPropertyBlock();
+        }
+        int freezeCues = ComicFx.Cues - cues0 - wakeCues;
+        Log($"a Smudge lit: ink drops {drops}, stretched to {grown:0.00}, cues {wakeCues}; left in the dark: flattened to {flat:0.00}, greyed {greyed}, cues {freezeCues}, scale after {darkModel.localScale.y:0.00} (expect True, > 1.03, 1, < 0.95, True, 1, 1.00)");
+        var crowd = new System.Collections.Generic.List<EnemyBrain>();
+        for (int i = 0; i < 3; i++) crowd.Add(PageBuilder.Spawn(EnemyKind.Smudge, new Vector2(pl.rect.xMin + 3f + i * 1.3f, floor + 0.1f), pl, pm.transform));
+        torch.AimOverride = new Vector2(pl.rect.xMin + 4.3f, floor + 1f);
+        hh.Invulnerable = 5f;
+        yield return Wait(1.2f);
+        int cues1 = ComicFx.Cues;
+        torch.SetOn(false);
+        yield return Wait(0.4f);
+        int offCues = ComicFx.Cues - cues1;
+        torch.SetOn(true);
+        yield return Wait(0.4f);
+        Log($"three Smudges, the torch switched off and on: their own cues {offCues} then {ComicFx.Cues - cues1 - offCues} (expect 0, 0)");
+        foreach (var e in pl.enemies.ToArray()) if (e != null) { pm.EnemyDown(e); Destroy(e.gameObject); }
+        _followHero = true;
+
+        // 6. the crank: each notch pulses the light; past full the ratchet climbs
+        var c = torch.Charge;
+        c.ApplyUpgrades(0, 0, 0);
+        c.Charge = c.Capacity;
+        yield return Wait(0.3f);
+        _pad.twists = 1;
+        yield return null;
+        yield return null;
+        float pulse = (float)(typeof(TorchController).GetField("_pulse", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(torch) ?? -1f);
+        string p1 = Pitches();
+        yield return Wait(0.25f);
+        _pad.twists = 1;
+        yield return null;
+        yield return null;
+        string p2 = Pitches();
+        Log($"overwinding: the notch's light pulse {pulse:0.00}; ratchet pitches after notch 1: {p1}, after notch 2: {p2} (expect > 0.5, the newest climbing above 1.1)");
+        yield return Wait(2.5f);
+        c.ApplyUpgrades(gs.Spring, gs.Gear, gs.Ratchet);
+
+        // 7. Mom on her way: the edges close in (never over her door), and lift as she goes
+        var mom = MomDirector.I;
+        var vignette = MomVignette.I;
+        torch.SetOn(false);
+        mom.VisitNow();
+        float peak = 0f, atFeet = 0f;
+        for (float t = 0f; t < 14f && mom.State != MomState.AtDoor; t += Time.deltaTime)
+        {
+            yield return null;
+            if (vignette != null) { peak = Mathf.Max(peak, vignette.Strength); if (mom.Feet > 0.5f && atFeet == 0f) atFeet = vignette.Strength; }
+        }
+        yield return Wait(0.6f);
+        DevCapture.Shot("polish_vignette");
+        float holeAlpha = -1f, cornerAlpha = -1f;
+        var tex = vignette != null ? vignette.GetComponent<UnityEngine.UI.RawImage>().texture as Texture2D : null;
+        if (tex != null && MomDoorView.I != null)
+        {
+            var door = MomDoorView.I.DoorOnScreen();
+            holeAlpha = tex.GetPixelBilinear(door.center.x / Screen.width, door.center.y / Screen.height).a;
+            cornerAlpha = tex.GetPixelBilinear(0.99f, 0.01f).a;
+        }
+        float atDoor = vignette != null ? vignette.Strength : -1f;
+        for (float t = 0f; t < 12f && mom.State != MomState.Asleep; t += Time.deltaTime) yield return null;
+        yield return Wait(1.2f);
+        Log($"Mom coming: vignette {atFeet:0.00} half way, {atDoor:0.00} at the door; texture at her door {holeAlpha:0.00}, in a corner {cornerAlpha:0.00}; after she's gone {(vignette != null ? vignette.Strength : -1f):0.00} (expect > 0.2, about 0.55, 0.00, > 0.8, 0.00)");
+        torch.SetOn(true);
+
+        // 8. a star flies up into the counter, which only counts it as it lands
+        StarPickup star = null;
+        foreach (var s in pl.root.GetComponentsInChildren<StarPickup>()) { star = s; break; }
+        var stars = GameObject.Find("Stars")?.GetComponent<TMPro.TMP_Text>();
+        if (star != null && stars != null)
+        {
+            string before = stars.text;
+            hero.Teleport((Vector2)star.transform.position - new Vector2(0f, 0.9f));
+            torch.AimOverride = star.transform.position;
+            bool flying = false;
+            string during = "";
+            for (float t = 0f; t < 0.4f; t += Time.deltaTime)
+            {
+                yield return null;
+                if (!flying && GameObject.Find("FlyingStar") != null) { flying = true; during = stars.text; }
+                if (flying && t > 0.2f && !_shotStar) { _shotStar = true; DevCapture.Shot("polish_starfly"); }
+            }
+            yield return WaitReal(0.5f);
+            Log($"a star picked up: flying {flying}; counter '{Plain(before)}' -> while flying '{Plain(during)}' -> landed '{Plain(stars.text)}' (expect True, unchanged while flying, then one more)");
+            torch.AimOverride = null;
+        }
+        else Log("no star on page 1's first panel");
+
+        // 9. the Splash Page: the borders blow off, the camera punches in, a giant KA-POW!, and it all comes back
+        pm.Load(5);
+        yield return Wait(0.5f);
+        while (hero.Locked) yield return null;
+        MomDirector.I.Schedule(ScriptableObject.CreateInstance<PageDef>());
+        var arena = pm.Layout.tiers[0].panels[0];
+        EnemyBrain target = null;
+        foreach (var e in arena.enemies) if (e != null && e is SmudgeBrain) { target = e; break; }
+        if (target == null) { Log("no Smudge on page 5's first panel"); }
+        else
+        {
+            hero.Teleport((Vector2)target.transform.position - new Vector2(1.6f, 0f));
+            hh.Invulnerable = 10f;
+            yield return Wait(0.6f);
+            Transform border = null;
+            foreach (Transform b in arena.root) if (b.name == "BorderTop") { border = b; break; }
+            Vector3 home = border != null ? border.position : Vector3.zero;
+            float baseSize = PageCamera.ViewWidth * PageCamera.TextureHeight / PageCamera.TextureWidth / 2f;
+            gs.AddSplash(100f);
+            int impacts1 = ComicFx.ImpactFrames;
+            _pad.splash = true;
+            yield return WaitReal(0.12f);
+            float moved = border != null ? Vector3.Distance(border.position, home) : -1f;
+            bool splashing = ComicFx.Splashing;
+            yield return WaitReal(0.2f);
+            float zoom = PageCamera.I.Cam.orthographicSize / baseSize;
+            bool title = false;
+            foreach (var w in FindObjectsByType<TMPro.TextMeshPro>(FindObjectsSortMode.None)) title |= w.name == "SFX KA-POW!" && w.transform.localScale.x > 0.9f;
+            DevCapture.Shot("polish_splash");
+            yield return WaitReal(1.2f);
+            float back = border != null ? Vector3.Distance(border.position, home) : -1f;
+            Log($"splash page: splashing {splashing}, a border blown {moved:0.0} off, the view at {zoom:0.00} of its size, title {title}, impact frames {ComicFx.ImpactFrames - impacts1}; after: border {back:0.00} from home, view {PageCamera.I.Cam.orthographicSize / baseSize:0.00}, splashing {ComicFx.Splashing} (expect True, > 1, about 0.8, True, 1; 0.00, 1.00, False)");
+        }
+
+        Settings.ReduceFlashing = flashing;
+        Settings.ScreenShake = shake;
+        torch.AimOverride = null;
+        _followHero = true;
+    }
+
+    private bool _shotWake, _shotStar;
+
+    private static string Plain(string rich) => System.Text.RegularExpressions.Regex.Replace(rich ?? "", "<.*?>", "");
+
+    // Blot's exits never wait on the torch (5 Oct: the page stuck on 6 when the beam left him as he dove into his
+    // pool; gone under, there was nothing to light and the door stayed locked). Beaten into a blink, the beam
+    // swung away: he still pops up across the room. Beaten into his getaway, the beam swung away: the page turns.
+    private IEnumerator BlotDarkTest()
+    {
+        var pm = PageManager.I;
+        var hero = HeroController.I;
+        pm.Load(6);
+        yield return Wait(0.3f);
+        while (hero.Locked) yield return null;
+        MomDirector.I.Schedule(ScriptableObject.CreateInstance<PageDef>());
+        hero.GetComponent<Health>().Invulnerable = 600f;
+        pm.GoToTier(1);
+        var office = pm.Layout.tiers[1].panels[0];
+        BlotBrain blot = null;
+        foreach (var e in office.enemies) if (e is BlotBrain b) blot = b;
+        if (blot == null) { Log("no Blot in the office"); yield break; }
+        hero.Teleport(new Vector2(blot.transform.position.x - 4f, office.rect.yMin + 2.6f));
+        _followHero = false;
+        var torch = TorchController.I;
+        Vector2 corner = new Vector2(office.rect.xMin + 1f, office.rect.yMax - 0.8f);   // a dark corner of the room
+        torch.AimOverride = (Vector2)blot.transform.position + Vector2.up * 1.2f;
+        yield return Wait(1.6f);
+        Log($"the office: blot hp {blot.Health.hp:0} of {BlotBrain.MaxHp:0} (expect {BlotBrain.MaxHp:0})");
+
+        // 1. a blink, and the beam away the moment he melts
+        var skin = blot.GetComponentInChildren<Renderer>(true);
+        for (int i = 0; i < 5 && skin.enabled; i++)
+        {
+            torch.AimOverride = (Vector2)blot.transform.position + Vector2.up * 1.2f;
+            blot.Health.Invulnerable = 0f;
+            blot.Health.Apply(new Hit { damage = 12f, team = Team.Hero, source = hero.gameObject });
+            yield return null;
+            yield return null;
+        }
+        bool melted = !skin.enabled;
+        Vector3 from = blot.transform.position;
+        torch.AimOverride = corner;
+        yield return Wait(1.4f);
+        Log($"blinked {melted}, the beam away: shown again {skin.enabled}, moved {Vector3.Distance(blot.transform.position, from):0.0}, lit {blot.Light.IsAwake} (expect True, True, > 2, False)");
+
+        // 2. the getaway, and the beam away the moment he starts to dive
+        for (float t = 0f; t < 12f && !blot.Escaping; t += 0.3f)
+        {
+            torch.AimOverride = (Vector2)blot.transform.position + Vector2.up * 1.2f;
+            blot.Health.Invulnerable = 0f;
+            blot.Health.Apply(new Hit { damage = 30f, team = Team.Hero, source = hero.gameObject, heavy = true });
+            yield return Wait(0.3f);
+        }
+        torch.AimOverride = corner;
+        float started = Time.time;
+        bool unlit = true;
+        for (float t = 0f; t < 16f && pm.Def != null && pm.Def.number == 6; t += Time.deltaTime)
+        {
+            yield return null;
+            if (Time.time - started > 0.3f && blot != null && blot.Light.IsAwake) unlit = false;   // (once the beam's swung off)
+        }
+        Log($"escaping at hp {(blot != null ? blot.Health.hp : -1f):0}, the beam off him all the while {unlit}: page {(pm.Def != null ? pm.Def.number : -1)} after {Time.time - started:0.0} s (expect True, 7)");
+        torch.AimOverride = null;
         _followHero = true;
     }
 
@@ -933,7 +1290,7 @@ public class PlaytestDriver : MonoBehaviour
         var vat = PageManager.I.Layout.tiers[1].panels[1];
         BlotBrain blot = null;
         foreach (var e in vat.enemies) if (e is BlotBrain b) blot = b;
-        Log($"the vat: blot {blot != null}, phase {(blot != null ? blot.Phase : 0)}, hp {(blot != null ? blot.Health.hp : 0):0} (expect True, 2, 75)");
+        Log($"the vat: blot {blot != null}, phase {(blot != null ? blot.Phase : 0)}, hp {(blot != null ? blot.Health.hp : 0):0} (expect True, 2, {BlotBrain.VatHp:0})");
         if (blot == null) yield break;
         PageManager.I.GoToTier(1);
         yield return Wait(0.5f);
@@ -956,7 +1313,7 @@ public class PlaytestDriver : MonoBehaviour
         _followHero = true;
     }
 
-    // Page 9: Blot's last 30 HP brings Mom and the room light; beating him plays the ending
+    // Page 9: Blot's last 60 HP brings Mom and the room light; beating him plays the ending
     // (the ending rolls the credits, which unloads the game: run this one last in a suite)
     private IEnumerator FinaleTest()
     {
@@ -967,7 +1324,7 @@ public class PlaytestDriver : MonoBehaviour
         var arena = PageManager.I.Layout.tiers[1].panels[0];
         BlotBrain blot = null;
         foreach (var e in arena.enemies) if (e is BlotBrain b) blot = b;
-        Log($"the roof: blot {blot != null}, phase {(blot != null ? blot.Phase : 0)}, hp {(blot != null ? blot.Health.hp : 0):0} (expect True, 3, 70)");
+        Log($"the roof: blot {blot != null}, phase {(blot != null ? blot.Phase : 0)}, hp {(blot != null ? blot.Health.hp : 0):0} (expect True, 3, {BlotBrain.RoofHp:0})");
         if (blot == null) yield break;
         // straight to the second tier, in front of him
         _pad.moveX = 0f;
@@ -1003,7 +1360,7 @@ public class PlaytestDriver : MonoBehaviour
         Log($"blot beaten: dead {blot.Health.Dead}, ending {Finale.I.Ended} (expect True, True)");
         // the twist, wordless: dark, the torch clicks on under her door, the crank, the music, the light running down
         // and wound straight back up, the iris
-        float[] at = { 2.5f, 5f, 8.5f, 11f, 14f, 15.2f, 17f, 19.5f, 22.2f, 23.8f, 26f, 28.4f };
+        float[] at = { 2.5f, 5f, 8.5f, 9.5f, 11f, 14f, 15.2f, 17f, 19.5f, 22.2f, 23.8f, 26f, 28.4f };   // (9.5: the comic's gone, the light's still on)
         float clock = 0f;
         foreach (float t in at)
         {
@@ -1504,11 +1861,11 @@ public class PlaytestDriver : MonoBehaviour
         _followHero = false;
         torch.AimOverride = (Vector2)blot.transform.position + new Vector2(-2f, 1.5f);
         yield return Wait(1f);
-        blot.Health.hp = 100f;
+        blot.Health.hp = BlotBrain.MaxHp * 2f / 3f;
         yield return Wait(0.8f);
         UnityEngine.UI.Image fill = null;
         foreach (var img in GameHUD.I.GetComponentsInChildren<UnityEngine.UI.Image>(true)) if (img.name == "Fill" && img.transform.parent.name == "Back") fill = img;
-        Log($"blot at 100/150: fill {(fill != null ? fill.fillAmount : -1f):0.00} with a sprite {fill != null && fill.sprite != null}, bar showing {fill != null && fill.gameObject.activeInHierarchy} (expect 0.67, True, True)");
+        Log($"blot at 2/3 of {BlotBrain.MaxHp:0}: fill {(fill != null ? fill.fillAmount : -1f):0.00} with a sprite {fill != null && fill.sprite != null}, bar showing {fill != null && fill.gameObject.activeInHierarchy} (expect 0.67, True, True)");
 
         // 8. BUSTED doesn't heal
         PageManager.I.Load(3);

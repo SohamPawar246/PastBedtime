@@ -6,15 +6,20 @@
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
     <title>{{{ PRODUCT_NAME }}}</title>
     <link rel="icon" href="data:,">
+    <link rel="preload" href="TemplateData/fonts/Bangers-Regular.ttf" as="font" type="font/ttf" crossorigin>
     <link rel="stylesheet" href="TemplateData/style.css">
   </head>
   <body>
     <!-- The game fills the frame it's given (itch.io's embed, or the whole window in fullscreen). -->
     <canvas id="unity-canvas" width={{{ WIDTH }}} height={{{ HEIGHT }}} tabindex="-1"></canvas>
 
+    <!-- While it loads: the comic's cover lettering, and an ink bar filling up on a strip of paper. -->
     <div id="pb-loading">
       <div id="pb-title">PAST BEDTIME</div>
-      <div id="pb-bar"><div id="pb-fill"></div></div>
+      <div id="pb-panel">
+        <div id="pb-bar"><div id="pb-fill"></div></div>
+        <div id="pb-percent">0%</div>
+      </div>
       <div id="pb-caption">2 A.M. &nbsp;OPENING THE COMIC&hellip;</div>
       <div id="pb-mobile">Best read with a mouse and keyboard.</div>
     </div>
@@ -23,6 +28,9 @@
     <script>
       var canvas = document.querySelector("#unity-canvas");
       var loading = document.querySelector("#pb-loading");
+      var fill = document.querySelector("#pb-fill");
+      var percent = document.querySelector("#pb-percent");
+      var caption = document.querySelector("#pb-caption");
 
       // Warnings come and go; an error stays, printed on the page instead of an alert box.
       function showBanner(msg, type) {
@@ -54,6 +62,30 @@
       var mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       if (mobile) document.querySelector("#pb-mobile").style.display = "block";
 
+      // The captions turn over as the comic loads, like panels being read.
+      var captions = [
+        [0.0, "2 A.M. &nbsp;OPENING THE COMIC&hellip;"],
+        [0.25, "WINDING THE TORCH&hellip;"],
+        [0.5, "INKING THE PANELS&hellip;"],
+        [0.75, "CHECKING MOM IS ASLEEP&hellip;"],
+        [1.0, "SHHH&hellip; HERE WE GO."]
+      ];
+      var shown = 0;
+      function setProgress(progress) {
+        var p = Math.max(0, Math.min(1, progress));
+        fill.style.width = (100 * p) + "%";
+        percent.textContent = Math.floor(100 * p) + "%";
+        var next = shown;
+        while (next + 1 < captions.length && p >= captions[next + 1][0]) next++;
+        if (next != shown) {
+          shown = next;
+          caption.classList.remove("pb-turn");
+          void caption.offsetWidth;                       // restart the little page-turn
+          caption.innerHTML = captions[shown][1];
+          caption.classList.add("pb-turn");
+        }
+      }
+
       var buildUrl = "Build";
       var config = {
         arguments: [],
@@ -80,10 +112,13 @@
       var script = document.createElement("script");
       script.src = buildUrl + "/{{{ LOADER_FILENAME }}}";
       script.onload = function () {
-        createUnityInstance(canvas, config, function (progress) {
-          document.querySelector("#pb-fill").style.width = (100 * progress) + "%";
-        }).then(function (unityInstance) {
-          loading.style.display = "none";
+        createUnityInstance(canvas, config, setProgress).then(function (unityInstance) {
+          setProgress(1);
+          // a beat on the last caption, then the paper lifts away
+          setTimeout(function () {
+            loading.classList.add("pb-done");
+            setTimeout(function () { loading.style.display = "none"; }, 450);
+          }, 250);
           canvas.focus();
         }).catch(function (message) {
           loading.style.display = "none";

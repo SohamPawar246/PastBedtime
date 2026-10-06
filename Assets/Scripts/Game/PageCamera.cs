@@ -5,7 +5,8 @@ using UnityEngine;
 /// The page camera (GDD sections 3 and 14): orthographic, it frames one tier of the comic and
 /// renders it into a texture that the page view shows (and, in the bedroom, the open comic).
 /// It follows Max sideways with a 4-unit dead zone; crossing to the next tier is a reading
-/// sweep, down and back to the left edge in 0.6 s. Heavy hits shake only this camera.
+/// sweep, down and back to the left edge in 0.6 s. Heavy hits shake only this camera, and the
+/// Splash Page punches it in on Max for a beat (<see cref="Punch"/>; neither with screen shake off).
 /// </summary>
 public class PageCamera : MonoBehaviour
 {
@@ -25,6 +26,10 @@ public class PageCamera : MonoBehaviour
     private float _x;
     private float _shake;
     private Vector2 _shakeOffset;
+    private float _baseSize;
+    // the punch-in: where, how far (the view's size times this), and its timing
+    private Vector2 _punchAt;
+    private float _punchZoom = 1f, _punchIn, _punchHold, _punchOut, _punchT = -1f, _punch;
 
     private void Awake()
     {
@@ -35,7 +40,7 @@ public class PageCamera : MonoBehaviour
         };
         Cam = gameObject.AddComponent<Camera>();
         Cam.orthographic = true;
-        Cam.orthographicSize = ViewWidth * TextureHeight / TextureWidth / 2f;
+        Cam.orthographicSize = _baseSize = ViewWidth * TextureHeight / TextureWidth / 2f;
         Cam.nearClipPlane = 0.1f;
         Cam.farClipPlane = 80f;
         Cam.clearFlags = CameraClearFlags.SolidColor;
@@ -97,6 +102,22 @@ public class PageCamera : MonoBehaviour
         I._shake = Mathf.Min(1f, Mathf.Max(I._shake, strength));
     }
 
+    /// <summary>A punch-in: the view closes in on `at` to `zoom` of its size (0.8 = 20% closer) over `inTime`,
+    /// holds, and eases back out. Real time, held by the Bookmark.</summary>
+    public static void Punch(Vector2 at, float zoom, float inTime, float hold, float outTime)
+    {
+        if (I == null || !Settings.ScreenShake) return;
+        I._punchAt = at;
+        I._punchZoom = zoom;
+        I._punchIn = Mathf.Max(0.01f, inTime);
+        I._punchHold = hold;
+        I._punchOut = Mathf.Max(0.01f, outTime);
+        I._punchT = 0f;
+    }
+
+    /// <summary>How far in the punch is right now (0 = none, 1 = all the way).</summary>
+    public float Punched => _punch;
+
     private void LateUpdate()
     {
         var hero = HeroController.I;
@@ -115,14 +136,26 @@ public class PageCamera : MonoBehaviour
             _shakeOffset = new Vector2(Random.Range(-a, a), Random.Range(-a, a));
         }
         else _shakeOffset = Vector2.zero;
+        if (_punchT >= 0f)
+        {
+            _punchT += BookmarkPause.UnpausedDelta;
+            float t = _punchT;
+            _punch = t < _punchIn ? Mathf.SmoothStep(0f, 1f, t / _punchIn)
+                   : t < _punchIn + _punchHold ? 1f
+                   : 1f - Mathf.SmoothStep(0f, 1f, (t - _punchIn - _punchHold) / _punchOut);
+            if (t >= _punchIn + _punchHold + _punchOut) { _punchT = -1f; _punch = 0f; }
+        }
         if (!Sweeping) Apply();
     }
 
     private void Apply()
     {
         // pull back along the view direction so the lane sits mid-frame despite the slight pitch
-        Vector3 focus = new Vector3(_x + _shakeOffset.x, _y + _shakeOffset.y, 0f);
+        Vector2 at = new Vector2(_x, _y);
+        if (_punch > 0f) at = Vector2.Lerp(at, _punchAt, _punch * 0.55f);       // in on the action, not all the way
+        Vector3 focus = new Vector3(at.x + _shakeOffset.x, at.y + _shakeOffset.y, 0f);
         transform.position = focus - transform.forward * 30f;
+        Cam.orthographicSize = _baseSize * Mathf.Lerp(1f, _punchZoom, _punch);
     }
 
     /// <summary>Viewport point (0..1) on the page texture to a point on the z = 0 lane.</summary>

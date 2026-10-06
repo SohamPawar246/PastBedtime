@@ -2,26 +2,33 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Baron Blot (GDD section 6), 150 HP over three pages, and too heavy to knock about: only a heavy
+/// Baron Blot (GDD section 6), 300 HP over three pages, and too heavy to knock about: only a heavy
 /// blow staggers him. He keeps his distance, sends ink waves rolling along the floor with a sweep
 /// of his cane (ink like everything else: they freeze in the dark), calls geysers up through the
 /// floor round Max ("WELL, WELL, WELL..."), lunges with the cane ("EN GARDE!": jump it or dodge
 /// through), and summons help. Pile on the damage and he melts into his ink and pops up across the
 /// room. Nobody leaves his panel while he's in it.
-///   Phase 1, the Office (page 6)  150 to 75: Smudges. Then he dives into his pool: "TO BE CONTINUED".
-///   Phase 2, the Vat (page 8)      75 to 40: he slips into invisible ink every few seconds (only his
+///   Phase 1, the Office (page 6)  300 to 150: Smudges. Then he dives into his pool: "TO BE CONTINUED".
+///   Phase 2, the Vat (page 8)     150 to 80: he slips into invisible ink every few seconds (only his
 ///                                  eyes and monocle show; the Ghost lens finds him); bats. Then up to the roof.
-///   Phase 3, the Roof (page 9)     70 to 0:  all of it, a Smudge and a Dot-Shot at a time; at 30 Mom
+///   Phase 3, the Roof (page 9)    140 to 0:  all of it, a Smudge and a Dot-Shot at a time; at 60 Mom
 ///                                  flips the room light on (<see cref="Finale"/>), and at 0 he's done.
+/// His exits, the blink and the getaway, run on the page's own time, not his clock: once he's melted
+/// into his ink there's nothing of him left to light, so they always finish (the page turns).
 /// </summary>
 public class BlotBrain : EnemyBrain
 {
-    public const float MaxHp = 150f, Speed = 1.8f, KeepAway = 6.5f;
-    public const float VisibleFor = 6f, HiddenFor = 5f, FinaleAt = 30f;
+    /// <summary>His health page by page: the office from full to 150, the vat from 150 to 80, the roof from 140
+    /// to nothing, with the room light on from 60.</summary>
+    public const float MaxHp = 300f, VatHp = 150f, RoofHp = 140f, FinaleAt = 60f;
+    public const float Speed = 1.8f, KeepAway = 6.5f;
+    public const float VisibleFor = 6f, HiddenFor = 5f;
     public const float ThrowLength = 1f, ThrowRelease = 0.54f;          // the clips' timings (24 fps)
     public const float SummonLength = 1.25f, SummonRelease = 0.71f, DiveLength = 1.5f;
 
     protected override float TurnYaw => 40f;                             // he plays to the reader
+    protected override bool Flings => false;                             // he makes his own exits
+    protected override bool ShowsWaking => false;
 
     public const float LungeWindup = 0.55f, LungeFor = 0.65f, LungeSpeed = 9f;
     /// <summary>This much damage in quick succession (it drains 8 a second) and he blinks away.</summary>
@@ -46,7 +53,7 @@ public class BlotBrain : EnemyBrain
     public int Phase { get; private set; } = 1;
     /// <summary>In invisible ink right now, and not found by the Ghost lens.</summary>
     public bool Hidden { get; private set; }
-    private float EscapeHp => Phase == 1 ? 75f : 40f;
+    private float EscapeHp => Phase == 1 ? 150f : 80f;
 
     protected override void Awake()
     {
@@ -54,7 +61,7 @@ public class BlotBrain : EnemyBrain
         int page = GameState.I != null ? GameState.I.Page : 6;
         Phase = page >= 9 ? 3 : page >= 8 ? 2 : 1;
         Health.maxHp = MaxHp;
-        Health.hp = Phase switch { 3 => 70f, 2 => 75f, _ => MaxHp };
+        Health.hp = Phase switch { 3 => RoofHp, 2 => VatHp, _ => MaxHp };
         _skin = GetComponentInChildren<SkinnedMeshRenderer>();
         if (_skin != null)
         {
@@ -74,9 +81,9 @@ public class BlotBrain : EnemyBrain
     {
         if (Hero != null && HeroInPanel) Hero.MaxX = Mathf.Min(Hero.MaxX, MaxX - 0.35f);   // the door's locked
         InvisibleInk(dt);
-        if (_escaping) { Escape(dt); return; }
+        if (_escaping) return;                                          // (his exits run on the page's time: LateUpdate)
         _hurtTally = Mathf.Max(0f, _hurtTally - 8f * dt);
-        if (_blinking) { Blink(dt); return; }
+        if (_blinking) return;
         if (_secondWave > 0f && (_secondWave -= dt) <= 0f) SecondWave();
 
         switch (Mode)
@@ -304,7 +311,18 @@ public class BlotBrain : EnemyBrain
             if (r.enabled) { r.enabled = false; _blinked.Add(r); }
     }
 
-    /// <summary>The blink runs on his clock: catch the puddle in the dark and he stays a puddle.</summary>
+    /// <summary>His exits run on the page's own time, not his clock, so they always finish: melted into his ink
+    /// (mid-blink, or gone under for good) there's nothing of him left to light, and a page waiting for a beam on
+    /// an empty spot would never turn (its door stays locked while he's in the room).</summary>
+    private void LateUpdate()
+    {
+        float dt = Time.deltaTime;                                       // still held by the Bookmark and a hit-stop
+        if (dt <= 0f || Mode == State.Dead) return;
+        if (_escaping) Escape(dt);
+        else if (_blinking) Blink(dt);
+    }
+
+    /// <summary>The blink: a puddle for a moment, then he pops up across the room.</summary>
     private void Blink(float dt)
     {
         Velocity = Vector2.zero;
@@ -498,10 +516,11 @@ public class BlotBrain : EnemyBrain
         SfxLettering.Spawn("CURSES!", (Vector2)transform.position + Vector2.up * 3.2f, Palette.Paper, 1.1f, burst: true);
     }
 
-    /// <summary>The dive runs on his clock too: catch him in the dark and he's stuck halfway in.</summary>
+    /// <summary>The getaway: he dives into his pool (GLORP!), and the page ends on its card.</summary>
     private void Escape(float dt)
     {
         _escapeFor += dt;
+        Velocity = Vector2.zero;                                        // gone under, his body doesn't sink on through the floor
         if (!_gone && _escapeFor >= DiveLength)
         {
             _gone = true;

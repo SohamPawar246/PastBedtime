@@ -8,7 +8,8 @@ using UnityEngine.UI;
 /// camera draws into the page texture, so it lies on the open comic and tilts with it. Max's
 /// hearts and the Splash meter in a caption box top-left, the stars top-right, the folio
 /// ("PAGE 1 / 9") bottom-centre, Max's speech bubbles, the dotted ring where the beam will land
-/// while the torch is off, and the cards ("TO BE CONTINUED...", "PAGE CLEARED"). The reader's
+/// while the torch is off, and the cards ("TO BE CONTINUED...", "PAGE CLEARED"). A heart that's
+/// lost pops and the box shakes; a star picked up flies up into the counter and bumps it. The reader's
 /// things are real objects in the room: the torch in Roshan's hand (<see cref="GameTorch"/>) and
 /// Mom's door (<see cref="MomDoorView"/>).
 /// </summary>
@@ -18,6 +19,14 @@ public class GameHUD : MonoBehaviour
 
     private RectTransform _page;
     private Image[] _hearts;
+    // hearts popping as they're lost (or won back), the box shaking; stars flying up into their counter
+    private float[] _heartPop;
+    private bool[] _heartLost;
+    private int _heartsShown = -1;
+    private RectTransform _heartsBox, _starsBox, _starIcon;
+    private Vector2 _heartsHome;
+    private float _heartsShake, _starsBump;
+    private int _starsInFlight;
     private Image _splashFill;
     private TextMeshProUGUI _splashHint, _stars, _folio;
     private Image _ring;
@@ -46,7 +55,11 @@ public class GameHUD : MonoBehaviour
         var box = UIKit.Panel(pageHolder, "HeartsBox", Vector2.zero, new Vector2(300f, 92f), Palette.Yellow, shadow: 5f, tilt: -1.5f);
         var boxRt = (RectTransform)box.transform.parent;
         Pin(boxRt, new Vector2(0f, 1f), new Vector2(24f, -12f));
+        _heartsBox = boxRt;
+        _heartsHome = boxRt.anchoredPosition;
         _hearts = new Image[GameState.MaxHearts];
+        _heartPop = new float[_hearts.Length];
+        _heartLost = new bool[_hearts.Length];
         for (int i = 0; i < _hearts.Length; i++)
         {
             _hearts[i] = UIKit.Image(box.transform, "Heart" + i, Palette.Ink, Heart);
@@ -64,9 +77,11 @@ public class GameHUD : MonoBehaviour
 
         // ---- stars: top-right caption ------------------------------------------------------
         var stars = UIKit.Panel(pageHolder, "StarsBox", Vector2.zero, new Vector2(190f, 56f), Palette.Yellow, shadow: 5f, tilt: 1.5f);
-        Pin((RectTransform)stars.transform.parent, new Vector2(1f, 1f), new Vector2(-24f, -12f));
+        _starsBox = (RectTransform)stars.transform.parent;
+        Pin(_starsBox, new Vector2(1f, 1f), new Vector2(-24f, -12f));
         var starIcon = UIKit.Image(stars.transform, "StarIcon", Palette.Ink, Star);
         UIKit.Place(starIcon.rectTransform, new Vector2(-62f, 1f), new Vector2(40f, 40f));
+        _starIcon = starIcon.rectTransform;
         _stars = UIKit.Text(stars.transform, "Stars", "", UIKit.Display, 30f, Palette.Ink);
         UIKit.Place(_stars.rectTransform, new Vector2(22f, 0f), new Vector2(140f, 48f));
 
@@ -170,18 +185,21 @@ public class GameHUD : MonoBehaviour
         TeachTick();
         var hero = HeroController.I;
         var gs = GameState.I;
-        if (hero != null)
-        {
-            var h = hero.GetComponent<Health>();
-            for (int i = 0; i < _hearts.Length; i++)
-                _hearts[i].color = i < Mathf.CeilToInt(h.hp) ? Palette.HeroRed : Palette.Ink.Alpha(0.25f);
-        }
+        if (hero != null) Hearts(hero.GetComponent<Health>());
         if (gs != null)
         {
             _splashFill.fillAmount = gs.Splash / 100f;
             _splashHint.text = gs.Splash >= 100f ? (gs.Page >= 5 ? Bindings.Format("PRESS {SPLASH}: SPLASH PAGE!") : "SPLASH METER FULL") : "";
-            _stars.text = $"{gs.StarsThisPage}/5  <size=70%>({gs.StarsTotal})</size>";
+            // a star still on its way up isn't counted until it lands in the box
+            int flying = Mathf.Min(_starsInFlight, gs.StarsThisPage);
+            _stars.text = $"{gs.StarsThisPage - flying}/5  <size=70%>({gs.StarsTotal - flying})</size>";
             _folio.text = $"PAGE {gs.Page} / {PageManager.LastPage}";
+        }
+        if (_starsBump > 0f)                                           // (only while it moves: the canvas rebuilds on a change)
+        {
+            _starsBump = Mathf.Max(0f, _starsBump - Time.unscaledDeltaTime / 0.28f);
+            float bump = _starsBump * _starsBump;
+            _starsBox.localScale = Vector3.one * (1f + 0.28f * bump);
         }
 
         var torch = TorchController.I;
@@ -219,6 +237,86 @@ public class GameHUD : MonoBehaviour
             }
             if (_bubbleFor <= 0f) _bubble.gameObject.SetActive(false);
         }
+    }
+
+    /// <summary>The hearts: red while he has them. One that's lost flashes white and pops as it empties, and the box
+    /// shakes; one won back pops in red.</summary>
+    private void Hearts(Health h)
+    {
+        int now = Mathf.Clamp(Mathf.CeilToInt(h.hp), 0, _hearts.Length);
+        if (_heartsShown >= 0 && now != _heartsShown)
+        {
+            for (int i = Mathf.Min(now, _heartsShown); i < Mathf.Max(now, _heartsShown); i++)
+            {
+                _heartPop[i] = 1f;
+                _heartLost[i] = now < _heartsShown;
+            }
+            if (now < _heartsShown) _heartsShake = 1f;
+        }
+        _heartsShown = now;
+        float dt = Time.unscaledDeltaTime;
+        for (int i = 0; i < _hearts.Length; i++)
+        {
+            Color c = i < now ? Palette.HeroRed : Palette.Ink.Alpha(0.25f);
+            float k = _heartPop[i];
+            if (k > 0f)
+            {
+                _heartPop[i] = Mathf.Max(0f, k - dt / (_heartLost[i] ? 0.4f : 0.3f));
+                if (_heartLost[i] && k > 0.82f) c = Palette.Paper;                // the flash of the blow
+                else if (_heartLost[i]) c = Color.Lerp(c, Palette.HeroRed, k * 0.8f);
+                // (only while it moves: the canvas rebuilds on a change)
+                float pop = _heartPop[i];
+                _hearts[i].rectTransform.localScale = Vector3.one * (1f + (_heartLost[i] ? 0.75f : 0.4f) * pop * pop);
+                _hearts[i].rectTransform.localRotation = Quaternion.Euler(0f, 0f, _heartLost[i] ? 18f * pop * Mathf.Sin(pop * 30f) : 0f);
+            }
+            _hearts[i].color = c;
+        }
+        if (_heartsShake > 0f)
+        {
+            _heartsShake = Mathf.Max(0f, _heartsShake - dt / 0.3f);
+            float a = 7f * _heartsShake * _heartsShake;
+            _heartsBox.anchoredPosition = _heartsHome + (_heartsShake > 0f ? new Vector2(Random.Range(-a, a), Random.Range(-a, a)) : Vector2.zero);
+        }
+    }
+
+    /// <summary>A star picked up at `lane` flies up into the stars box, which bumps as it lands (and only then counts it).</summary>
+    public void StarFound(Vector2 lane)
+    {
+        if (_page == null) return;
+        _starsInFlight++;
+        StartCoroutine(StarFlight(ToHolder(lane)));
+    }
+
+    private IEnumerator StarFlight(Vector2 from)
+    {
+        var fly = UIKit.Rect(_page, "FlyingStar");
+        fly.anchorMin = fly.anchorMax = new Vector2(0.5f, 0.5f);
+        fly.sizeDelta = new Vector2(46f, 46f);
+        var ink = UIKit.Image(fly, "Ink", Palette.Ink, Star);
+        UIKit.Stretch(ink.rectTransform, -5f);
+        var face = UIKit.Image(fly, "Face", Palette.Yellow, Star);
+        UIKit.Stretch(face.rectTransform);
+        ink.raycastTarget = face.raycastTarget = false;
+        int page = GameState.I != null ? GameState.I.Page : 0;
+        const float seconds = 0.55f;
+        for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime)
+        {
+            if (fly == null || (GameState.I != null && GameState.I.Page != page)) break;   // the page turned under it
+            float k = t / seconds;
+            Vector2 to = (Vector2)_page.InverseTransformPoint(_starIcon.position);
+            // up and over in an arc, quick off the page and easing into the box
+            float e = 1f - Mathf.Pow(1f - k, 2.2f);
+            Vector2 mid = Vector2.Lerp(from, to, 0.35f) + new Vector2(0f, 160f);
+            Vector2 p = Vector2.Lerp(Vector2.Lerp(from, mid, e), Vector2.Lerp(mid, to, e), e);
+            fly.anchoredPosition = p;
+            fly.localScale = Vector3.one * Mathf.Lerp(1.35f, 0.8f, e);
+            fly.localRotation = Quaternion.Euler(0f, 0f, -300f * e);
+            yield return null;
+        }
+        if (fly != null) Destroy(fly.gameObject);
+        _starsInFlight = Mathf.Max(0, _starsInFlight - 1);
+        _starsBump = 1f;
+        GameAudio.Play("ping", 0.28f, 0.03f, 1.35f);
     }
 
     /// <summary>A lane point to anchored coordinates in the page holder.</summary>
@@ -281,7 +379,11 @@ public class GameHUD : MonoBehaviour
         return true;
     }
 
-    public void PageStart(PageDef def) => StartCoroutine(TitleCard(def));
+    public void PageStart(PageDef def)
+    {
+        _starsInFlight = 0;                                            // a new page: nothing's still on its way up
+        StartCoroutine(TitleCard(def));
+    }
 
     private string _act;
 
@@ -409,7 +511,12 @@ public class GameHUD : MonoBehaviour
         Destroy(root.gameObject);
     }
 
-    public void SplashPage(int struck) => StartCoroutine(Card(struck > 0 ? "SPLASH PAGE!" : "...MISSED!", 0.8f));
+    /// <summary>The Splash Page: one that strikes anyone is its own splash (ComicFx); one that strikes nobody gets
+    /// a card saying so.</summary>
+    public void SplashPage(int struck)
+    {
+        if (struck == 0) StartCoroutine(Card("...MISSED!", 0.8f));
+    }
 
     private static Sprite _dots;
 

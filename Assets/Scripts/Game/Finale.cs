@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// The end of the comic (the proposal's Act 3 and its twist ending).
 ///
-///  Begin()     Baron Blot is down to his last 30 HP on the roof: Mom flings the door open and flips the
+///  Begin()     Baron Blot is down to his last 60 HP on the roof: Mom flings the door open and flips the
 ///              big light on. With the room lit the whole page is awake for 30 seconds, Blot, his ink
 ///              flood and all, while she watches from the doorway (and, line by line, starts rooting
 ///              for Max). Then she switches it off ("two more minutes") and it's the torch again.

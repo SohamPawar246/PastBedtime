@@ -39,12 +39,11 @@ Courier Prime by Alan Dague-Greene · SIL Open Font License 1.1
 
 
 # STUDIO LOGO
-Animated with KlingAI 3.0 (AI-generated, disclosed)
+Animated with KlingAI 3.0 (AI-generated)
 
 
 # TOOLS
 Unity 6 · Universal Render Pipeline
-Claude Code + Unity MCP (AI assistance, see AI_DISCLOSURE.md)
 
 
 # THANKS

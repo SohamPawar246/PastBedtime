@@ -4,9 +4,10 @@ using UnityEngine;
 
 /// <summary>
 /// SFX lettering in the comic world (GDD section 11): KAPOW, KRAK, WHIRR, SPRONG pop on
-/// impacts with a random tilt, a coloured fill and a black outline, sometimes on a burst.
-/// They live on the lane just in front of the actors, so the page camera prints them onto
-/// the page with everything else.
+/// impacts with a tilt, a coloured fill and a black outline, sometimes on a burst. A blow's word
+/// leans the way the blow sends its target; the blow that finishes one slams in big for a frame.
+/// They live just in front of the actors (and of a body knocked out toward the reader), so the
+/// page camera prints them onto the page with everything else.
 /// </summary>
 public class SfxLettering : MonoBehaviour
 {
@@ -17,18 +18,25 @@ public class SfxLettering : MonoBehaviour
 
     /// <summary>How long a word stays up (real time).</summary>
     private const float Life = 0.7f;
+    /// <summary>Lettering's depth: in front of the panel borders (-2.5) and of a body flung out toward the reader.</summary>
+    public const float Z = -4.5f;
 
     /// <param name="after">Seconds (real time) to wait first: a scream after the blow that caused it.</param>
-    public static void Spawn(string word, Vector2 lanePos, Color fill, float scale = 1f, bool burst = false, float after = 0f)
+    /// <param name="lean">The way the blow sends its target (-1 left .. 1 right): the word leans with it. 0: any tilt.</param>
+    /// <param name="finisher">The blow that finishes it (or a haymaker): the word slams in bigger for a frame.</param>
+    public static void Spawn(string word, Vector2 lanePos, Color fill, float scale = 1f, bool burst = false, float after = 0f,
+        float lean = 0f, bool finisher = false)
     {
         if (string.IsNullOrEmpty(word)) return;
         if (_i == null) _i = new GameObject("SfxLettering").AddComponent<SfxLettering>();
         if (after > 0f)
         {
-            _i.StartCoroutine(_i.Later(after, word, lanePos, fill, scale, burst));
+            _i.StartCoroutine(_i.Later(after, word, lanePos, fill, scale, burst, lean, finisher));
             return;
         }
-        float tilt = Random.Range(-14f, 14f);
+        if (finisher) scale *= 1.12f;
+        float tilt = Mathf.Abs(lean) > 0.05f ? -lean * Random.Range(9f, 17f) + Random.Range(-3f, 3f) : Random.Range(-14f, 14f);
+        lanePos.x += lean * 0.3f;                                        // and drifts a touch the way the blow went
         Vector2 half = Half(word, scale, burst, tilt);
         // one word per spot at a time: a crowd hit at once reads as one SPLASH!, not a pile of them
         float now = Time.unscaledTime;
@@ -37,7 +45,19 @@ public class SfxLettering : MonoBehaviour
             if (r.word == word && now - r.time < 0.35f && Overlaps(lanePos, half, r.pos, r.half)) return;
         lanePos = Place(lanePos, half);
         _live.Add((word, lanePos, half, now));
-        _i.StartCoroutine(_i.Pop(word, lanePos, fill, scale, burst, tilt));
+        _i.StartCoroutine(_i.Pop(word, lanePos, fill, scale, burst, tilt, Life, finisher));
+    }
+
+    /// <summary>A splash page's title: one giant word on a burst, slashed across the panel on a diagonal, held a
+    /// beat longer than a blow's word. Everything else steers clear of it while it's up.</summary>
+    public static void Title(string word, Vector2 lanePos, float scale, float seconds)
+    {
+        if (string.IsNullOrEmpty(word)) return;
+        if (_i == null) _i = new GameObject("SfxLettering").AddComponent<SfxLettering>();
+        const float tilt = 13f;
+        Vector2 half = Half(word, scale, true, tilt);
+        _live.Add((word, lanePos, half, Time.unscaledTime + seconds - Life));   // reserved for as long as it's up
+        _i.StartCoroutine(_i.Pop(word, lanePos, Palette.Yellow, scale, true, tilt, seconds, true));
     }
 
     /// <summary>A different word never prints over one that's still up, nor over Max's speech balloon: it goes
@@ -92,10 +112,10 @@ public class SfxLettering : MonoBehaviour
 
     private static readonly System.Collections.Generic.List<(string word, Vector2 pos, Vector2 half, float time)> _live = new();
 
-    private IEnumerator Later(float after, string word, Vector2 lanePos, Color fill, float scale, bool burst)
+    private IEnumerator Later(float after, string word, Vector2 lanePos, Color fill, float scale, bool burst, float lean, bool finisher)
     {
         yield return new WaitForSecondsRealtime(after);
-        Spawn(word, lanePos, fill, scale, burst);
+        Spawn(word, lanePos, fill, scale, burst, 0f, lean, finisher);
     }
 
     /// <summary>Half the size a word prints at on the lane, tilt included (Bangers is about 0.38 units a letter
@@ -135,11 +155,11 @@ public class SfxLettering : MonoBehaviour
         if (_mat != null) Destroy(_mat);
     }
 
-    private IEnumerator Pop(string word, Vector2 pos, Color fill, float scale, bool burst, float tilt)
+    private IEnumerator Pop(string word, Vector2 pos, Color fill, float scale, bool burst, float tilt, float life, bool finisher)
     {
         var root = new GameObject("SFX " + word);
         root.layer = _layer;
-        root.transform.position = new Vector3(pos.x, pos.y, -3f);
+        root.transform.position = new Vector3(pos.x, pos.y, Z);
         root.transform.rotation = Quaternion.Euler(0f, 0f, tilt);
 
         if (burst)
@@ -169,13 +189,17 @@ public class SfxLettering : MonoBehaviour
         t.rectTransform.sizeDelta = new Vector2(20f, 4f);
         t.sortingOrder = 50;
 
-        // pop: overshoot in, hold, puff out (real time: lettering is the reader's eye, not the comic's clock)
-        for (float a = 0f; a < Life; a += Time.unscaledDeltaTime)
+        // pop: overshoot in, hold, puff out (real time: lettering is the reader's eye, not the comic's clock). A
+        // finishing blow's word smashes in oversized for its first frames, then settles like any other.
+        int frame = 0;
+        for (float a = 0f; a < life; a += Time.unscaledDeltaTime, frame++)
         {
             float k = a / 0.14f;
             float s = a < 0.14f ? Mathf.LerpUnclamped(0.3f, 1f, 1f + 2.4f * Mathf.Pow(k - 1f, 3f) + 1.4f * Mathf.Pow(k - 1f, 2f)) : 1f + 0.06f * (a - 0.14f);
+            if (finisher && (frame < 2 || a < 0.035f)) s = 1.45f;
+            else if (finisher && a < 0.14f) s = Mathf.Max(s, Mathf.Lerp(1.3f, 1f, k));
             root.transform.localScale = Vector3.one * s;
-            float fade = a > Life - 0.18f ? (Life - a) / 0.18f : 1f;
+            float fade = a > life - 0.18f ? (life - a) / 0.18f : 1f;
             t.alpha = fade;
             yield return null;
         }

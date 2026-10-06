@@ -2,15 +2,17 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// A touch of manga in the printing: focus lines that burst round a heavy blow, and speed lines that
-/// trail a dash. Drawn on the page behind the figures, white with an ink edge so they read on the
-/// dark night sky and on pale paper alike, and gone in a moment. They're the artist's marks, not
-/// part of the world, so they run on real time (a hit-stop doesn't hold them).
+/// A touch of manga in the printing: focus lines that burst round a heavy blow, speed lines that
+/// trail a dash, a dust puff that rolls out from under a hard landing, and the drops of ink an
+/// Inkie shakes off as it wakes in the light. White with an ink edge (the drops are just ink) so
+/// they read on the dark night sky and on pale paper alike, and gone in a moment. They're the
+/// artist's marks, not part of the world, so they run on real time (a hit-stop doesn't hold them).
 /// </summary>
 public class MangaFx : MonoBehaviour
 {
-    private const float Z = 0.85f;
-    private enum Kind { Focus, Dash }
+    private const float Z = 0.85f;                  // lines: behind the figures
+    private const float FrontZ = -0.7f;             // dust and drops: in front of them
+    private enum Kind { Focus, Dash, Puff, Drops }
 
     private Kind _kind;
     private Vector2 _at;
@@ -24,6 +26,8 @@ public class MangaFx : MonoBehaviour
     private Line[] _lines;
 
     private struct Line { public float angle, inner, width, y, length; }
+    private struct Bit { public Vector2 p, v; public float r; }
+    private Bit[] _bits;
 
     /// <summary>Focus lines round a heavy hit, out to the edges of the panel it's in.</summary>
     public static void Focus(Vector2 at, float strength = 1f)
@@ -64,7 +68,41 @@ public class MangaFx : MonoBehaviour
             };
     }
 
-    private static MangaFx Make(string name, Kind kind, float life)
+    /// <summary>A puff of dust rolling out both ways from under someone landing hard (strength about 0.6 to 1.4).</summary>
+    public static void Puff(Vector2 feet, float strength = 1f)
+    {
+        var fx = Make("DustPuff", Kind.Puff, 0.34f, FrontZ);
+        if (fx == null) return;
+        int each = strength > 1.1f ? 3 : 2;
+        fx._bits = new Bit[each * 2];
+        for (int i = 0; i < fx._bits.Length; i++)
+        {
+            float side = i < each ? -1f : 1f;
+            int k = i % each;
+            fx._bits[i] = new Bit
+            {
+                p = feet + new Vector2(side * (0.25f + 0.2f * k), 0.13f + 0.05f * k),
+                v = new Vector2(side * Random.Range(2.2f, 3.3f) * strength, Random.Range(0.3f, 0.9f)),
+                r = Random.Range(0.18f, 0.26f) * Mathf.Lerp(0.85f, 1.25f, Mathf.InverseLerp(0.6f, 1.4f, strength)),
+            };
+        }
+    }
+
+    /// <summary>Drops of ink flicked off an Inkie as it shakes itself awake in the light.</summary>
+    public static void Drops(Vector2 at)
+    {
+        var fx = Make("InkDrops", Kind.Drops, 0.36f, FrontZ);
+        if (fx == null) return;
+        fx._bits = new Bit[6];
+        for (int i = 0; i < fx._bits.Length; i++)
+        {
+            float a = Mathf.Lerp(15f, 165f, (i + Random.value) / fx._bits.Length) * Mathf.Deg2Rad;
+            var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+            fx._bits[i] = new Bit { p = at + dir * 0.4f, v = dir * Random.Range(2.6f, 4.4f), r = Random.Range(0.05f, 0.09f) };
+        }
+    }
+
+    private static MangaFx Make(string name, Kind kind, float life, float z = Z)
     {
         var A = GameAssets.I;
         if (A == null) return null;
@@ -72,8 +110,8 @@ public class MangaFx : MonoBehaviour
         var fx = go.AddComponent<MangaFx>();
         fx._kind = kind;
         fx._life = life;
-        fx._ink = Layer(go.transform, "Ink", A.border, Z + 0.01f);
-        fx._paper = Layer(go.transform, "Paper", A.window, Z);
+        fx._ink = Layer(go.transform, "Ink", A.border, z + 0.01f);
+        fx._paper = Layer(go.transform, "Paper", A.window, z);
         PageBuilder.SetLayer(go.transform);
         return fx;
     }
@@ -115,9 +153,57 @@ public class MangaFx : MonoBehaviour
         }
         _pv.Clear(); _iv.Clear(); _pt.Clear(); _it.Clear();
         if (_kind == Kind.Focus) BuildFocus(_t / _life);
-        else BuildDash();
+        else if (_kind == Kind.Dash) BuildDash();
+        else BuildBits(_t / _life, Time.unscaledDeltaTime);
         Apply(_paper, _pv, _pt);
         Apply(_ink, _iv, _it);
+    }
+
+    private void BuildBits(float k, float dt)
+    {
+        for (int i = 0; i < _bits.Length; i++)
+        {
+            var b = _bits[i];
+            if (_kind == Kind.Puff)
+            {
+                // little clouds rolling out along the ground, swelling then thinning away
+                b.v *= Mathf.Exp(-dt * 7f);
+                b.p += b.v * dt;
+                float size = b.r * (k < 0.25f ? Mathf.Lerp(0.5f, 1.15f, k / 0.25f) : Mathf.Lerp(1.15f, 0f, (k - 0.25f) / 0.75f));
+                if (size > 0.01f)
+                {
+                    Disc(_iv, _it, b.p, size + 0.035f);
+                    Disc(_pv, _pt, b.p, size);
+                }
+            }
+            else
+            {
+                // drops of ink arcing off and drying up
+                b.v.y -= 16f * dt;
+                b.p += b.v * dt;
+                float size = b.r * (1f - k * k);
+                if (size > 0.008f) Disc(_iv, _it, b.p, size);
+            }
+            _bits[i] = b;
+        }
+    }
+
+    private static void Disc(List<Vector3> v, List<int> t, Vector2 c, float r)
+    {
+        const int seg = 10;
+        int i0 = v.Count;
+        v.Add(c);
+        for (int i = 0; i < seg; i++)
+        {
+            float a = i * Mathf.PI * 2f / seg;
+            v.Add(c + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r);
+        }
+        for (int i = 0; i < seg; i++)
+        {
+            int a = i0 + 1 + i, b = i0 + 1 + (i + 1) % seg;
+            t.Add(i0); t.Add(a); t.Add(b);
+            t.Add(i0); t.Add(b); t.Add(a);                            // both faces, like the lines
+        }
     }
 
     private void BuildFocus(float k)

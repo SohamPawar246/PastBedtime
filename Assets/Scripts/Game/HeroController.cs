@@ -7,6 +7,9 @@ using UnityEngine;
 /// buffer, no double jump. A 3-unit dodge with 0.25 s of i-frames. He obeys the light like
 /// everything else: out of the beam he freezes, mid-jump he hangs, and everything resumes
 /// from exactly where it stopped.
+/// The feel: a jump hangs a moment at its peak and then drops quicker than it rose (the same time in
+/// the air as a plain arc, so every gap is as wide as it was drawn), he stretches into a jump and squashes
+/// into a hard landing (with a puff of dust), and a hit flashes him and blinks him through his i-frames.
 /// </summary>
 [RequireComponent(typeof(CharacterController), typeof(Lightable), typeof(Health))]
 public class HeroController : MonoBehaviour
@@ -15,6 +18,11 @@ public class HeroController : MonoBehaviour
 
     public const float RunSpeed = 7f, Gravity = 30f, JumpHigh = 3.2f, JumpLow = 1.8f;
     public const float Coyote = 0.1f, Buffer = 0.1f;
+    /// <summary>Past the peak: half gravity until he's falling at HangSpeed, then FallGravity times it. Tuned so a
+    /// full jump spends the same time coming down as a plain arc does (0.46 s), so its reach is unchanged.</summary>
+    public const float HangSpeed = 2f, HangGravity = 0.5f, FallGravity = 1.5f;
+    /// <summary>How long a hit blinks him (his i-frames).</summary>
+    public const float HurtBlink = 1f;
     public const float DodgeDistance = 3f, DodgeTime = 0.2f, DodgeIFrames = 0.25f, DodgeCooldown = 0.6f;
     /// <summary>How long Max keeps his guard up after fighting before he relaxes.</summary>
     public const float GuardHold = 1.5f;
@@ -48,6 +56,13 @@ public class HeroController : MonoBehaviour
     private readonly List<Collider> _gone = new();
     private bool _jumpCut = true;            // true when no jump is waiting to be cut short
     private float _yaw;
+    // the feel: squash and stretch (signed: + stretch, - squash) and its clock; the hurt flash and blink
+    private Vector3 _modelScale = Vector3.one;
+    private float _squash, _squashT = 1f;
+    private float _flash, _blink;
+    private Renderer[] _skin;
+    private MaterialPropertyBlock _block;
+    private static readonly int PaperId = Shader.PropertyToID("_PaperColor"), InkId = Shader.PropertyToID("_InkColor");
 
     private void Awake()
     {
@@ -61,6 +76,9 @@ public class HeroController : MonoBehaviour
         Clips = GetComponent<ClipPlayer>();
         _combat = GetComponent<HeroCombat>();
         _model = transform.childCount > 0 ? transform.GetChild(0) : transform;
+        _modelScale = _model.localScale;
+        _skin = _model != transform ? _model.GetComponentsInChildren<Renderer>(true) : new Renderer[0];
+        _block = new MaterialPropertyBlock();
         _yaw = -70f;
     }
 
@@ -117,11 +135,52 @@ public class HeroController : MonoBehaviour
     {
         _hurt = Mathf.Max(0.3f, hit.stun);
         Velocity = new Vector2(hit.knockback.x != 0f ? hit.knockback.x : -Facing * 4f, Mathf.Max(hit.knockback.y, 4f));
-        _health.Invulnerable = 1.0f;
+        _health.Invulnerable = HurtBlink;
         _combat?.Interrupt();
         Clips?.Play(_health.Dead ? "Death" : "Hurt", 0.05f, 1f, restart: true);
         GameEvents.Impact(hit.hearts >= 2 ? 0.6f : 0.3f);
         GameState.I?.Notify();
+        _flash = 0.07f;                                     // a red flash, then a blink through his i-frames
+        _blink = _health.Dead ? 0f : HurtBlink;
+    }
+
+    /// <summary>The hit's flash (printed red, his ink gone pale) and the blink after it, on his clock: frozen
+    /// mid-blink, he holds still and solid like everything else.</summary>
+    private void HurtLook(float dt)
+    {
+        bool flash = dt > 0f && _flash > 0f;
+        if (flash) _flash -= dt;
+        if (dt > 0f && _blink > 0f) _blink = Dead ? 0f : _blink - dt;
+        // on 70 ms, off 45: unmistakable, and never gone long enough to lose him; solid again for its last beat
+        bool hidden = dt > 0f && _blink > 0.12f && Mathf.Repeat(_blink, 0.115f) < 0.045f;
+        foreach (var r in _skin)
+        {
+            if (r == null) continue;
+            if (r.enabled == hidden) r.enabled = !hidden;
+            if (flash)
+            {
+                r.GetPropertyBlock(_block);
+                _block.SetColor(PaperId, Palette.HeroRed);
+                _block.SetColor(InkId, Palette.ComicPaper);
+                r.SetPropertyBlock(_block);
+            }
+            else if (r.HasPropertyBlock()) r.SetPropertyBlock(null);
+        }
+    }
+
+    /// <summary>Squash (a hard landing, negative) or stretch (taking off, positive), easing back over 0.14 s.</summary>
+    private void Squash(float amount)
+    {
+        _squash = amount;
+        _squashT = 0f;
+    }
+
+    private void Shape(float dt)
+    {
+        _squashT = Mathf.Min(1f, _squashT + dt / 0.14f);
+        float e = (1f - _squashT) * (1f - _squashT);
+        float y = 1f + _squash * e, xz = 1f - _squash * 0.55f * e;
+        if (_model != transform) _model.localScale = Vector3.Scale(_modelScale, new Vector3(xz, y, xz));
     }
 
     private void Update()
@@ -130,7 +189,9 @@ public class HeroController : MonoBehaviour
         bool hushed = Hushed;
         if (hushed) _health.Invulnerable = Mathf.Max(_health.Invulnerable, 0.2f);   // set before her light can wake him
         float dt = Light.Delta;
+        HurtLook(dt);
         if (dt <= 0f) return;                       // frozen: everything waits, velocity kept
+        Shape(dt);
 
         if (Dead)
         {
@@ -189,6 +250,7 @@ public class HeroController : MonoBehaviour
             _jumpCut = false;
             Grounded = false;
             Clips?.Play("JumpStart", 0.05f, 1f, restart: true);
+            Squash(0.11f);                                  // up onto his toes
         }
         if (!GameInput.JumpHeld && !_jumpCut && Velocity.y > 0f && !(_combat != null && _combat.Airborne))
         {
@@ -204,8 +266,11 @@ public class HeroController : MonoBehaviour
     private void Fall(float dt)
     {
         float vy = Velocity.y;
+        // past the peak: a hang, then a quicker drop (the same time in the air overall)
+        float g = Gravity;
+        if (!Grounded && !Dead && Velocity.y <= 0f) g *= Velocity.y > -HangSpeed ? HangGravity : FallGravity;
         // the dodge holds him to the floor, but a dash that runs off a ledge falls like anything else
-        if ((_dodge <= 0f || !Grounded) && !(_combat != null && _combat.OverridesGravity)) Velocity.y -= Gravity * dt;
+        if ((_dodge <= 0f || !Grounded) && !(_combat != null && _combat.OverridesGravity)) Velocity.y -= g * dt;
         if (Grounded && Velocity.y < 0f) Velocity.y = -2f;
         Velocity.y = Mathf.Max(Velocity.y, -24f);
         if (Grounded && vy < 0f) vy = Velocity.y;
@@ -225,9 +290,13 @@ public class HeroController : MonoBehaviour
         if ((flags & CollisionFlags.Sides) != 0 && _dodge <= 0f) Velocity.x *= 0.5f;
         if (Grounded && !was)
         {
-            _combat?.Landed();
             bool slam = _combat != null && _combat.Slamming;     // the slam has its own landing
+            _combat?.Landed();
             if (_airTime > 0.25f && !Dead && !slam) Clips?.Play("Land", 0.05f, 1.4f, restart: true);
+            // squashed into the landing as hard as he came down; a long drop (or the slam) kicks up dust
+            float impact = -vy;
+            if (_airTime > 0.12f && !Dead) Squash(-Mathf.Clamp(impact / 110f, 0.04f, slam ? 0.2f : 0.16f));
+            if (!Dead && (slam || impact > 18f)) MangaFx.Puff(transform.position, slam ? 1.4f : Mathf.Clamp(impact / 20f, 0.8f, 1.2f));
         }
         _airTime = Grounded ? 0f : _airTime + dt;
     }

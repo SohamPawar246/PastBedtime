@@ -65,6 +65,7 @@ public class GameDirector : MonoBehaviour
         new GameObject("Finale").AddComponent<Finale>();
         new GameObject("Music").AddComponent<GameMusic>();
         MomDoorView.Build(view.DoorLayer, view.Front);
+        MomVignette.Build(canvas.transform, view.Front);                // the room closes in as she comes
 
         // from the title: the cover swings open and the view zooms in (the page's title card waits
         // for it); otherwise straight in

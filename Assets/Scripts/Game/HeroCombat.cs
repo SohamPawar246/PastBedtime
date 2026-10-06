@@ -10,6 +10,9 @@ using UnityEngine;
 ///   S + Q in air Ground slam (10 within 2 units, stuns 1.5 s, KRAK)                       page 4
 ///   F            Splash Page (30 to every Inkie awake in the beam, when the meter is full) page 5
 /// Hits only land between two awake things; every landed hit feeds the Splash meter.
+/// The page answers the big ones: a haymaker, a knockout and the ground slam print an impact frame (the lit
+/// page as a negative for a moment), a blow's word leans the way it sends its target, a combo's blows ring
+/// higher as it climbs, and the Splash Page is a real splash page (<see cref="ComicFx.SplashPage"/>).
 /// </summary>
 [RequireComponent(typeof(HeroController))]
 public class HeroCombat : MonoBehaviour
@@ -187,8 +190,9 @@ public class HeroCombat : MonoBehaviour
             _hitbox.Begin(hit, new Vector2(0f, 0.6f), d.size);
             _hitbox.Tick(1f);
             _hitbox.End();
-            SfxLettering.Spawn("KRAK!", (Vector2)transform.position + new Vector2(0f, 2.5f), Palette.Yellow, 1.3f, burst: true);   // above the landing pose
+            SfxLettering.Spawn("KRAK!", (Vector2)transform.position + new Vector2(0f, 2.5f), Palette.Yellow, 1.3f, burst: true, finisher: true);   // above the landing pose
             MangaFx.Focus((Vector2)transform.position + Vector2.up * 0.8f, 1.3f);
+            ComicFx.ImpactFrame();
             GameEvents.Impact(0.7f);
             GameAudio.Play("slam", 0.9f);
         }
@@ -196,17 +200,26 @@ public class HeroCombat : MonoBehaviour
 
     private void OnLanded(Health target, Hit hit)
     {
-        GameState.I?.HeroLanded();
+        var gs = GameState.I;
+        gs?.HeroLanded();
         Vector2 at = (Vector2)target.transform.position + new Vector2(0f, 1.9f);
         // a blow on the Bruiser's armoured front: a dull grey CLANK! and the clank, no burst (go round behind him)
         bool clank = hit.word == "CLANK!";
+        bool knockout = target.Dead;
+        bool finisher = !clank && (knockout || _move == Move.Haymaker);
+        float lean = clank ? 0f : Mathf.Clamp(hit.knockback.x / 6f, -1f, 1f);       // the way the blow sends it
         if (_move != Move.GroundSlam)
-            SfxLettering.Spawn(hit.word ?? "POW!", at, clank ? Palette.PaperDim : Palette.Yellow, hit.heavy ? 1.25f : 0.9f, burst: hit.heavy && !clank);
+            SfxLettering.Spawn(hit.word ?? "POW!", at, clank ? Palette.PaperDim : Palette.Yellow, hit.heavy ? 1.25f : 0.9f,
+                burst: hit.heavy && !clank, lean: lean, finisher: finisher);
         if ((hit.heavy || _move == Move.Launcher) && _move != Move.GroundSlam && !clank)
             MangaFx.Focus(at - new Vector2(0f, 0.9f), hit.heavy ? 1.1f : 0.8f);
+        if (finisher) ComicFx.ImpactFrame();
         GameEvents.HitStop(hit.heavy && !clank ? 0.09f : 0.05f);
         GameEvents.Impact(hit.heavy && !clank ? 0.5f : 0.2f);
-        GameAudio.Play(clank ? "clank" : hit.heavy ? "punch_heavy" : "punch", 0.8f);
+        // each blow of a combo rings a little higher than the last
+        int combo = gs != null ? gs.Combo : 1;
+        float pitch = clank ? 1f : 1f + 0.045f * Mathf.Clamp(combo - 1, 0, 6);
+        GameAudio.Play(clank ? "clank" : hit.heavy ? "punch_heavy" : "punch", 0.8f, 0.03f, pitch);
         if (_move == Move.DiveKick)
         {
             _hero.Velocity = new Vector2(_hero.Facing * 3f, Mathf.Sqrt(2f * HeroController.Gravity * 2f));
@@ -214,23 +227,30 @@ public class HeroCombat : MonoBehaviour
         }
     }
 
-    /// <summary>The Splash Page super: 30 to every Inkie awake inside the beam (meter full, page 5 on).</summary>
+    /// <summary>The Splash Page super: 30 to every Inkie awake inside the beam (meter full, page 5 on). With
+    /// anyone struck it's a splash page: the borders blow off, the page punches in, one giant KA-POW!.</summary>
     private void TrySplashPage()
     {
         var gs = GameState.I;
-        if (gs == null || gs.Splash < 100f || PageNumber < 5 || LightField.I == null) return;
+        if (gs == null || gs.Splash < 100f || PageNumber < 5 || LightField.I == null || ComicFx.Splashing) return;
         gs.AddSplash(-100f);
         int struck = 0;
         foreach (var h in Health.All.ToArray())
         {
             if (h.team != Team.Inkie || h.Dead || !h.IsAwake) continue;
             if (!LightField.I.IsLit(h.transform.position + Vector3.up)) continue;
-            h.Apply(new Hit { damage = 30f, knockback = new Vector2(6f, 6f), stun = 1f, team = Team.Hero, source = gameObject, heavy = true, word = "KA-POW!" });
-            SfxLettering.Spawn("KA-POW!", (Vector2)h.transform.position + new Vector2(0f, 2f), Palette.Yellow, 1.4f, burst: true);
-            struck++;
+            float away = Mathf.Sign(h.transform.position.x - transform.position.x + 0.001f);
+            if (h.Apply(new Hit { damage = 30f, knockback = new Vector2(6f * away, 6f), stun = 1f, team = Team.Hero, source = gameObject, heavy = true, word = "KA-POW!" }))
+                struck++;
         }
         GameEvents.Impact(1f);
         MangaFx.Focus((Vector2)transform.position + Vector2.up * 1.1f, 1.5f);
+        if (struck > 0)
+        {
+            ComicFx.SplashPage(transform.position);
+            GameAudio.Play("slam", 1f, 0.02f);
+            GameAudio.Play("punch_heavy", 0.9f, 0.02f, 0.8f);
+        }
         GameHUD.I?.SplashPage(struck);
     }
 }

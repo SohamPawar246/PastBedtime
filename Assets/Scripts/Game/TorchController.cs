@@ -12,8 +12,9 @@ using UnityEngine;
 ///                          10-1%  2.5 units, flickering dropouts that freeze the page
 ///                             0%  off: everything freezes until you twist
 /// Each twist jolts the beam (a 0.5 unit wobble that settles in 0.3 s), dims it a little while
-/// you keep cranking and makes the bulb flicker like a real dynamo torch. All of it is pushed
-/// into the <see cref="LightField"/> each frame.
+/// you keep cranking and makes the bulb flicker like a real dynamo torch; each notch also pulses
+/// the light a touch, and the ratchet ticks louder and higher as the spring winds past full
+/// toward a flare. All of it is pushed into the <see cref="LightField"/> each frame.
 /// </summary>
 [DefaultExecutionOrder(-90)]
 public class TorchController : MonoBehaviour
@@ -40,6 +41,7 @@ public class TorchController : MonoBehaviour
     /// <summary>The dynamo's flicker while it's being wound (set by the hand, 1 = steady).</summary>
     [NonSerialized] public float CrankFlicker = 1f;
     private float _glow = 1f;
+    private float _pulse;                     // each notch's little surge of light, dying away
 
     private float _wobble;
     private Vector2 _wobbleDir;
@@ -62,7 +64,19 @@ public class TorchController : MonoBehaviour
         Charge.Twisted += overwind =>
         {
             Jolt();
-            GameAudio.Play("twist", overwind > 0 ? 0.7f : 0.5f, overwind > 0 ? 0.12f : 0.05f);   // the ratchet; past full it rattles
+            _pulse = 1f;
+            // the ratchet: it tightens on the last stretch to full, and past full each notch rattles louder and
+            // higher, the spring wound toward a flare
+            if (overwind > 0)
+            {
+                float tension = overwind / (float)Mathf.Max(1, Charge.OverwindBuffer);
+                GameAudio.Play("twist", Mathf.Lerp(0.66f, 1f, tension), 0.05f, 1.06f + 0.3f * tension);
+            }
+            else
+            {
+                float near = Mathf.InverseLerp(0.6f, 1f, Charge.Share);
+                GameAudio.Play("twist", Mathf.Lerp(0.45f, 0.58f, near), 0.05f, 1f + 0.05f * near);
+            }
         };
         Charge.Flared += OnFlare;
         Lenses.Swapped += _ => GameAudio.Play("lens", 0.6f, 0.03f);
@@ -192,8 +206,9 @@ public class TorchController : MonoBehaviour
         if (pick >= 0) Lenses.Pick(pick);
 
         // ---- aim: through the page, or gliding to Max -------------------------------------
+        // (it holds while the Splash Page punches the page camera in: the mouse would map to a moving page)
         if (AimOverride.HasValue) Aim = AimOverride.Value;
-        else if (GameInput.Pointer is Vector2 screen && PageView.ScreenToLane(screen, out var lane)) Aim = lane;
+        else if (!ComicFx.Splashing && GameInput.Pointer is Vector2 screen && PageView.ScreenToLane(screen, out var lane)) Aim = lane;
 
         var hero = HeroController.I;
         bool follow = GameInput.FollowHeld && hero != null;
@@ -251,7 +266,9 @@ public class TorchController : MonoBehaviour
         field.Dropout = dropout;
         field.Lens = Lenses.Current;
         _glow = Mathf.MoveTowards(_glow, twisting ? 0.85f : 1f, dt * 6f);
-        field.Brightness = _glow * CrankFlicker;
+        _pulse = Mathf.MoveTowards(_pulse, 0f, Time.unscaledDeltaTime / 0.14f);
+        float surge = Settings.ReduceFlashing ? 0f : 0.22f * _pulse * _pulse;
+        field.Brightness = _glow * CrankFlicker * (1f + surge);
         Buzz(live && !dropout, share);
         GhostLesson(dt);
     }

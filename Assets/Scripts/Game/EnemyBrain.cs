@@ -6,6 +6,9 @@ using UnityEngine;
 ///  - On waking, 0.3 s of "reorient" before acting, so re-entry is never an instant hit.
 ///  - Inkies can't cross gutters: each panel is its own arena.
 ///  - Attacks have friendly fire, and an Inkie frozen mid-swing keeps its hitbox armed.
+///  - Waking in the light it shakes the ink off (a few drops, a stretch, a soft snap); freezing out of it, it's
+///    pressed flat into the page for a moment and greys like drying ink (a paper tick).
+///  - Knocked out by Max, it's sent flying off the panel toward the reader, in front of the panel's border.
 /// Subclasses fill in <see cref="Think"/>.
 /// </summary>
 [RequireComponent(typeof(Lightable), typeof(Health))]
@@ -50,6 +53,20 @@ public abstract class EnemyBrain : MonoBehaviour
     private bool _melted;
     private float _lowest = -1e4f;
 
+    /// <summary>Knocked out by Max, the body flies off toward the reader (Blot makes his own exits).</summary>
+    protected virtual bool Flings => true;
+    /// <summary>The wake/freeze marks (Blot keeps his own business).</summary>
+    protected virtual bool ShowsWaking => true;
+    /// <summary>Where a flung body flies: in front of the panel borders (-2.5), behind the lettering.</summary>
+    public const float FlungZ = -3.3f;
+    private bool _flung, _flying;
+    private float _spin, _settle;
+    private Vector3 _modelScale = Vector3.one;
+    private float _bornAt, _markAt = -10f;
+    private Coroutine _mark;
+    private Renderer[] _skin;
+    private MaterialPropertyBlock _block;
+
     protected virtual void Awake()
     {
         Light = GetComponent<Lightable>();
@@ -64,6 +81,8 @@ public abstract class EnemyBrain : MonoBehaviour
         Attack = new Hitbox(gameObject, Team.Inkie);
         Attack.Landed += OnAttackLanded;
         _yaw = Facing > 0 ? -TurnYaw : TurnYaw;
+        _modelScale = Model.localScale;
+        Light.Changed += OnLightChanged;
     }
 
     protected virtual void Start()
@@ -71,6 +90,7 @@ public abstract class EnemyBrain : MonoBehaviour
         Clips?.Play("Idle", 0f);
         ApplyYaw(1f, snap: true);
         _lowest = transform.position.y - 12f;
+        _bornAt = Time.time;
     }
 
     private void Update()
@@ -82,6 +102,7 @@ public abstract class EnemyBrain : MonoBehaviour
         {
             _deadFor += dt;
             DeadTick(dt);
+            if (_flung) FlungDepth(dt);
             return;
         }
 
@@ -198,14 +219,28 @@ public abstract class EnemyBrain : MonoBehaviour
         if (Body != null) Body.enabled = false;
         foreach (var c in GetComponentsInChildren<Collider>()) c.enabled = false;
         PageManager.I?.EnemyDown(this);
+        EndMark();
+        // knocked out by Max: off the panel, spinning, toward the reader (on its own clock: out of the light it
+        // hangs where it is, like anything else)
+        if (Flings && hit.team == Team.Hero)
+        {
+            _flung = _flying = true;
+            float dir = Mathf.Abs(hit.knockback.x) > 0.1f ? Mathf.Sign(hit.knockback.x) : -Facing;
+            float power = hit.heavy ? 1f : 0.7f;
+            Velocity = new Vector2(dir * Mathf.Lerp(5f, 9f, power), Mathf.Lerp(5.5f, 8.5f, power));
+            _spin = -dir * Random.Range(420f, 620f);
+        }
     }
 
     /// <summary>After death: let the animation play out (on the Inkie's own clock), then melt away.</summary>
     protected virtual void DeadTick(float dt)
     {
-        if (!Flies && Body == null) { }
-        transform.position += (Vector3)(Velocity * dt);
-        Velocity = Vector2.MoveTowards(Velocity, Vector2.zero, 10f * dt);
+        if (_flying && dt > 0f) Fly(dt);                     // (a bat drops on its own: see SplotchBrain)
+        else if (!_flying)
+        {
+            transform.position += (Vector3)(Velocity * dt);
+            Velocity = Vector2.MoveTowards(Velocity, Vector2.zero, 10f * dt);
+        }
         if (_deadFor > 1.6f)
         {
             // the blow that did it printed its own word; the melt gets one of its own, a beat later at the puddle
@@ -215,16 +250,139 @@ public abstract class EnemyBrain : MonoBehaviour
                 SfxLettering.Spawn("SPLOOSH!", (Vector2)transform.position + Vector2.up * 0.8f, Palette.Paper, 0.85f);
             }
             float k = Mathf.Clamp01((_deadFor - 1.6f) / 0.5f);
-            Model.localScale = Vector3.one * (1f - k);
+            Model.localScale = _modelScale * (1f - k);
             if (k >= 1f) Destroy(gameObject);
         }
+    }
+
+    // ---- knocked out: the flight ----------------------------------------------------------------------------
+
+    private void Fly(float dt)
+    {
+        var p = transform.position;
+        // in small steps, so a long frame (a hitch) traces the same arc instead of cutting it short
+        for (float left = dt; left > 1e-5f && _flying; left -= 0.02f)
+        {
+            float h = Mathf.Min(0.02f, left);
+            Velocity.y -= Gravity * h;
+            Vector2 step = Velocity * h;
+            // it lands on whatever floor it comes down on (its own colliders are off: it's a body now)
+            if (Velocity.y < 0f && FloorBelow(p, -step.y, out float floor))
+            {
+                p.y = floor;
+                p.x += step.x;
+                Velocity = new Vector2(Velocity.x * 0.35f, 0f);
+                _flying = false;
+                _settle = 0f;
+                GameAudio.Play("splat", 0.35f, 0.08f);
+            }
+            else
+            {
+                p.x += step.x;
+                p.y += step.y;
+            }
+        }
+        transform.position = p;
+        if (_flying) Model.Rotate(0f, 0f, _spin * dt, Space.World);
+    }
+
+    /// <summary>Flying, the body comes off the page toward the reader; landed, it lies back down in the panel.</summary>
+    private void FlungDepth(float dt)
+    {
+        var p = transform.position;
+        p.z = Mathf.MoveTowards(p.z, _flying ? FlungZ : 0f, dt * (_flying ? 16f : 9f));
+        transform.position = p;
+        if (!_flying && _settle < 1f)
+        {
+            _settle = Mathf.Min(1f, _settle + dt / 0.15f);
+            var upright = Quaternion.Euler(0f, _yaw, 0f);
+            Model.localRotation = Quaternion.Slerp(Model.localRotation, upright, _settle);
+        }
+    }
+
+    private bool FloorBelow(Vector3 p, float drop, out float floor)
+    {
+        floor = 0f;
+        Vector3 from = new Vector3(p.x, p.y + 0.5f, 0f);
+        int n = Physics.RaycastNonAlloc(from, Vector3.down, _probe, 0.5f + Mathf.Max(0f, drop) + 0.02f, ~0, QueryTriggerInteraction.Ignore);
+        float best = float.MaxValue;
+        for (int i = 0; i < n; i++)
+        {
+            var c = _probe[i].collider;
+            if (c.transform.IsChildOf(transform) || c.GetComponentInParent<Health>() != null) continue;   // bodies aren't floors
+            if (_probe[i].distance < best) { best = _probe[i].distance; floor = _probe[i].point.y; }
+        }
+        return best < float.MaxValue;
+    }
+
+    // ---- waking and freezing, made readable -----------------------------------------------------------------
+
+    private void OnLightChanged(bool awake)
+    {
+        if (!ShowsWaking || Mode == State.Dead || Time.time - _bornAt < 0.5f) return;   // not the page drawing itself in
+        if (PageManager.I != null && PageManager.I.Busy) return;
+        float now = Time.unscaledTime;
+        if (now - _markAt < 0.3f) return;                          // the beam's edge flickering over it: once is enough
+        _markAt = now;
+        ComicFx.InkCue(awake);
+        if (awake) MangaFx.Drops((Vector2)transform.position + Vector2.up * (BodyRadius + 0.7f));
+        EndMark();
+        _mark = StartCoroutine(Mark(awake));
+    }
+
+    /// <summary>Waking: a little stretch as it shakes the ink off. Freezing: pressed flat into the page, greying
+    /// like drying ink, then back to itself (the statue it's now is the drawing, not a squashed one).</summary>
+    private System.Collections.IEnumerator Mark(bool awake)
+    {
+        if (_skin == null) _skin = Model.GetComponentsInChildren<Renderer>(true);
+        _block ??= new MaterialPropertyBlock();
+        float length = awake ? 0.16f : 0.22f;
+        for (float t = 0f; t < length; t += Time.unscaledDeltaTime)
+        {
+            float k = t / length;
+            float e = 1f - k;
+            float y = awake ? 1f + 0.09f * Mathf.Sin(k * Mathf.PI) * e : 1f - 0.11f * e * e;
+            float xz = awake ? 1f - 0.05f * Mathf.Sin(k * Mathf.PI) * e : 1f + 0.07f * e * e;
+            Model.localScale = Vector3.Scale(_modelScale, new Vector3(xz, y, xz));
+            if (!awake) Grey(e * e);
+            yield return null;
+        }
+        Model.localScale = _modelScale;
+        if (!awake) Grey(0f);
+        _mark = null;
+    }
+
+    private void Grey(float k)
+    {
+        if (_skin == null) return;
+        foreach (var r in _skin)
+        {
+            if (r == null) continue;
+            if (k <= 0.001f) { r.SetPropertyBlock(null); continue; }
+            r.GetPropertyBlock(_block);
+            _block.SetColor(InkColorId, Color.Lerp(Palette.Ink, new Color(0.45f, 0.45f, 0.47f), k));
+            r.SetPropertyBlock(_block);
+        }
+    }
+
+    private static readonly int InkColorId = Shader.PropertyToID("_InkColor");
+
+    private void EndMark()
+    {
+        if (_mark == null) return;
+        StopCoroutine(_mark);
+        _mark = null;
+        Model.localScale = _modelScale;
+        Grey(0f);
     }
 
     protected virtual void OnAttackLanded(Health target, Hit hit)
     {
         GameEvents.HitStop(hit.heavy ? 0.08f : 0.04f);
         GameAudio.Play(hit.heavy ? "punch_heavy" : "punch", 0.7f);
-        if (target.team == Team.Hero) SfxLettering.Spawn(hit.word ?? "BAM!", (Vector2)target.transform.position + Vector2.up * 1.9f, Palette.Paper, 0.9f);
+        if (target.team == Team.Hero)
+            SfxLettering.Spawn(hit.word ?? "BAM!", (Vector2)target.transform.position + Vector2.up * 1.9f, Palette.Paper, 0.9f,
+                lean: Mathf.Clamp(hit.knockback.x / 6f, -1f, 1f));
     }
 
     /// <summary>Standard melee hit from an Inkie: 1 heart to Max, `damage` to another Inkie.</summary>

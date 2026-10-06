@@ -61,6 +61,17 @@ public class MomDoorView : MonoBehaviour
         return RectTransformUtility.WorldToScreenPoint(cam, _glow.rectTransform.position);
     }
 
+    /// <summary>The door, frame and the light under it, on the screen (pixels): the vignette leaves it clear.</summary>
+    public Rect DoorOnScreen()
+    {
+        var corners = new Vector3[4];
+        _frame.rectTransform.GetWorldCorners(corners);
+        var canvas = _frame.canvas != null ? _frame.canvas.rootCanvas : null;
+        var cam = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+        Vector2 a = RectTransformUtility.WorldToScreenPoint(cam, corners[0]), b = RectTransformUtility.WorldToScreenPoint(cam, corners[2]);
+        return Rect.MinMaxRect(Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y));
+    }
+
     private void Awake() => I = this;
     private void OnDestroy() { if (I == this) I = null; }
 

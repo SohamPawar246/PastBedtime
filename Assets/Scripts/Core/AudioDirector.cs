@@ -167,6 +167,30 @@ public class AudioDirector : MonoBehaviour
         _sfx.PlayOneShot(clip, volume * SfxVolume);
     }
 
+    /// <summary>A sound at its own pitch (a combo climbing, a crank winding tight). It plays on a source of its own
+    /// from a small round, so it never re-pitches whatever else is sounding.</summary>
+    public void PlaySfx(AudioClip clip, float volume, float pitchJitter, float pitch)
+    {
+        if (clip == null) return;
+        if (Mathf.Approximately(pitch, 1f)) { PlaySfx(clip, volume, pitchJitter); return; }
+        if (_pitched == null)
+        {
+            _pitched = new AudioSource[4];
+            for (int i = 0; i < _pitched.Length; i++)
+            {
+                _pitched[i] = gameObject.AddComponent<AudioSource>();
+                _pitched[i].playOnAwake = false;
+                _pitched[i].ignoreListenerPause = true;
+            }
+        }
+        var s = _pitched[_nextPitched = (_nextPitched + 1) % _pitched.Length];
+        s.pitch = pitch + Random.Range(-pitchJitter, pitchJitter);
+        s.PlayOneShot(clip, volume * SfxVolume);
+    }
+
+    private AudioSource[] _pitched;
+    private int _nextPitched;
+
     public void Hover() => PlaySfx(_hover, 0.45f, 0.03f);
     public void Click() => PlaySfx(_click, 0.8f);
     public void Confirm() => PlaySfx(_confirm, 0.8f);
