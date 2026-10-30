@@ -55,26 +55,5 @@ public class InkShadow : MonoBehaviour
     }
 
     /// <summary>A flat disc lying in the ground plane, radius 0.5, facing up.</summary>
-    private static Mesh Disc
-    {
-        get
-        {
-            if (_disc != null) return _disc;
-            const int n = 28;
-            var v = new Vector3[n + 1];
-            var nm = new Vector3[n + 1];
-            var t = new int[n * 3];
-            v[0] = Vector3.zero;
-            for (int i = 0; i < n; i++)
-            {
-                float a = i * Mathf.PI * 2f / n;
-                v[i + 1] = new Vector3(Mathf.Cos(a) * 0.5f, 0f, Mathf.Sin(a) * 0.5f);
-                t[i * 3] = 0; t[i * 3 + 1] = 1 + (i + 1) % n; t[i * 3 + 2] = 1 + i;
-            }
-            for (int i = 0; i < nm.Length; i++) nm[i] = Vector3.up;
-            _disc = new Mesh { name = "InkShadow", vertices = v, normals = nm, triangles = t };
-            _disc.RecalculateBounds();
-            return _disc;
-        }
-    }
+    private static Mesh Disc => _disc != null ? _disc : _disc = Resources.Load<Mesh>("Game/Meshes/InkShadow");
 }

@@ -292,64 +292,11 @@ public class MomDoorView : MonoBehaviour
     private static Sprite _slipper, _paw, _frameGlow;
 
     /// <summary>A slipper's sole, toe up: a wide forefoot and a smaller heel.</summary>
-    private static Sprite Slipper => _slipper != null ? _slipper : _slipper = Draw(32, 64, (u, v) =>
-        Mathf.Max(Blob(u, v, 0.5f, 0.66f, 0.44f, 0.31f), Blob(u, v, 0.5f, 0.2f, 0.34f, 0.18f)));
+    private static Sprite Slipper => _slipper != null ? _slipper : _slipper = UIKit.LoadSprite("slipper");
 
     /// <summary>A paw print: one pad and four toes.</summary>
-    private static Sprite Paw => _paw != null ? _paw : _paw = Draw(64, 64, (u, v) =>
-    {
-        float a = Blob(u, v, 0.5f, 0.32f, 0.27f, 0.21f);
-        a = Mathf.Max(a, Blob(u, v, 0.2f, 0.62f, 0.1f, 0.12f));
-        a = Mathf.Max(a, Blob(u, v, 0.38f, 0.8f, 0.1f, 0.12f));
-        a = Mathf.Max(a, Blob(u, v, 0.62f, 0.8f, 0.1f, 0.12f));
-        return Mathf.Max(a, Blob(u, v, 0.8f, 0.62f, 0.1f, 0.12f));
-    });
+    private static Sprite Paw => _paw != null ? _paw : _paw = UIKit.LoadSprite("paw");
 
     /// <summary>A soft ring of light for a rectangular frame, nine-sliced (hollow in the middle).</summary>
-    private static Sprite FrameGlow
-    {
-        get
-        {
-            if (_frameGlow != null) return _frameGlow;
-            const int n = 96, border = 40;
-            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
-            var px = new Color32[n * n];
-            for (int y = 0; y < n; y++)
-                for (int x = 0; x < n; x++)
-                {
-                    // distance to the frame line, which sits 32 px in from the sprite's edge
-                    float dx = Mathf.Max(0f, Mathf.Abs(x + 0.5f - n * 0.5f) - (n * 0.5f - 32f));
-                    float dy = Mathf.Max(0f, Mathf.Abs(y + 0.5f - n * 0.5f) - (n * 0.5f - 32f));
-                    float outside = Mathf.Sqrt(dx * dx + dy * dy);
-                    float inside = Mathf.Min(n * 0.5f - 32f - Mathf.Abs(x + 0.5f - n * 0.5f), n * 0.5f - 32f - Mathf.Abs(y + 0.5f - n * 0.5f));
-                    float d = outside > 0f ? outside : Mathf.Max(0f, inside);
-                    float a = Mathf.Exp(-d * d / (outside > 0f ? 180f : 40f));
-                    px[y * n + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(a) * 255f));
-                }
-            tex.SetPixels32(px);
-            tex.Apply();
-            _frameGlow = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect,
-                new Vector4(border, border, border, border));
-            return _frameGlow;
-        }
-    }
-
-    /// <summary>A soft-edged ellipse: 1 inside, 0 outside.</summary>
-    private static float Blob(float u, float v, float cx, float cy, float rx, float ry)
-    {
-        float dx = (u - cx) / rx, dy = (v - cy) / ry;
-        return Mathf.Clamp01((1f - Mathf.Sqrt(dx * dx + dy * dy)) * 12f);
-    }
-
-    private static Sprite Draw(int w, int h, System.Func<float, float, float> alpha)
-    {
-        var tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
-        var px = new Color32[w * h];
-        for (int y = 0; y < h; y++)
-            for (int x = 0; x < w; x++)
-                px[y * w + x] = new Color32(255, 255, 255, (byte)(alpha((x + 0.5f) / w, (y + 0.5f) / h) * 255f));
-        tex.SetPixels32(px);
-        tex.Apply();
-        return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f);
-    }
+    private static Sprite FrameGlow => _frameGlow != null ? _frameGlow : _frameGlow = UIKit.LoadSprite("frame_glow");
 }

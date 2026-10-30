@@ -10,7 +10,7 @@ using UnityEngine;
 ///  - a "Comic" layer (the comic world never shares lights or cameras with the room)
 ///  - the Quaternius Universal Animation Library mannequin imported as a Generic rig
 ///  - ink materials (PastBedtime/Comic/Lit, PastBedtime/Comic/Burst)
-///  - Resources/Comic/CoverSet.prefab: Max mid-punch, an Inkie reeling, a halftone
+///  - Art/Comic/CoverSet.prefab: Max mid-punch, an Inkie reeling, a halftone
 ///    speed-burst behind them, a camera and the comic key light. Poses are sampled
 ///    from the animation clips at build time, so the prefab needs no Animator.
 /// </summary>
@@ -18,7 +18,7 @@ public static class ComicLookSetup
 {
     private const string FbxPath = "Assets/Art/Characters/Quaternius/UAL1_Standard.fbx";
     private const string MatDir = "Assets/Art/Comic/Materials";
-    private const string PrefabDir = "Assets/Resources/Comic";
+    private const string PrefabDir = "Assets/Art/Comic";
     private const string PrefabPath = PrefabDir + "/CoverSet.prefab";
 
     // Cover direction, in one place so it is easy to iterate on.
@@ -55,10 +55,11 @@ public static class ComicLookSetup
         Debug.Log("[ComicLook] Built " + PrefabPath);
     }
 
-    /// <summary>Renders the cover in edit mode and writes it to a PNG (for iterating on the art).</summary>
+    /// <summary>Renders the cover in edit mode and writes it to a PNG (for iterating on the art; the game's cover is
+    /// Resources/Comic/cover.png, 944 x 1324).</summary>
     public static string PreviewCover(string pngPath, int width = 1140, int height = 1580)
     {
-        var rt = ComicCover.Render(width, height);
+        var rt = RenderCover(width, height);
         if (rt == null) return "Cover set missing.";
         var prev = RenderTexture.active;
         RenderTexture.active = rt;
@@ -70,6 +71,34 @@ public static class ComicLookSetup
         Object.DestroyImmediate(tex);
         rt.Release();
         return "Saved " + pngPath;
+    }
+
+    /// <summary>Draws the cover set once into a new RenderTexture (null if the set is missing). The set is a static
+    /// pose, so it's instantiated off-stage, rendered and thrown away.</summary>
+    public static RenderTexture RenderCover(int width, int height)
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+        if (prefab == null)
+        {
+            Debug.LogWarning("[ComicLook] " + PrefabPath + " is missing. Run Past Bedtime > Build Comic Look.");
+            return null;
+        }
+        var set = Object.Instantiate(prefab, new Vector3(0f, -500f, 0f), Quaternion.identity);
+        set.name = "CoverSet (render once)";
+        var cam = set.GetComponentInChildren<Camera>(true);
+        var light = set.GetComponentInChildren<ComicLight>(true);
+        if (light != null) light.Apply();
+        var rt = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32) { name = "ComicCover", antiAliasing = 4 };
+        rt.Create();
+        if (cam != null)
+        {
+            cam.aspect = (float)width / height;
+            cam.targetTexture = rt;
+            cam.Render();
+            cam.targetTexture = null;
+        }
+        Object.DestroyImmediate(set);
+        return rt;
     }
 
     private struct Mats { public Material heroSuit, heroJoint, inkBody, inkJoint, eye, blob, burst; }

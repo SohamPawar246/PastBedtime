@@ -312,23 +312,5 @@ public class PageView : MonoBehaviour
     // ---- the fold down the middle of the spread ----------------------------------------------------
 
     private static Texture2D _foldTex;
-    private static Texture2D FoldTexture
-    {
-        get
-        {
-            if (_foldTex != null) return _foldTex;
-            const int w = 256;
-            _foldTex = new Texture2D(w, 1, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
-            var px = new Color32[w];
-            for (int i = 0; i < w; i++)
-            {
-                float x = Mathf.Abs((i + 0.5f) / w - 0.5f) / 0.035f;          // the gutter of the binding
-                float a = Mathf.Exp(-x * x) + 0.25f * Mathf.Exp(-x * x * 0.08f);
-                px[i] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(a) * 255f));
-            }
-            _foldTex.SetPixels32(px);
-            _foldTex.Apply();
-            return _foldTex;
-        }
-    }
+    private static Texture2D FoldTexture => _foldTex != null ? _foldTex : _foldTex = Resources.Load<Texture2D>("UI/Textures/page_fold");
 }

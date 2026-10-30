@@ -518,92 +518,14 @@ public class GameHUD : MonoBehaviour
         if (struck == 0) StartCoroutine(Card("...MISSED!", 0.8f));
     }
 
-    private static Sprite _dots;
+    private static Sprite _dots, _star;
 
     /// <summary>A dotted circle: where the beam will land when the torch comes back on.</summary>
-    private static Sprite Dots => _dots != null ? _dots : _dots = Circle(0.035f, 36);
+    private static Sprite Dots => _dots != null ? _dots : _dots = UIKit.LoadSprite("aim_dots");
 
-    /// <summary>A hollow circle `width` of its radius thick, solid or broken into `dashes`.</summary>
-    private static Sprite Circle(float width, int dashes)
-    {
-        const int n = 256;
-        var tex = new Texture2D(n, n, TextureFormat.RGBA32, true) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear };
-        var px = new Color32[n * n];
-        float r = n * 0.5f - 1.5f, inner = r * (1f - width);
-        for (int y = 0; y < n; y++)
-            for (int x = 0; x < n; x++)
-            {
-                float dx = x + 0.5f - n * 0.5f, dy = y + 0.5f - n * 0.5f;
-                float d = Mathf.Sqrt(dx * dx + dy * dy);
-                float a = Mathf.Clamp01(r - d + 0.5f) * Mathf.Clamp01(d - inner + 0.5f);
-                if (dashes > 0)
-                {
-                    float k = Mathf.Atan2(dy, dx) / (2f * Mathf.PI) * dashes;
-                    a *= Mathf.Clamp01((0.25f - Mathf.Abs(k - Mathf.Round(k))) * d * 0.25f);
-                }
-                px[y * n + x] = new Color32(255, 255, 255, (byte)(a * 255f));
-            }
-        tex.SetPixels32(px);
-        tex.Apply();
-        return Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f);
-    }
+    /// <summary>A five-point star.</summary>
+    public static Sprite Star => _star != null ? _star : _star = UIKit.LoadSprite("hud_star");
 
-    private static Sprite _star;
-
-    /// <summary>A five-point star, drawn once.</summary>
-    public static Sprite Star
-    {
-        get
-        {
-            if (_star != null) return _star;
-            const int n = 64;
-            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
-            var px = new Color32[n * n];
-            var pts = new Vector2[10];
-            for (int i = 0; i < 10; i++)
-            {
-                float a = Mathf.PI / 2f + i * Mathf.PI / 5f;
-                float r = i % 2 == 0 ? 0.48f : 0.2f;
-                pts[i] = new Vector2(0.5f + Mathf.Cos(a) * r, 0.47f + Mathf.Sin(a) * r);
-            }
-            for (int y = 0; y < n; y++)
-                for (int x = 0; x < n; x++)
-                {
-                    var p = new Vector2((x + 0.5f) / n, (y + 0.5f) / n);
-                    bool inside = false;
-                    for (int i = 0, j = 9; i < 10; j = i++)
-                        if ((pts[i].y > p.y) != (pts[j].y > p.y) && p.x < (pts[j].x - pts[i].x) * (p.y - pts[i].y) / (pts[j].y - pts[i].y) + pts[i].x)
-                            inside = !inside;
-                    px[y * n + x] = new Color32(255, 255, 255, (byte)(inside ? 255 : 0));
-                }
-            tex.SetPixels32(px);
-            tex.Apply();
-            _star = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f);
-            return _star;
-        }
-    }
-
-    /// <summary>A heart shape, drawn once.</summary>
-    public static Sprite Heart
-    {
-        get
-        {
-            if (_heart != null) return _heart;
-            const int n = 64;
-            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
-            var px = new Color32[n * n];
-            for (int y = 0; y < n; y++)
-                for (int x = 0; x < n; x++)
-                {
-                    float u = (x + 0.5f) / n * 2.6f - 1.3f, v = (y + 0.5f) / n * 2.6f - 1.25f;
-                    float f = Mathf.Pow(u * u + v * v - 1f, 3f) - u * u * v * v * v;
-                    float a = Mathf.Clamp01(-f * 40f + 0.5f);
-                    px[y * n + x] = new Color32(255, 255, 255, (byte)(a * 255));
-                }
-            tex.SetPixels32(px);
-            tex.Apply();
-            _heart = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f);
-            return _heart;
-        }
-    }
+    /// <summary>A heart shape.</summary>
+    public static Sprite Heart => _heart != null ? _heart : _heart = UIKit.LoadSprite("hud_heart");
 }

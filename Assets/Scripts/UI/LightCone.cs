@@ -15,7 +15,8 @@ public class LightCone : MaskableGraphic
     private const int Slices = 12;
 
     private static Texture2D _tex;
-    public override Texture mainTexture => _tex != null ? _tex : (_tex = MakeTexture());
+    /// <summary>u: across the shaft, v: along it (0 at the lens).</summary>
+    public override Texture mainTexture => _tex != null ? _tex : (_tex = Resources.Load<Texture2D>("UI/Textures/light_shaft"));
 
     public static LightCone Create(Transform parent, string name, Color color)
     {
@@ -58,25 +59,5 @@ public class LightCone : MaskableGraphic
                 vh.AddTriangle(b + 3, b + 2, b);
             }
         }
-    }
-
-    /// <summary>u: across the shaft, v: along it (0 at the lens).</summary>
-    private static Texture2D MakeTexture()
-    {
-        const int w = 64, h = 128;
-        var tex = new Texture2D(w, h, TextureFormat.RGBA32, false)
-        { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.DontSave };
-        var px = new Color32[w * h];
-        for (int y = 0; y < h; y++)
-        for (int x = 0; x < w; x++)
-        {
-            float u = (x + 0.5f) / w * 2f - 1f, v = (y + 0.5f) / h;
-            float across = Mathf.Pow(Mathf.Clamp01(1f - u * u), 1.6f);
-            float along = Mathf.SmoothStep(0f, 1f, v / 0.06f) * Mathf.Pow(1f - v, 0.7f);
-            px[y * w + x] = new Color32(255, 255, 255, (byte)(255 * across * along));
-        }
-        tex.SetPixels32(px);
-        tex.Apply(false, true);
-        return tex;
     }
 }

@@ -9,9 +9,8 @@ using UnityEngine.UI;
 /// assembles itself from these helpers at Start, so a scene file only holds a
 /// camera and one screen component, and the whole look lives in source.
 ///
-/// Sprites are generated once at runtime (tiny textures, no art files):
-/// an ink-bordered caption box, discs, a soft shadow, a starburst, a warning
-/// triangle and a bookmark ribbon.
+/// The comic shapes are art files in Resources/UI/Sprites: an ink-bordered caption
+/// box, discs, a soft shadow, a starburst, a warning triangle and a bookmark ribbon.
 /// </summary>
 public static class UIKit
 {
@@ -211,226 +210,37 @@ public static class UIKit
     public static Material NewLightMaskMaterial()
     {
         var baseMat = Resources.Load<Material>("Materials/LightMask");
-        if (baseMat != null) return new Material(baseMat);
-        var shader = Shader.Find("PastBedtime/UI/LightMask");
-        return shader != null ? new Material(shader) : null;
+        return baseMat != null ? new Material(baseMat) : null;
     }
 
-    // ---- Generated sprites --------------------------------------------------------------------
+    // ---- Sprites (Resources/UI/Sprites) ------------------------------------------------------
 
     private static Sprite _box, _soft, _disc, _ring, _glow, _burst, _triangle, _ribbon, _fade, _softShadow;
 
     /// <summary>White face, 5 px ink border, 9-sliced. Image.color tints the face only.</summary>
-    public static Sprite Box => _box ??= MakeBox();
+    public static Sprite Box => _box ??= LoadSprite("box");
     /// <summary>Plain white: what a Filled image needs to show its fill amount (with no sprite it draws full).</summary>
-    public static Sprite Solid => _solid ??= MakeSolid();
+    public static Sprite Solid => _solid ??= LoadSprite("solid");
     private static Sprite _solid;
-
-    private static Sprite MakeSolid()
-    {
-        var tex = NewTex(4, 4);
-        var px = new Color32[16];
-        for (int i = 0; i < px.Length; i++) px[i] = new Color32(255, 255, 255, 255);
-        tex.SetPixels32(px);
-        return ToSprite(tex);
-    }
     /// <summary>Rounded white rectangle, no border, 9-sliced (bedding, door glow).</summary>
-    public static Sprite Soft => _soft ??= MakeSoft();
+    public static Sprite Soft => _soft ??= LoadSprite("soft");
     /// <summary>Anti-aliased white disc.</summary>
-    public static Sprite Disc => _disc ??= MakeDisc(false);
+    public static Sprite Disc => _disc ??= LoadSprite("disc");
     /// <summary>White disc with an ink rim.</summary>
-    public static Sprite Ring => _ring ??= MakeDisc(true);
+    public static Sprite Ring => _ring ??= LoadSprite("ring");
     /// <summary>Soft radial falloff for glows.</summary>
-    public static Sprite Glow => _glow ??= MakeGlow();
+    public static Sprite Glow => _glow ??= LoadSprite("glow");
     /// <summary>14-point starburst with an ink outline (SFX).</summary>
-    public static Sprite Burst => _burst ??= MakeBurst();
+    public static Sprite Burst => _burst ??= LoadSprite("burst");
     /// <summary>Equilateral triangle pointing up.</summary>
-    public static Sprite Triangle => _triangle ??= MakeTriangle();
+    public static Sprite Triangle => _triangle ??= LoadSprite("triangle");
     /// <summary>Bookmark ribbon with a V notch at the bottom.</summary>
-    public static Sprite Ribbon => _ribbon ??= MakeRibbon();
+    public static Sprite Ribbon => _ribbon ??= LoadSprite("ribbon");
     /// <summary>Vertical fade: opaque at the bottom, clear at the top.</summary>
-    public static Sprite Fade => _fade ??= MakeFade();
+    public static Sprite Fade => _fade ??= LoadSprite("fade");
     /// <summary>Blurred rounded-rectangle shadow, 9-sliced, 40 px spread.</summary>
-    public static Sprite SoftShadowSprite => _softShadow ??= MakeSoftShadow();
+    public static Sprite SoftShadowSprite => _softShadow ??= LoadSprite("soft_shadow");
 
-    private static Texture2D NewTex(int w, int h, TextureWrapMode wrap = TextureWrapMode.Clamp)
-    {
-        // Mipmapped: these sprites are often drawn much smaller than their texture
-        // (eyes, dots, glows), and without mips they shimmer and turn jagged.
-        return new Texture2D(w, h, TextureFormat.RGBA32, true)
-        {
-            filterMode = FilterMode.Trilinear,
-            wrapMode = wrap,
-            hideFlags = HideFlags.DontSave,
-        };
-    }
-
-    private static Sprite ToSprite(Texture2D tex, Vector4 border = default, float ppu = 100f)
-    {
-        tex.Apply(true, true);
-        return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f),
-            ppu, 0, SpriteMeshType.FullRect, border);
-    }
-
-    private static Sprite MakeBox()
-    {
-        const int n = 48, b = 5;
-        var tex = NewTex(n, n);
-        var px = new Color32[n * n];
-        for (int y = 0; y < n; y++)
-        for (int x = 0; x < n; x++)
-        {
-            bool edge = x < b || y < b || x >= n - b || y >= n - b;
-            px[y * n + x] = edge ? new Color32(20, 20, 20, 255) : new Color32(255, 255, 255, 255);
-        }
-        tex.SetPixels32(px);
-        return ToSprite(tex, new Vector4(b + 3, b + 3, b + 3, b + 3));
-    }
-
-    private static Sprite MakeSoft()
-    {
-        const int n = 64; const float r = 22f;
-        var tex = NewTex(n, n);
-        var px = new Color32[n * n];
-        for (int y = 0; y < n; y++)
-        for (int x = 0; x < n; x++)
-        {
-            float cx = Mathf.Clamp(x + 0.5f, r, n - r), cy = Mathf.Clamp(y + 0.5f, r, n - r);
-            float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(cx, cy));
-            byte a = (byte)(255 * Mathf.Clamp01(r - d + 0.5f));
-            px[y * n + x] = new Color32(255, 255, 255, a);
-        }
-        tex.SetPixels32(px);
-        return ToSprite(tex, new Vector4(r + 2, r + 2, r + 2, r + 2));
-    }
-
-    private static Sprite MakeDisc(bool rim)
-    {
-        const int n = 128; const float r = 62f, rimWidth = 9f;
-        var tex = NewTex(n, n);
-        var px = new Color32[n * n];
-        var c = new Vector2(n * 0.5f, n * 0.5f);
-        for (int y = 0; y < n; y++)
-        for (int x = 0; x < n; x++)
-        {
-            float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), c);
-            float a = Mathf.Clamp01(r - d + 0.5f);
-            float inkK = rim ? Mathf.Clamp01(d - (r - rimWidth) + 0.5f) : 0f;
-            byte v = (byte)Mathf.Lerp(255, 20, inkK);
-            px[y * n + x] = new Color32(v, v, v, (byte)(255 * a));
-        }
-        tex.SetPixels32(px);
-        return ToSprite(tex);
-    }
-
-    private static Sprite MakeGlow()
-    {
-        const int n = 128;
-        var tex = NewTex(n, n);
-        var px = new Color32[n * n];
-        var c = new Vector2(n * 0.5f, n * 0.5f);
-        for (int y = 0; y < n; y++)
-        for (int x = 0; x < n; x++)
-        {
-            float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), c) / (n * 0.5f);
-            float a = Mathf.Clamp01(1f - d);
-            px[y * n + x] = new Color32(255, 255, 255, (byte)(255 * a * a));
-        }
-        tex.SetPixels32(px);
-        return ToSprite(tex);
-    }
-
-    private static Sprite MakeBurst()
-    {
-        const int n = 256, points = 14;
-        var tex = NewTex(n, n);
-        var px = new Color32[n * n];
-        float outer = n * 0.49f, inner = n * 0.33f;
-        for (int y = 0; y < n; y++)
-        for (int x = 0; x < n; x++)
-        {
-            float dx = x + 0.5f - n * 0.5f, dy = y + 0.5f - n * 0.5f;
-            float d = Mathf.Sqrt(dx * dx + dy * dy);
-            float ang = Mathf.Atan2(dy, dx) / (Mathf.PI * 2f) * points;
-            float tri = Mathf.Abs(ang - Mathf.Floor(ang) - 0.5f) * 2f;   // 1 at the tips, 0 between
-            float edge = Mathf.Lerp(inner, outer, tri);
-            float alpha = Mathf.Clamp01(edge - d + 0.5f);
-            float ink = Mathf.Clamp01(d - (edge - 9f) + 0.5f);
-            byte v = (byte)Mathf.Lerp(255, 20, ink);
-            px[y * n + x] = new Color32(v, v, v, (byte)(255 * alpha));
-        }
-        tex.SetPixels32(px);
-        return ToSprite(tex);
-    }
-
-    private static Sprite MakeTriangle()
-    {
-        const int n = 128;
-        var tex = NewTex(n, n);
-        var px = new Color32[n * n];
-        for (int y = 0; y < n; y++)
-        for (int x = 0; x < n; x++)
-        {
-            float fy = (y + 0.5f) / n;                  // 0 bottom, 1 top
-            float half = (1f - fy) * 0.5f;              // half-width at this height
-            float fx = Mathf.Abs((x + 0.5f) / n - 0.5f);
-            float a = Mathf.Clamp01((half - fx) * n + 0.5f) * Mathf.Clamp01((fy - 0.04f) * n);
-            px[y * n + x] = new Color32(255, 255, 255, (byte)(255 * a));
-        }
-        tex.SetPixels32(px);
-        return ToSprite(tex);
-    }
-
-    private static Sprite MakeRibbon()
-    {
-        const int w = 64, h = 256, notch = 30;
-        var tex = NewTex(w, h);
-        var px = new Color32[w * h];
-        for (int y = 0; y < h; y++)
-        for (int x = 0; x < w; x++)
-        {
-            float cut = notch * (1f - Mathf.Abs(x + 0.5f - w * 0.5f) / (w * 0.5f));
-            float a = Mathf.Clamp01(y + 0.5f - cut);
-            px[y * w + x] = new Color32(255, 255, 255, (byte)(255 * a));
-        }
-        tex.SetPixels32(px);
-        return ToSprite(tex);
-    }
-
-    private static Sprite MakeFade()
-    {
-        const int w = 4, h = 128;
-        var tex = NewTex(w, h);
-        var px = new Color32[w * h];
-        for (int y = 0; y < h; y++)
-        for (int x = 0; x < w; x++)
-        {
-            float k = 1f - (y + 0.5f) / h;
-            px[y * w + x] = new Color32(255, 255, 255, (byte)(255 * k * k));
-        }
-        tex.SetPixels32(px);
-        return ToSprite(tex);
-    }
-
-    private static Sprite MakeSoftShadow()
-    {
-        const int n = 160; const float spread = 40f, r = 18f;
-        var tex = NewTex(n, n);
-        var px = new Color32[n * n];
-        var half = new Vector2(n * 0.5f, n * 0.5f);
-        var inner = half - Vector2.one * spread;
-        for (int y = 0; y < n; y++)
-        for (int x = 0; x < n; x++)
-        {
-            var p = new Vector2(Mathf.Abs(x + 0.5f - half.x), Mathf.Abs(y + 0.5f - half.y));
-            var q = new Vector2(p.x - inner.x + r, p.y - inner.y + r);
-            float d = new Vector2(Mathf.Max(q.x, 0f), Mathf.Max(q.y, 0f)).magnitude + Mathf.Min(Mathf.Max(q.x, q.y), 0f) - r;
-            float k = Mathf.Clamp01(1f - (d + spread * 0.25f) / spread);
-            float a = k * k * (3f - 2f * k);
-            px[y * n + x] = new Color32(255, 255, 255, (byte)(255 * a * a));
-        }
-        tex.SetPixels32(px);
-        const float b = 76f;
-        return ToSprite(tex, new Vector4(b, b, b, b));
-    }
+    /// <summary>A sprite from Resources/UI/Sprites (the game's own drawn shapes, kept as art files).</summary>
+    public static Sprite LoadSprite(string name) => Resources.Load<Sprite>("UI/Sprites/" + name);
 }

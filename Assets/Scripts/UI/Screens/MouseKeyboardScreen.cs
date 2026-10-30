@@ -282,90 +282,18 @@ public class MouseKeyboardScreen : MonoBehaviour
     }
 }
 
-/// <summary>A computer mouse drawn in code, comic style (paper, ink outline, the buttons' seams, the wheel), and
-/// the masks that light up its parts. 200 x 320 design units, centre origin.</summary>
+/// <summary>The computer mouse, comic style (paper, ink outline, the buttons' seams, the wheel), and the masks that
+/// light up its parts: art files in Resources/UI/Sprites, 200 x 320 design units, centre origin. The points are
+/// where the leader lines meet each part.</summary>
 internal static class MouseArt
 {
     public const int W = 200, H = 320;
-    private const float A = 94f, B = 152f, Pow = 2.5f;              // the body: a rounded superellipse
-    private const float SplitY = 30f;                               // the buttons are above this seam
-    private const float Outline = 6f, Seam = 4f;
-    private static readonly Vector2 WheelHalf = new(13f, 30f);
     public static readonly Vector2 WheelAt = new(0f, 84f);
     public static readonly Vector2 LeftAt = new(-50f, 92f), RightAt = new(50f, 92f), SideAt = new(-90f, -46f);
 
-    private enum Shade { Body, Left, Right, Wheel }
     private static Sprite _body, _left, _right, _wheel;
-    public static Sprite Body => _body != null ? _body : _body = Make(Shade.Body);
-    public static Sprite LeftButton => _left != null ? _left : _left = Make(Shade.Left);
-    public static Sprite RightButton => _right != null ? _right : _right = Make(Shade.Right);
-    public static Sprite Wheel => _wheel != null ? _wheel : _wheel = Make(Shade.Wheel);
-
-    private static Sprite Make(Shade what)
-    {
-        var tex = new Texture2D(W, H, TextureFormat.RGBA32, true)
-        {
-            filterMode = FilterMode.Trilinear,
-            wrapMode = TextureWrapMode.Clamp,
-            hideFlags = HideFlags.DontSave,
-        };
-        var px = new Color32[W * H];
-        for (int j = 0; j < H; j++)
-            for (int i = 0; i < W; i++)
-                px[j * W + i] = Pixel(what, i + 0.5f - W * 0.5f, j + 0.5f - H * 0.5f);
-        tex.SetPixels32(px);
-        tex.Apply(true, true);
-        return Sprite.Create(tex, new Rect(0, 0, W, H), new Vector2(0.5f, 0.5f), 100f);
-    }
-
-    /// <summary>How far inside the body's edge a point is (px, negative outside), measured along its ray from the centre.</summary>
-    private static float Inside(float x, float y)
-    {
-        float q = Mathf.Pow(Mathf.Pow(Mathf.Abs(x) / A, Pow) + Mathf.Pow(Mathf.Abs(y) / B, Pow), 1f / Pow);
-        if (q < 1e-4f) return A;
-        return (1f - q) * Mathf.Sqrt(x * x + y * y) / q;
-    }
-
-    /// <summary>Signed distance to the wheel's rounded box (negative inside).</summary>
-    private static float WheelDist(float x, float y)
-    {
-        const float r = 11f;
-        float qx = Mathf.Abs(x - WheelAt.x) - (WheelHalf.x - r), qy = Mathf.Abs(y - WheelAt.y) - (WheelHalf.y - r);
-        return new Vector2(Mathf.Max(qx, 0f), Mathf.Max(qy, 0f)).magnitude + Mathf.Min(Mathf.Max(qx, qy), 0f) - r;
-    }
-
-    private static float Band(float distance, float width) => Mathf.Clamp01(width * 0.5f - distance + 0.5f);
-
-    private static Color32 Pixel(Shade what, float x, float y)
-    {
-        float d = Inside(x, y), wd = WheelDist(x, y);
-        float cover = Mathf.Clamp01(d + 0.5f);
-        if (cover <= 0f) return new Color32(255, 255, 255, 0);
-        switch (what)
-        {
-            case Shade.Body:
-            {
-                // ink: the outline, the seam under the buttons, the split between them, the wheel's rim and ridges
-                float ink = Mathf.Clamp01(Outline - d + 0.5f);
-                ink = Mathf.Max(ink, Band(Mathf.Abs(y - SplitY), Seam));
-                if (y > SplitY && wd > 0f) ink = Mathf.Max(ink, Band(Mathf.Abs(x), Seam));
-                ink = Mathf.Max(ink, Band(Mathf.Abs(wd + 2.5f), 5f));
-                if (wd < -5f && Mathf.Repeat(y - WheelAt.y, 9f) < 2.5f) ink = Mathf.Max(ink, 0.7f);
-                // a flat comic shade down the right-hand side and along the bottom, so it reads as round
-                float paper = x * 0.8f - y * 0.35f > 34f && d < 24f ? 0.86f : 1f;
-                byte v = (byte)(Mathf.Lerp(255f * paper, 22f, ink));
-                return new Color32(v, v, v, (byte)(255f * cover));
-            }
-            case Shade.Left:
-            case Shade.Right:
-            {
-                float side = what == Shade.Left ? -x : x;
-                float a = Mathf.Clamp01(d - (Outline + 2f)) * Mathf.Clamp01(y - (SplitY + Seam)) *
-                          Mathf.Clamp01(side - Seam) * Mathf.Clamp01(wd - 2f);
-                return new Color32(255, 255, 255, (byte)(255f * a));
-            }
-            default:
-                return new Color32(255, 255, 255, (byte)(255f * Mathf.Clamp01(-wd - 5f)));
-        }
-    }
+    public static Sprite Body => _body != null ? _body : _body = UIKit.LoadSprite("mouse_body");
+    public static Sprite LeftButton => _left != null ? _left : _left = UIKit.LoadSprite("mouse_left");
+    public static Sprite RightButton => _right != null ? _right : _right = UIKit.LoadSprite("mouse_right");
+    public static Sprite Wheel => _wheel != null ? _wheel : _wheel = UIKit.LoadSprite("mouse_wheel");
 }

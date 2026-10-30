@@ -45,35 +45,6 @@ public class StarPickup : MonoBehaviour
     }
 
     private static Mesh _star;
-    private static Mesh StarMesh()
-    {
-        if (_star != null) return _star;
-        // a chunky 5-point star, extruded so the outline pass has an edge to draw
-        var v = new System.Collections.Generic.List<Vector3>();
-        var t = new System.Collections.Generic.List<int>();
-        const float d = 0.12f;
-        for (int side = 0; side < 2; side++)
-        {
-            float z = side == 0 ? -d : d;
-            v.Add(new Vector3(0f, 0f, z));
-            for (int i = 0; i < 10; i++)
-            {
-                float a = Mathf.PI / 2f + i * Mathf.PI / 5f;
-                float r = i % 2 == 0 ? 0.45f : 0.19f;
-                v.Add(new Vector3(Mathf.Cos(a) * r, Mathf.Sin(a) * r, z));
-            }
-        }
-        for (int i = 0; i < 10; i++)
-        {
-            int a = 1 + i, b = 1 + (i + 1) % 10;
-            t.AddRange(new[] { 0, b, a });                // front (facing -z, toward the camera)
-            t.AddRange(new[] { 11, 11 + a, 11 + b });     // back
-            t.AddRange(new[] { a, b, 11 + b, a, 11 + b, 11 + a });  // rim
-        }
-        _star = new Mesh { name = "Star" };
-        _star.SetVertices(v);
-        _star.SetTriangles(t, 0);
-        _star.RecalculateNormals();
-        return _star;
-    }
+    /// <summary>A chunky 5-point star, extruded so the outline pass has an edge to draw.</summary>
+    private static Mesh StarMesh() => _star != null ? _star : _star = Resources.Load<Mesh>("Game/Meshes/Star");
 }

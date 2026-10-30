@@ -236,8 +236,8 @@ public class TitleScreen : MonoBehaviour
         var canvas = UIKit.Canvas("OpeningPanel", 5);
         var frame = UIKit.Raw(canvas.transform, "PanelFrame");
         UIKit.Stretch(frame.rectTransform);
-        var shader = Shader.Find("PastBedtime/UI/ComicFrame");
-        if (shader != null) { _frameMat = new Material(shader); frame.material = _frameMat; }
+        var frameMat = Resources.Load<Material>("Materials/ComicFrame");
+        if (frameMat != null) { _frameMat = new Material(frameMat); frame.material = _frameMat; }
         else frame.color = Color.clear;
         SetFrame(0f);
         _sfx = canvas.transform;

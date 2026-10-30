@@ -49,7 +49,7 @@ public class DoorVisit : MonoBehaviour
             dv._spills[i] = Resources.Load<Texture2D>($"Room/Door/{spillSet}{Angles[i]:00}");
         }
 
-        var additive = Shader.Find("PastBedtime/UI/Additive");
+        var additive = Resources.Load<Material>("Materials/UIAdditive");
         Material addMat = additive != null ? new Material(additive) : null;
         dv._spillA = SpillImage(root, "SpillA", addMat);
         dv._spillB = SpillImage(root, "SpillB", addMat);
