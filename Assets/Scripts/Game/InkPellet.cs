@@ -20,25 +20,15 @@ public class InkPellet : MonoBehaviour
     private static readonly Collider[] _buffer = new Collider[16];
     private static readonly List<InkPellet> _live = new();
 
-    private void Awake()
-    {
-        _light = GetComponent<Lightable>();
-        _light.points = new[] { Vector3.zero };
-    }
+    private void Awake() => _light = GetComponent<Lightable>();
 
     private void OnEnable() => _live.Add(this);
     private void OnDisable() => _live.Remove(this);
 
-    public static InkPellet Fire(Vector2 from, Vector2 dir, GameObject shooter, Material mat)
+    public static InkPellet Fire(Vector2 from, Vector2 dir, GameObject shooter)
     {
-        var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        go.name = "InkPellet";
-        go.layer = LayerMask.NameToLayer("Comic");
-        Destroy(go.GetComponent<Collider>());
-        go.transform.position = new Vector3(from.x, from.y, 0f);
-        go.transform.localScale = Vector3.one * Radius * 2f;
-        if (mat != null) go.GetComponent<MeshRenderer>().sharedMaterial = mat;
-        var p = go.AddComponent<InkPellet>();
+        var p = Instantiate(GameAssets.I.inkPellet, new Vector3(from.x, from.y, 0f), Quaternion.identity);
+        p.name = "InkPellet";
         p.Velocity = dir.normalized * Speed;
         p.shooter = shooter;
         return p;

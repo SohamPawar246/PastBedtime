@@ -11,24 +11,20 @@ public class InkWave : MonoBehaviour
 {
     public const float Speed = 5f, Life = 5f;
 
+    [SerializeField] private Transform _crest;     // a curling wave profile, extruded through the lane
     private Lightable _light;
     private Hitbox _hit;
-    private Transform _crest;
     private float _dir = 1f, _minX, _maxX, _age;
 
     public static InkWave Spawn(Vector2 at, float dir, float minX, float maxX, GameObject thrower = null)
     {
-        var go = new GameObject("InkWave");
-        go.transform.position = new Vector3(at.x, at.y, 0f);
-        var l = go.AddComponent<Lightable>();
-        l.points = new[] { new Vector3(0f, 0.6f, 0f), new Vector3(-0.65f, 0.25f, 0f), new Vector3(0.65f, 0.25f, 0f) };
-        var w = go.AddComponent<InkWave>();
+        var w = Instantiate(GameAssets.I.inkWave, new Vector3(at.x, at.y, 0f), Quaternion.identity);
+        w.name = "InkWave";
         w._dir = dir >= 0f ? 1f : -1f;
         w._minX = minX;
         w._maxX = maxX;
         w._crest.localScale = new Vector3(w._dir, 1f, 1f);
         w._hit.ignore = thrower;
-        PageBuilder.SetLayer(go.transform);
         return w;
     }
 
@@ -44,12 +40,6 @@ public class InkWave : MonoBehaviour
             GameAudio.Play("splat", 0.7f);
             GameEvents.HitStop(0.05f);
         };
-        var crest = new GameObject("Crest");
-        crest.transform.SetParent(transform, false);
-        crest.AddComponent<MeshFilter>().sharedMesh = CrestMesh;
-        var r = crest.AddComponent<MeshRenderer>();
-        r.sharedMaterial = GameAssets.I != null ? GameAssets.I.ink : null;
-        _crest = crest.transform;
     }
 
     private void Update()
@@ -72,9 +62,4 @@ public class InkWave : MonoBehaviour
         GameAudio.Play("splat", 0.45f);
         Destroy(gameObject);
     }
-
-    // ---- the crest: a curling wave profile, extruded through the lane --------------------------------
-
-    private static Mesh _mesh;
-    private static Mesh CrestMesh => _mesh != null ? _mesh : _mesh = Resources.Load<Mesh>("Game/Meshes/InkWaveCrest");
 }

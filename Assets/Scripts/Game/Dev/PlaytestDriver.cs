@@ -1013,7 +1013,7 @@ public class PlaytestDriver : MonoBehaviour
             Rect text = new Rect(c.x - e.x, c.y - e.y, e.x * 2f, e.y * 2f);
             Rect body = text;
             var burst = t.transform.Find("Burst");
-            if (burst != null)
+            if (burst != null && burst.gameObject.activeSelf)          // a word without one has it switched off
             {
                 var sb = burst.GetComponent<Renderer>().bounds;
                 body = new Rect(sb.center.x - sb.extents.x * 0.66f, sb.center.y - sb.extents.y * 0.66f, sb.size.x * 0.66f, sb.size.y * 0.66f);

@@ -9,28 +9,12 @@ public class InkShadow : MonoBehaviour
 {
     public float width = 1f;
 
-    private Transform _shadow;
+    [Tooltip("The pool itself (Art/Effects/InkShadow): hidden till it finds something to lie on.")]
+    [SerializeField] private Transform _shadow;
     private Collider[] _own;
-    private static Mesh _disc;
     private static readonly RaycastHit[] _hits = new RaycastHit[8];
 
-    public static InkShadow Add(GameObject who, float width)
-    {
-        var s = who.AddComponent<InkShadow>();
-        s.width = width;
-        return s;
-    }
-
-    private void Start()
-    {
-        _own = GetComponentsInChildren<Collider>(true);
-        var go = new GameObject("InkShadow");
-        go.transform.SetParent(transform, false);
-        go.AddComponent<MeshFilter>().sharedMesh = Disc;
-        go.AddComponent<MeshRenderer>().sharedMaterial = GameAssets.I != null ? GameAssets.I.border : null;
-        go.layer = gameObject.layer;
-        _shadow = go.transform;
-    }
+    private void Start() => _own = GetComponentsInChildren<Collider>(true);
 
     private void LateUpdate()
     {
@@ -53,7 +37,4 @@ public class InkShadow : MonoBehaviour
         _shadow.rotation = Quaternion.identity;
         _shadow.localScale = new Vector3(width * Mathf.Lerp(0.3f, 1f, k * k), 1f, 2.6f * Mathf.Lerp(0.5f, 1f, k));
     }
-
-    /// <summary>A flat disc lying in the ground plane, radius 0.5, facing up.</summary>
-    private static Mesh Disc => _disc != null ? _disc : _disc = Resources.Load<Mesh>("Game/Meshes/InkShadow");
 }

@@ -20,6 +20,8 @@ public class MangaFx : MonoBehaviour
     private float _t, _life, _strength, _facing;
     private Transform _who;
     private Vector2 _start;
+    [Tooltip("The marks' ink edge, and their white (each drawn live into its own mesh).")]
+    [SerializeField] private MeshFilter _inkLayer, _paperLayer;
     private Mesh _paper, _ink;
     private readonly List<Vector3> _pv = new(), _iv = new();
     private readonly List<int> _pt = new(), _it = new();
@@ -106,25 +108,26 @@ public class MangaFx : MonoBehaviour
     {
         var A = GameAssets.I;
         if (A == null) return null;
-        var go = new GameObject(name);
-        var fx = go.AddComponent<MangaFx>();
+        var fx = Instantiate(A.mangaFx);
+        fx.name = name;
         fx._kind = kind;
         fx._life = life;
-        fx._ink = Layer(go.transform, "Ink", A.border, z + 0.01f);
-        fx._paper = Layer(go.transform, "Paper", A.window, z);
-        PageBuilder.SetLayer(go.transform);
+        fx._inkLayer.transform.localPosition = new Vector3(0f, 0f, z + 0.01f);
+        fx._paperLayer.transform.localPosition = new Vector3(0f, 0f, z);
         return fx;
     }
 
-    private static Mesh Layer(Transform parent, string name, Material m, float z)
+    private void Awake()
     {
-        var go = new GameObject(name);
-        go.transform.SetParent(parent, false);
-        go.transform.localPosition = new Vector3(0f, 0f, z);
-        var mesh = new Mesh { name = name };
+        _ink = Layer(_inkLayer);
+        _paper = Layer(_paperLayer);
+    }
+
+    private static Mesh Layer(MeshFilter filter)
+    {
+        var mesh = new Mesh { name = filter.name };
         mesh.MarkDynamic();
-        go.AddComponent<MeshFilter>().sharedMesh = mesh;
-        go.AddComponent<MeshRenderer>().sharedMaterial = m;
+        filter.sharedMesh = mesh;
         return mesh;
     }
 

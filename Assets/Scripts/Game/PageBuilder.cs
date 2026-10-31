@@ -28,9 +28,6 @@ public static class PageBuilder
         brain.Facing = faceRight ? 1f : -1f;
         brain.Panel = pl;
         brain.Home = at;
-        if (brain is DotShotBrain ds && A != null) ds.PelletMaterial = A.ink;
-        var body = go.GetComponent<CharacterController>();
-        InkShadow.Add(go, body != null ? body.radius * 2.7f : 1f);
         pl.enemies.Add(brain);
         return brain;
     }

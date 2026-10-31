@@ -30,6 +30,13 @@ public class GameAssets : ScriptableObject
     public Material ghostHint;    // the dotted hint of invisible ink: flat violet
     public Material nothing;      // draws nothing (Baron Blot in invisible ink)
 
+    [Header("Spawned while playing (Art/Effects)")]
+    public InkPellet inkPellet;   // a Dot-Shot's shot
+    public InkWave inkWave;       // Blot's cane sweep
+    public InkGeyser inkGeyser;   // Blot's WELL, WELL, WELL...
+    public TMPro.TextMeshPro sfxWord;   // KAPOW lettering (its burst is a child, off unless asked for)
+    public MangaFx mangaFx;       // focus lines, speed lines, dust, ink drops
+
     private static GameAssets _i;
     public static GameAssets I => _i != null ? _i : _i = Resources.Load<GameAssets>("Game/GameAssets");
 

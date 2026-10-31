@@ -12,9 +12,6 @@ using UnityEngine;
 public class SfxLettering : MonoBehaviour
 {
     private static SfxLettering _i;
-    private TMP_FontAsset _font;
-    private Material _mat;
-    private int _layer;
 
     /// <summary>How long a word stays up (real time).</summary>
     private const float Life = 0.7f;
@@ -131,63 +128,27 @@ public class SfxLettering : MonoBehaviour
     private static bool Overlaps(Vector2 a, Vector2 aHalf, Vector2 b, Vector2 bHalf) =>
         Mathf.Abs(a.x - b.x) < aHalf.x + bHalf.x && Mathf.Abs(a.y - b.y) < aHalf.y + bHalf.y;
 
-    private void Awake()
-    {
-        _font = Resources.Load<TMP_FontAsset>("Fonts/Bangers SDF");
-        _layer = LayerMask.NameToLayer("Comic");
-        if (_font != null)
-        {
-            _mat = new Material(_font.material);
-            _mat.EnableKeyword("OUTLINE_ON");
-            _mat.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.28f);
-            _mat.SetColor(ShaderUtilities.ID_OutlineColor, Palette.Ink);
-            _mat.EnableKeyword("UNDERLAY_ON");
-            _mat.SetColor(ShaderUtilities.ID_UnderlayColor, Palette.Ink);
-            _mat.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, 0.6f);
-            _mat.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -0.6f);
-            _mat.SetFloat(ShaderUtilities.ID_UnderlaySoftness, 0f);
-        }
-    }
-
     private void OnDestroy()
     {
         if (_i == this) _i = null;
-        if (_mat != null) Destroy(_mat);
     }
 
     private IEnumerator Pop(string word, Vector2 pos, Color fill, float scale, bool burst, float tilt, float life, bool finisher)
     {
-        var root = new GameObject("SFX " + word);
-        root.layer = _layer;
-        root.transform.position = new Vector3(pos.x, pos.y, Z);
-        root.transform.rotation = Quaternion.Euler(0f, 0f, tilt);
-
+        // the word (Bangers, inked and drop-shadowed: the SFX material), on its yellow burst if it has one
+        var t = Instantiate(GameAssets.I.sfxWord, new Vector3(pos.x, pos.y, Z), Quaternion.Euler(0f, 0f, tilt));
+        t.name = "SFX " + word;
+        var root = t.gameObject;
+        var sr = t.GetComponentInChildren<SpriteRenderer>(true);
+        sr.gameObject.SetActive(burst);
         if (burst)
         {
-            var b = new GameObject("Burst");
-            b.layer = _layer;
-            b.transform.SetParent(root.transform, false);
-            b.transform.localPosition = new Vector3(0f, 0f, 0.05f);
-            var sr = b.AddComponent<SpriteRenderer>();
-            sr.sprite = UIKit.Burst;
-            sr.color = Palette.Yellow;
             float w = 0.55f * word.Length + 1.4f;
-            b.transform.localScale = new Vector3(w, 2.2f, 1f) * scale / (sr.sprite.bounds.size.x > 0 ? sr.sprite.bounds.size.x : 1f);
-        }
-
-        var t = root.AddComponent<TextMeshPro>();
-        if (_font != null)
-        {
-            t.font = _font;
-            t.fontSharedMaterial = _mat;
+            sr.transform.localScale = new Vector3(w, 2.2f, 1f) * scale / (sr.sprite.bounds.size.x > 0 ? sr.sprite.bounds.size.x : 1f);
         }
         t.text = word;
         t.fontSize = 9f * scale;
         t.color = fill;
-        t.alignment = TextAlignmentOptions.Center;
-        t.textWrappingMode = TextWrappingModes.NoWrap;
-        t.rectTransform.sizeDelta = new Vector2(20f, 4f);
-        t.sortingOrder = 50;
 
         // pop: overshoot in, hold, puff out (real time: lettering is the reader's eye, not the comic's clock). A
         // finishing blow's word smashes in oversized for its first frames, then settles like any other.

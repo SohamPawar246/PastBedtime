@@ -122,6 +122,7 @@ rules and take screenshots.
 | `Assets/Shaders/Comic` | The comic's printing: ink, tone, hatching, gradation and the torch's light on the page |
 | `Assets/Editor` | Menu tools: *Build Shell*, *Build Comic Cast*, *Build Game Assets* |
 | `Assets/Art/Pages` | The nine comic pages as prefabs: panels, rooftops, props, stars, captions and the Inkies' spawn points |
+| `Assets/Art/Effects` | What the game spawns while you play: Blot's ink waves and geysers, Dot-Shot pellets, SFX lettering, manga marks, ink shadows |
 | `Assets/Resources` | Fonts, audio, music, the room renders, the page settings (title, Mom's visits), credits text |
 
 ## Licence

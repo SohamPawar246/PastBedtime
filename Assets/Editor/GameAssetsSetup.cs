@@ -13,7 +13,8 @@ using UnityEngine;
 ///  - an animator controller per character: a flat list of states named after the moves,
 ///    which code cross-fades (Max and the Bruiser use the Universal Animation Library clips
 ///    plus our own moves; the other Inkies use their own clips);
-///  - the character prefabs: model, controller, collider, light sample points, health, brain;
+///  - the character prefabs: model, controller, collider, light sample points, health, brain, ink shadow
+///    (the pool itself is Art/Effects/InkShadow);
 ///  - GameAssets, which ties them together.
 /// Run Build Comic Cast first so the models are imported.
 /// </summary>
@@ -221,10 +222,32 @@ public static class GameAssetsSetup
         anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
         foreach (var r in inst.GetComponentsInChildren<SkinnedMeshRenderer>()) r.updateWhenOffscreen = true;
         setup(root);
+        AddShadow(root, AssetDatabase.LoadAssetAtPath<GameObject>(ShadowPrefab), ShadowWidth(root));
         int layer = LayerMask.NameToLayer("Comic");
         foreach (var t in root.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = layer;
         string path = $"{PrefabDir}/{name}.prefab";
         return PrefabUtility.SaveAsPrefabAsset(root, path);
+    }
+
+    private const string ShadowPrefab = "Assets/Art/Effects/InkShadow.prefab";
+
+    /// <summary>How wide a character's ink pool is drawn: Max's 0.95, an Inkie's a little wider than its body.</summary>
+    public static float ShadowWidth(GameObject root)
+    {
+        if (root.GetComponent<HeroController>() != null) return 0.95f;
+        var body = root.GetComponent<CharacterController>();
+        return body != null ? body.radius * 2.7f : 1f;
+    }
+
+    /// <summary>The ink pool under a character's feet (Art/Effects/InkShadow), its last child.</summary>
+    public static void AddShadow(GameObject root, GameObject shadowPrefab, float width)
+    {
+        var s = root.AddComponent<InkShadow>();
+        s.width = width;
+        var pool = (GameObject)PrefabUtility.InstantiatePrefab(shadowPrefab, root.transform);
+        var so = new SerializedObject(s);
+        so.FindProperty("_shadow").objectReferenceValue = pool.transform;
+        so.ApplyModifiedPropertiesWithoutUndo();
     }
 
     private static AnimatorController BuildController(string name, string modelPath, (string state, string[] clips)[] states)

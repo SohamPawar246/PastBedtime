@@ -36,3 +36,8 @@ MonoBehaviour:
   caption: {fileID: 2100000, guid: 668c03f9bd14f9247b46f719995f3df7, type: 2}
   ghostHint: {fileID: 2100000, guid: 09c218d3b173bae4faa46a6a842ef906, type: 2}
   nothing: {fileID: 2100000, guid: 1483b9f590aff9b488dcc90d01d3d0a7, type: 2}
+  inkPellet: {fileID: 8360486145688258397, guid: 4b384edfa68dc87438a582155e773898, type: 3}
+  inkWave: {fileID: 5528408982012319905, guid: 6d2c19fd4ff196247a0357c00a53fc14, type: 3}
+  inkGeyser: {fileID: 5240583878018970556, guid: 3f696ef1eb78b5b499c1281c6c4240a7, type: 3}
+  sfxWord: {fileID: 1672156269034478937, guid: 1dd3d3c78471f0642bd53ea0018d2614, type: 3}
+  mangaFx: {fileID: 5445730698042844651, guid: dca4427d7bbab674ebe72b8a7daa1e4a, type: 3}

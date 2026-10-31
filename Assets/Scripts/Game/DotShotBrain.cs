@@ -8,7 +8,6 @@ using UnityEngine;
 public class DotShotBrain : EnemyBrain
 {
     public const float Speed = 2f, Keep = 6f, Every = 2f, Range = 15f;
-    public Material PelletMaterial;
 
     private float _reload = 1.2f;
     private bool _fired;
@@ -37,7 +36,7 @@ public class DotShotBrain : EnemyBrain
                 Vector2 target = Hero != null ? (Vector2)Hero.transform.position + Vector2.up * 1.1f : muzzle + Vector2.right * Facing;
                 Vector2 dir = target - muzzle;
                 if (Mathf.Sign(dir.x) != Facing) dir.x = Facing;               // never shoots backwards
-                InkPellet.Fire(muzzle, dir, gameObject, PelletMaterial);
+                InkPellet.Fire(muzzle, dir, gameObject);
                 GameAudio.Play("spit", 0.6f);
                 SfxLettering.Spawn("PTOO!", muzzle + Vector2.up * 0.6f, Palette.Paper, 0.6f);
             }

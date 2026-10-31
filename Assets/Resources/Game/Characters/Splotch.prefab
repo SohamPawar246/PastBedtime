@@ -299,6 +299,7 @@ GameObject:
   - component: {fileID: 5241589768146119903}
   - component: {fileID: 196824349404988194}
   - component: {fileID: 303926769618774252}
+  - component: {fileID: 6642943527188464282}
   m_Layer: 8
   m_Name: Splotch
   m_TagString: Untagged
@@ -320,6 +321,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 900770112915886673}
+  - {fileID: 8788391909301555994}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &7344338869599305793
@@ -405,6 +407,20 @@ MonoBehaviour:
   MaxX: 10000
   Facing: -1
   Velocity: {x: 0, y: 0}
+--- !u!114 &6642943527188464282
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2543933973630054225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9ef7efbff8aaba4097c4082bf55c2fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InkShadow
+  width: 1
+  _shadow: {fileID: 8788391909301555994}
 --- !u!1 &6614290389722678968
 GameObject:
   m_ObjectHideFlags: 0
@@ -499,3 +515,65 @@ Transform:
   m_Children: []
   m_Father: {fileID: 5863495516828189778}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &4768509730136130730
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1516145351904456751}
+    m_Modifications:
+    - target: {fileID: 4313188081916450736, guid: 26a765274b40fa64c931cc9fd2f3d0b2, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4313188081916450736, guid: 26a765274b40fa64c931cc9fd2f3d0b2, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4313188081916450736, guid: 26a765274b40fa64c931cc9fd2f3d0b2, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4313188081916450736, guid: 26a765274b40fa64c931cc9fd2f3d0b2, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4313188081916450736, guid: 26a765274b40fa64c931cc9fd2f3d0b2, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4313188081916450736, guid: 26a765274b40fa64c931cc9fd2f3d0b2, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4313188081916450736, guid: 26a765274b40fa64c931cc9fd2f3d0b2, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4313188081916450736, guid: 26a765274b40fa64c931cc9fd2f3d0b2, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4313188081916450736, guid: 26a765274b40fa64c931cc9fd2f3d0b2, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4313188081916450736, guid: 26a765274b40fa64c931cc9fd2f3d0b2, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4450581001076457231, guid: 26a765274b40fa64c931cc9fd2f3d0b2, type: 3}
+      propertyPath: m_Name
+      value: InkShadow
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 26a765274b40fa64c931cc9fd2f3d0b2, type: 3}
+--- !u!4 &8788391909301555994 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4313188081916450736, guid: 26a765274b40fa64c931cc9fd2f3d0b2, type: 3}
+  m_PrefabInstance: {fileID: 4768509730136130730}
+  m_PrefabAsset: {fileID: 0}

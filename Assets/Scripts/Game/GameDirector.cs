@@ -57,7 +57,6 @@ public class GameDirector : MonoBehaviour
 
         var hero = Instantiate(A.max);
         hero.name = "Max";
-        InkShadow.Add(hero, 0.95f);
         PageBuilder.SetLayer(hero.transform);
 
         GameTorch.Build(view.Front);
