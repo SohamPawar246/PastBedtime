@@ -12,41 +12,20 @@ public class Press : MonoBehaviour
     public const float HoldUp = 1.1f, Drop = 0.16f, HoldDown = 0.5f, Rise = 1.0f;
     private const float Cycle = HoldUp + Drop + HoldDown + Rise;
 
+    [SerializeField] private Transform _rod;
+    [Tooltip("The ram's resting heights (world), and the underside of its housing.")]
+    [SerializeField] private float _low, _high, _housing;
+    [Tooltip("Where in its cycle it is when the page is drawn (seconds).")]
+    [SerializeField] private float _t;
     private Lightable _light;
-    private Transform _rod;
     private Hitbox _crush;
-    private float _t, _low, _high, _housing;
     private bool _down;
 
-    /// <summary>A press over the floor point `floor` (the ram comes down to rest on it).</summary>
-    public static Press Create(PanelLayout pl, Vector2 floor, float width, float phase)
+    private void Awake()
     {
-        var A = GameAssets.I;
-        float top = pl.rect.yMax - 0.5f;
-        float ramH = 0.9f;
-        // the frame: two rails up to a housing under the panel's top border
-        foreach (float side in new[] { -1f, 1f })
-            PageBuilder.Box(pl.root, "PressRail", new Vector3(floor.x + side * (width * 0.5f + 0.18f), (floor.y + top) * 0.5f, 0.9f),
-                new Vector3(0.16f, top - floor.y, 0.3f), A.metal, collider: false);
-        PageBuilder.Box(pl.root, "PressHousing", new Vector3(floor.x, top - 0.4f, 0.8f), new Vector3(width + 0.9f, 0.8f, 1.2f), A.metal, collider: false);
-
-        var ram = PageBuilder.Box(pl.root, "PressRam", new Vector3(floor.x, floor.y + 4.4f + ramH * 0.5f, 0f), new Vector3(width, ramH, 1.6f), A.wall);
-        // its striking plate: a band of solid ink along the bottom
-        var plate = PageBuilder.Box(ram.transform, "Plate", Vector3.zero, Vector3.one, A.border, collider: false);
-        plate.transform.localPosition = new Vector3(0f, -0.42f, -0.02f);
-        plate.transform.localScale = new Vector3(1.04f, 0.18f, 1.04f);
-        var p = ram.AddComponent<Press>();
-        var l = ram.AddComponent<Lightable>();
-        l.points = new[] { new Vector3(0f, 0f, 0f), new Vector3(-0.45f, -0.5f, 0f), new Vector3(0.45f, -0.5f, 0f) };
-        p._light = l;
-        p._low = floor.y + ramH * 0.5f;
-        p._high = floor.y + 4.4f + ramH * 0.5f;
-        p._housing = top - 0.8f;
-        p._t = phase * Cycle;
-        p._rod = PageBuilder.Box(pl.root, "PressRod", new Vector3(floor.x, top, 0.3f), new Vector3(0.3f, 1f, 0.3f), A.metal, collider: false).transform;
-        p._crush = new Hitbox(ram, Team.Hazard);
-        p.Place();
-        return p;
+        _light = GetComponent<Lightable>();
+        _crush = new Hitbox(gameObject, Team.Hazard);
+        Place();
     }
 
     private void Update()
@@ -57,20 +36,24 @@ public class Press : MonoBehaviour
         Place();
     }
 
-    private void Place()
+    /// <summary>The ram's height at this point in its cycle.</summary>
+    private float Height(out bool slamming)
     {
-        float y;
-        bool slamming = false;
-        if (_t < HoldUp) y = _high;
-        else if (_t < HoldUp + Drop)
+        slamming = false;
+        if (_t < HoldUp) return _high;
+        if (_t < HoldUp + Drop)
         {
             float k = (_t - HoldUp) / Drop;
-            y = Mathf.Lerp(_high, _low, k * k);                 // falls, faster and faster
             slamming = true;
+            return Mathf.Lerp(_high, _low, k * k);              // falls, faster and faster
         }
-        else if (_t < HoldUp + Drop + HoldDown) y = _low;
-        else y = Mathf.Lerp(_low, _high, Mathf.SmoothStep(0f, 1f, (_t - HoldUp - Drop - HoldDown) / Rise));
+        if (_t < HoldUp + Drop + HoldDown) return _low;
+        return Mathf.Lerp(_low, _high, Mathf.SmoothStep(0f, 1f, (_t - HoldUp - Drop - HoldDown) / Rise));
+    }
 
+    /// <summary>The ram at height y, its rod reaching down to it from the housing.</summary>
+    private void Pose(float y)
+    {
         var p = transform.position;
         transform.position = new Vector3(p.x, y, p.z);
         if (_rod != null)
@@ -79,6 +62,12 @@ public class Press : MonoBehaviour
             _rod.position = new Vector3(p.x, (rodTop + rodBottom) * 0.5f, 0.3f);
             _rod.localScale = new Vector3(0.3f, Mathf.Max(0.05f, rodTop - rodBottom), 0.3f);
         }
+    }
+
+    private void Place()
+    {
+        float y = Height(out bool slamming);
+        Pose(y);
 
         // crushing: everything awake under the ram as it comes down
         if (slamming && !_crush.Active)

@@ -311,7 +311,7 @@ public class PlaytestDriver : MonoBehaviour
 
         // 6. Max's line on page 2 names the player's own keys
         var page2 = PageManager.LoadDef(2);
-        Log($"page 2's launcher line: \"{Bindings.Format(page2.tiers[1].panels[1].heroLine)}\" (expect the up and kick keys: W and Q by default)");
+        Log($"page 2's launcher line: \"{Bindings.Format(page2.art.tiers[1].panels[1].heroLine)}\" (expect the up and kick keys: W and Q by default)");
 
         // 7. stars count once: one found and banked isn't drawn again; GROUNDED puts the stars in hand back
         Settings.SetStarsFound(1, 0);

@@ -2,7 +2,7 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// Runs a page (GDD sections 10 and 13): builds it, spawns its Inkies, saves a checkpoint as Max
+/// Runs a page (GDD sections 10 and 13): draws it (its prefab), spawns its Inkies, saves a checkpoint as Max
 /// walks into each panel, does the reading sweep at the end of a tier, restarts the panel on a
 /// "TO BE CONTINUED..." card when Max is out of hearts, and turns to the next page when he
 /// walks off the last panel.
@@ -26,6 +26,23 @@ public class PageManager : MonoBehaviour
     private void OnDestroy() { if (I == this) I = null; }
 
     public static PageDef LoadDef(int number) => Resources.Load<PageDef>($"Pages/Page{number:00}");
+
+    /// <summary>The page as drawn (its prefab), less the stars already found on it. It's put together on an
+    /// inactive easel, so nothing in it wakes before the found stars are gone.</summary>
+    public static PageLayout Draw(PageDef def, Transform parent)
+    {
+        var easel = new GameObject("Easel");
+        easel.SetActive(false);
+        var layout = Instantiate(def.art, easel.transform);
+        layout.name = $"Page {def.number}";
+        var gs = GameState.I;
+        if (gs != null)
+            foreach (var star in layout.GetComponentsInChildren<StarPickup>(true))
+                if (gs.StarFound(def.number, star.Index)) DestroyImmediate(star.gameObject);
+        layout.transform.SetParent(parent, false);
+        Destroy(easel);
+        return layout;
+    }
 
     /// <summary>How far below its panel's bottom border a body's feet are when it has left the comic (Max loses a
     /// heart; an Inkie is gone). Most of him is out of the panel by then.</summary>
@@ -68,7 +85,7 @@ public class PageManager : MonoBehaviour
             gs.PageStarted();
             gs.Notify();
         }
-        Layout = PageBuilder.Build(def, transform);
+        Layout = Draw(def, transform);
         _actors = new GameObject("Actors").transform;
         _actors.SetParent(transform, false);
         foreach (var tier in Layout.tiers)
@@ -177,7 +194,7 @@ public class PageManager : MonoBehaviour
         var torch = TorchController.I;
         _checkpointCharge = torch != null ? torch.Charge.Charge : 0f;
         _checkpointSplash = GameState.I != null ? GameState.I.Splash : 0f;
-        if (!string.IsNullOrEmpty(pl.def.heroLine)) GameHUD.I?.HeroSays(pl.def.heroLine, 4f);
+        if (!string.IsNullOrEmpty(pl.heroLine)) GameHUD.I?.HeroSays(pl.heroLine, 4f);
     }
 
     public void EnemyDown(EnemyBrain e)
@@ -195,7 +212,7 @@ public class PageManager : MonoBehaviour
         yield return new WaitForSeconds(4f);
         if (Layout != layout || pl.root == null) yield break;           // the page has turned
         int want = 0, have = 0;
-        foreach (var s in pl.def.spawns) if (s.kind == kind) want++;
+        foreach (var s in pl.GetComponentsInChildren<SpawnPoint>(true)) if (s.kind == kind) want++;
         foreach (var e in pl.enemies) if (e != null && e.GetType() == typeof(SplotchBrain) && !e.Summoned) have++;
         if (have >= want) yield break;
         var bat = PageBuilder.Spawn(kind, home, pl, _actors);

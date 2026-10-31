@@ -9,20 +9,6 @@ public class StarPickup : MonoBehaviour
     /// <summary>Which of its page's stars this is (stars found once aren't drawn again).</summary>
     public int Index;
 
-    public static GameObject Create(Transform parent, Vector2 at, Material m, int index)
-    {
-        var go = new GameObject("Star");
-        go.transform.SetParent(parent, false);
-        go.transform.position = new Vector3(at.x, at.y, -2.4f);     // in front of the captions (-2.2), behind the borders (-2.5)
-        var mf = go.AddComponent<MeshFilter>();
-        mf.sharedMesh = StarMesh();
-        go.AddComponent<MeshRenderer>().sharedMaterial = m;
-        var l = go.AddComponent<Lightable>();
-        l.points = new[] { Vector3.zero };
-        go.AddComponent<StarPickup>().Index = index;
-        return go;
-    }
-
     private void Awake() => _light = GetComponent<Lightable>();
 
     private void Update()
@@ -43,8 +29,4 @@ public class StarPickup : MonoBehaviour
             Destroy(gameObject);
         }
     }
-
-    private static Mesh _star;
-    /// <summary>A chunky 5-point star, extruded so the outline pass has an edge to draw.</summary>
-    private static Mesh StarMesh() => _star != null ? _star : _star = Resources.Load<Mesh>("Game/Meshes/Star");
 }

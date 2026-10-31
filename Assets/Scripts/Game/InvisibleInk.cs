@@ -20,39 +20,6 @@ public class InvisibleInk : MonoBehaviour
     private Renderer[] _ink;
     private Collider[] _solid;
     private Behaviour[] _live;
-    private static Material _hintMat;          // flat violet (GameAssets.ghostHint)
-
-    /// <summary>A ledge (a box from <see cref="PageBuilder.Box"/>) in invisible ink, with a dotted hint of its outline.</summary>
-    public static InvisibleInk Ledge(GameObject box)
-    {
-        var b = box.GetComponent<Renderer>().bounds;              // measured before the ink fades it
-        box.AddComponent<OneWayLedge>();                           // jump up through it, land on top
-        var ink = box.AddComponent<InvisibleInk>();
-        var hint = new GameObject("Hint").transform;
-        hint.SetParent(box.transform.parent, false);
-        const float step = 0.4f, dot = 0.07f;
-        for (float x = b.min.x + 0.15f; x <= b.max.x - 0.1f; x += step)
-        {
-            Dot(hint, new Vector3(x, b.max.y, -0.05f), dot);
-            Dot(hint, new Vector3(x + step * 0.5f, b.min.y, -0.05f), dot);
-        }
-        return ink;
-    }
-
-    /// <summary>A secret star in invisible ink: no hint, and it can't be picked up until it's shown.</summary>
-    public static InvisibleInk Secret(GameObject star) => star.AddComponent<InvisibleInk>();
-
-    private static void Dot(Transform parent, Vector3 at, float size)
-    {
-        if (_hintMat == null) _hintMat = GameAssets.I != null ? GameAssets.I.ghostHint : null;
-        var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
-        Destroy(q.GetComponent<Collider>());
-        q.name = "Dot";
-        q.transform.SetParent(parent, false);
-        q.transform.position = at;
-        q.transform.localScale = new Vector3(size, size, 1f);
-        q.GetComponent<Renderer>().sharedMaterial = _hintMat;
-    }
 
     private void Awake()
     {

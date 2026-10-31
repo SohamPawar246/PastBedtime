@@ -13,6 +13,8 @@ public class FallingProp : MonoBehaviour
     public float damage = 12f;
     /// <summary>Hanging by a thread until a flare's SPRONG shakes it loose (the chandelier).</summary>
     public bool held;
+    [Tooltip("Already falling this fast when the page is drawn (a flowerpot, a brick).")]
+    public float fallSpeed;
     private Rigidbody _rb;
     private Lightable _light;
     private bool _spent, _startHeld;
@@ -23,35 +25,12 @@ public class FallingProp : MonoBehaviour
 
     private const RigidbodyConstraints Falling = RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezeRotation;
 
-    public static FallingProp Create(Transform parent, Vector2 at, Vector3 size, Material m, bool hazard, string name, float fallSpeed = 0f)
-    {
-        var go = PageBuilder.Box(parent, name, new Vector3(at.x, at.y, 0f), size, m);
-        var p = Attach(go, hazard);
-        go.GetComponent<Rigidbody>().linearVelocity = new Vector3(0f, -fallSpeed, 0f);   // already falling when the page is drawn
-        return p;
-    }
-
-    /// <summary>Makes any solid thing a falling prop (the chandelier is built from parts).</summary>
-    public static FallingProp Attach(GameObject go, bool hazard, float damage = 12f, bool held = false)
-    {
-        var rb = go.AddComponent<Rigidbody>();
-        rb.mass = 2f;
-        rb.constraints = held ? RigidbodyConstraints.FreezeAll : Falling;
-        rb.interpolation = RigidbodyInterpolation.Interpolate;
-        var l = go.AddComponent<Lightable>();
-        l.points = new[] { Vector3.zero };
-        var p = go.AddComponent<FallingProp>();
-        p.hazard = hazard;
-        p.damage = damage;
-        p.held = held;
-        return p;
-    }
-
     private void Awake()
     {
         _rb = GetComponent<Rigidbody>();
         _light = GetComponent<Lightable>();
         _scale = transform.localScale;
+        _rb.linearVelocity = new Vector3(0f, -fallSpeed, 0f);
     }
 
     private void Start()

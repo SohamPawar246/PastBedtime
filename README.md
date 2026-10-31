@@ -120,8 +120,9 @@ rules and take screenshots.
 | `Assets/Scripts/Game` | The game: the light rule, the torch, Max, the Inkies and Baron Blot, Mom, the pages, the HUD, the finale |
 | `Assets/Scripts/Game/Dev` | Editor-only playtest driver (scripted runs that check the rules) and screenshot capture |
 | `Assets/Shaders/Comic` | The comic's printing: ink, tone, hatching, gradation and the torch's light on the page |
-| `Assets/Editor` | Menu tools: *Build Shell*, *Build Comic Cast*, *Build Game Assets*, *Build Pages* |
-| `Assets/Resources` | Fonts, audio, music, the room renders, the page definitions, credits text |
+| `Assets/Editor` | Menu tools: *Build Shell*, *Build Comic Cast*, *Build Game Assets* |
+| `Assets/Art/Pages` | The nine comic pages as prefabs: panels, rooftops, props, stars, captions and the Inkies' spawn points |
+| `Assets/Resources` | Fonts, audio, music, the room renders, the page settings (title, Mom's visits), credits text |
 
 ## Licence
 

@@ -9,38 +9,32 @@ using UnityEngine;
 /// </summary>
 public class InkFlood : MonoBehaviour
 {
-    public float Start, Level, Top, Rise = 0.55f;
+    [Tooltip("World heights: where the surface starts, and where it stops rising.")]
+    public float Start, Top;
+    [Tooltip("How fast it rises while lit (units a second).")]
+    public float Rise = 0.55f;
+    public float Level { get; private set; }
     public bool Lit { get; private set; }
-    public PanelLayout Panel { get; private set; }
+    public PanelLayout Panel;
 
     private const int Columns = 48;
     private const float Probe = 0.5f;            // surface samples for "is it lit?"
+    [SerializeField] private MeshFilter _surface, _crestLine;   // the ink, and a white crest along its waves
     private Mesh _mesh, _crest;
     private Vector3[] _verts, _crestVerts;
     private float _clock;                        // the waves' own time: it only runs while lit
 
-    public static InkFlood Create(PanelLayout pl, float start, float top, float rise, Material ink)
+    /// <summary>The ink at its starting level, waves still (its meshes are drawn live).</summary>
+    private void Awake()
     {
-        var go = new GameObject("InkFlood");
-        go.transform.SetParent(pl.root, false);
-        var f = go.AddComponent<InkFlood>();
-        f.Panel = pl;
-        f.Start = f.Level = pl.rect.yMin + start;
-        f.Top = pl.rect.yMin + top;
-        f.Rise = rise;
-        f._mesh = new Mesh { name = "Flood" };
-        f._mesh.MarkDynamic();
-        go.AddComponent<MeshFilter>().sharedMesh = f._mesh;
-        go.AddComponent<MeshRenderer>().sharedMaterial = ink;
-        // a white crest along the waves, the way an inker shows the shine on wet ink
-        var crest = new GameObject("Crest");
-        crest.transform.SetParent(go.transform, false);
-        f._crest = new Mesh { name = "FloodCrest" };
-        f._crest.MarkDynamic();
-        crest.AddComponent<MeshFilter>().sharedMesh = f._crest;
-        crest.AddComponent<MeshRenderer>().sharedMaterial = GameAssets.I != null ? GameAssets.I.paper : ink;
-        f.Build();
-        return f;
+        Level = Start;
+        _mesh = new Mesh { name = "Flood" };
+        _mesh.MarkDynamic();
+        _surface.sharedMesh = _mesh;
+        _crest = new Mesh { name = "FloodCrest" };
+        _crest.MarkDynamic();
+        _crestLine.sharedMesh = _crest;
+        Build();
     }
 
     /// <summary>The panel restarted: the ink drains back to where it began.</summary>
