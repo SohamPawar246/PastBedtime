@@ -16,116 +16,51 @@ public class PageView : MonoBehaviour
     public static PageView I { get; private set; }
 
     /// <summary>The room's 1920 x 1080 layer (cover-scaled to the screen) and, inside it, the part that zooms.</summary>
-    public RectTransform Room { get; private set; }
-    public RectTransform Zoomed { get; private set; }
+    [field: SerializeField] public RectTransform Room { get; private set; }
+    [field: SerializeField] public RectTransform Zoomed { get; private set; }
     /// <summary>A screen-fixed 1920 x 1080 layer over the room: Roshan's hand, the HUD around the comic.</summary>
-    public RectTransform Front { get; private set; }
+    [field: SerializeField] public RectTransform Front { get; private set; }
     /// <summary>The open spread (zoomed-layer local units).</summary>
-    public QuadImage Page { get; private set; }
+    [field: SerializeField] public QuadImage Page { get; private set; }
     public bool Opening { get; private set; }
     /// <summary>0 = the title's framing, 1 = the game's.</summary>
     public float Framing { get; private set; }
 
-    // the comic's cover where it stands in the room render (Blender: room_points.json), centre origin, y up
-    private static readonly Vector2 CoverBL = new(-186.2f, -458.5f), CoverTL = new(-204.9f, 169f),
-                                     CoverTR = new(228.3f, 186.8f), CoverBR = new(290.4f, -422.1f);
+    // the shut comic's middle in the room render (centre origin, y up)
     public static readonly Vector2 ComicCentre = new(34f, -120f);
-    // the game's framing: the room zoomed about Pivot (Mom's door stays in view top-left), and
-    // the open spread's corners on screen, a touch tilted, filling most of it
+    // the game's framing: the room zoomed about Pivot (Mom's door stays in view top-left)
     public const float Zoom = 1.3f;
     public static readonly Vector2 Pivot = new(860f, -100f);
-    private static readonly Vector2 SpreadBL = new(-700f, -470f), SpreadTL = new(-636f, 360f),
-                                     SpreadTR = new(822f, 332f), SpreadBR = new(882f, -500f);
     // the room light the torch throws round where it lands (overlay heights)
     private const float TitleSpill = 0.42f, TitleSoft = 0.15f, GameSoft = 0.12f;
 
-    private QuadImage _left, _right, _cover, _edge, _shadow, _fold;
+    [SerializeField] private QuadImage _left, _right, _cover, _edge, _shadow, _fold;
     private Texture2D _coverArt;
-    private RawImage _lit, _dark;
+    [SerializeField] private RawImage _lit, _dark;
     private bool _openPlates;
-    private TorchBeam _roomLight;
-    private RectTransform _spot;
-    private RectTransform _comic;
-    private CanvasGroup _comicGroup;
+    [SerializeField] private TorchBeam _roomLight;
+    [SerializeField] private RectTransform _spot;
+    [SerializeField] private RectTransform _comic;
+    [SerializeField] private CanvasGroup _comicGroup;
 
     /// <summary>Mom's room light (the finale): 0 the room by torchlight, 1 the big light on.</summary>
     [System.NonSerialized] public float RoomLight;
-    private Vector2[] _from, _to;            // spread corners (zoomed-local) in the title's framing and the game's
+    [Tooltip("The spread's corners (bl, tl, tr, br; zoomed-layer units): shut, where the cover stands in the room render " +
+             "(Blender: room_points.json), and open in the game's framing, a touch tilted, filling most of the screen.")]
+    [SerializeField] private Vector2[] _from, _to;
     private float _flip;                     // the cover's swing, 0 shut .. 1 open
 
     private void Awake() => I = this;
     private void OnDestroy() { if (I == this) I = null; }
 
-    public void Build(Transform canvas, RenderTexture page)
+    /// <summary>The page camera's texture on the spread, the comic shut on Roshan's knees (the title's framing).</summary>
+    public void Show(RenderTexture page)
     {
-        var bg = UIKit.Image(canvas, "Night", Palette.Night);
-        UIKit.Stretch(bg.rectTransform);
-
-        Room = CoverScaler.Create(canvas, "Room");
-        Zoomed = UIKit.Rect(Room, "Zoomed");
-        Zoomed.anchorMin = Zoomed.anchorMax = Zoomed.pivot = new Vector2(0.5f, 0.5f);
-        Zoomed.sizeDelta = new Vector2(1920f, 1080f);
-
-        // the room by torchlight under the room by moonlight: the torch reveals the lit one round its pool.
-        // Shut, the comic stands on Roshan's knees in the render (the title's picture); once it's open
-        // the plates without it take over (the game draws the open comic there).
-        _lit = UIKit.Raw(Zoomed, "RoomTorchLit");
-        _lit.texture = Resources.Load<Texture2D>("Room/room_lit");
-        UIKit.Stretch(_lit.rectTransform);
-        _spot = UIKit.Rect(Zoomed, "TorchSpill");
-        UIKit.Place(_spot, ComicCentre, new Vector2(10f, 10f));
-        _roomLight = TorchBeam.Create(Zoomed, _spot, Resources.Load<Texture2D>("Room/room_dark"));
-        _dark = _roomLight.GetComponent<RawImage>();
-        _roomLight.darkColor = Color.white;
-        _roomLight.darkness = 1f;
-        _roomLight.litAlpha = 0f;
-        _roomLight.radius = TitleSpill;
-        _roomLight.softness = TitleSoft;
-        _roomLight.followPointer = false;
-        _roomLight.followSelection = false;
+        Page.texture = _left.texture = _right.texture = page;
         _roomLight.SetPowerInstant(1f);
-
-        // Mom's door and its light go in here next (MomDoorView), then the comic on top
-        var door = UIKit.Rect(Zoomed, "DoorLayer");
-        UIKit.Stretch(door);
-
-        var comic = UIKit.Rect(Zoomed, "Comic");
-        UIKit.Stretch(comic);
-        _comic = comic;
-        _comicGroup = comic.gameObject.AddComponent<CanvasGroup>();
-        _comicGroup.blocksRaycasts = false;
-        _shadow = Quad(comic, "Shadow", null, new Color(0f, 0f, 0f, 0.5f));
-        _edge = Quad(comic, "PageEdges", null, Palette.ComicPaper * 0.62f);
-        Page = Quad(comic, "Spread", page, Color.white);
-        _left = Quad(comic, "LeftPage", page, Color.white);
-        _right = Quad(comic, "RightPage", page, Color.white);
-        _fold = Quad(comic, "Fold", FoldTexture, new Color(0f, 0f, 0f, 0.22f));
-        _cover = Quad(comic, "Cover", Resources.Load<Texture2D>("Room/cover_flat"), Color.white);
-
-        Front = CoverScaler.Create(canvas, "Front");
-
-        _from = new[] { 2f * CoverBL - CoverBR, 2f * CoverTL - CoverTR, CoverTR, CoverBR };
-        _to = new[] { ToZoomed(SpreadBL), ToZoomed(SpreadTL), ToZoomed(SpreadTR), ToZoomed(SpreadBR) };
         SetFraming(0f);
         SetFlip(0f);
     }
-
-    public RectTransform DoorLayer => (RectTransform)Zoomed.Find("DoorLayer");
-
-    private static QuadImage Quad(Transform parent, string name, Texture tex, Color c)
-    {
-        var go = new GameObject(name, typeof(RectTransform));
-        go.transform.SetParent(parent, false);
-        var q = go.AddComponent<QuadImage>();
-        UIKit.Stretch(q.rectTransform);
-        q.texture = tex;
-        q.color = c;
-        q.raycastTarget = false;
-        return q;
-    }
-
-    /// <summary>A screen point (1920 x 1080 design units) in the game's framing, as a zoomed-layer point.</summary>
-    private static Vector2 ToZoomed(Vector2 screen) => (screen - Pivot * (1f - Zoom)) / Zoom;
 
     // ---- the opening: the cover swings open, the view zooms in ------------------------------------
 
@@ -308,9 +243,4 @@ public class PageView : MonoBehaviour
         lane = PageCamera.I.ViewportToLane(uv);
         return true;
     }
-
-    // ---- the fold down the middle of the spread ----------------------------------------------------
-
-    private static Texture2D _foldTex;
-    private static Texture2D FoldTexture => _foldTex != null ? _foldTex : _foldTex = Resources.Load<Texture2D>("UI/Textures/page_fold");
 }

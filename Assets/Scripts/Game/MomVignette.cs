@@ -10,7 +10,7 @@ using UnityEngine.UI;
 public class MomVignette : MonoBehaviour
 {
     private const int W = 192, H = 108;          // the shape is soft: a small texture, stretched
-    private RawImage _image;
+    [SerializeField] private RawImage _image;
     private Texture2D _tex;
     private Rect _drawnFor;                      // the door (screen pixels) the texture's hole was drawn for
     private Vector2Int _screen;
@@ -18,19 +18,6 @@ public class MomVignette : MonoBehaviour
     /// <summary>How dark the edges are right now (0 = not at all).</summary>
     public float Strength { get; private set; }
     public static MomVignette I { get; private set; }
-
-    public static MomVignette Build(Transform roomCanvas, RectTransform front)
-    {
-        var img = UIKit.Raw(roomCanvas, "MomVignette");
-        UIKit.Stretch(img.rectTransform);
-        img.raycastTarget = false;
-        img.color = new Color(1f, 1f, 1f, 0f);
-        img.enabled = false;
-        img.transform.SetSiblingIndex(front.GetSiblingIndex());          // just under the reader's things
-        var v = img.gameObject.AddComponent<MomVignette>();
-        v._image = img;
-        return v;
-    }
 
     private void Awake() => I = this;
 

@@ -23,8 +23,8 @@ public class TorchBeam : MonoBehaviour
     public bool followSelection = true;
     public bool followPointer = true;        // false: the beam ignores the mouse (e.g. during the opening)
 
-    private RawImage _overlay;
-    private Material _mat;
+    [SerializeField] private RawImage _overlay;
+    private Material _mat;                   // its own copy of LightMask (made as it wakes: a scene saves no copy)
     private Vector2 _pos, _vel;              // screen pixels
     private Vector2 _lastMouse;
     private float _mouseActiveUntil;
@@ -65,10 +65,22 @@ public class TorchBeam : MonoBehaviour
         var beam = raw.gameObject.AddComponent<TorchBeam>();
         beam._overlay = raw;
         beam.home = home;
-        beam._mat = UIKit.NewLightMaskMaterial();
-        raw.material = beam._mat;
-        if (beam._mat == null) raw.color = Palette.Night.Alpha(0.6f); // shader missing: plain dim
+        beam.Mask();
         return beam;
+    }
+
+    // a beam drawn in a scene makes its mask as it wakes
+    private void Awake()
+    {
+        if (_overlay != null) Mask();
+    }
+
+    private void Mask()
+    {
+        if (!Application.isPlaying) return;
+        _mat = UIKit.NewLightMaskMaterial();
+        _overlay.material = _mat;
+        if (_mat == null) _overlay.color = Palette.Night.Alpha(0.6f); // shader missing: plain dim
     }
 
     private void Start()

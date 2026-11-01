@@ -15,7 +15,6 @@ public class GameTorch : MonoBehaviour
     public static GameTorch I { get; private set; }
 
     // the hand in the 1920 x 1080 front layer: where the title draws it, and where the game holds it
-    private static readonly Rect HandRect = Rect.MinMaxRect(416f, -702f, 1016f, -254f);
     private static readonly Vector2 Wrist = new(852f, -548f);
     private static readonly Vector2 GameOffset = new(96f, -78f);
     private const float GameScale = 1f;
@@ -24,79 +23,29 @@ public class GameTorch : MonoBehaviour
     private static readonly Vector2 LensPx = new(29f, 68f), AimPx = new(-383f, -25f);   // the aim: the title's comic centre
     private static readonly Vector2 DialPx = new(188.63f, 68.49f), DialXPx = new(183.99f, 58.56f), DialYPx = new(175.39f, 65.5f);
     private static readonly Vector2[] WindowPx = { new(33.45f, 126.04f), new(16.97f, 67.98f), new(45.33f, 16.08f), new(64.28f, 73.01f) };
-    private static readonly Rect CrankPx = new(50f, 85f, 172f, 128f);
     private static readonly Vector2 SwitchPx = new(232f, 152f);
     private const int CrankFrames = 16;
     private const float MaxTurn = 9f;
 
-    private RectTransform _hand;
-    private RawImage _crank;
-    private Texture2D[] _crankTex;
-    private RectTransform _needle;
-    private Image _needleImg;
-    private Image _lensGlow, _window;
-    private LightCone _cone;
-    private TextMeshProUGUI _hint, _lensName;
+    [SerializeField] private RectTransform _hand;
+    [SerializeField] private RawImage _crank;
+    [SerializeField] private Texture2D[] _crankTex;
+    [SerializeField] private RectTransform _needle;
+    [SerializeField] private Image _needleImg;
+    [SerializeField] private Image _lensGlow, _window;
+    [SerializeField] private LightCone _cone;
+    [SerializeField] private TextMeshProUGUI _hint, _lensName;
     private float _turn, _crankAngle, _crankTarget, _flicker, _nameFor;
     private Lens _lastLens;
-
-    public static GameTorch Build(RectTransform front)
-    {
-        var root = UIKit.Rect(front, "Torch");
-        UIKit.Stretch(root);
-        var gt = root.gameObject.AddComponent<GameTorch>();
-        gt.BuildUI(root);
-        return gt;
-    }
 
     private void Awake() => I = this;
     private void OnDestroy() { if (I == this) I = null; }
 
     private static Vector2 Local(Vector2 px) => new(px.x - WristPx.x, WristPx.y - px.y);
 
-    private void BuildUI(RectTransform root)
+    /// <summary>Listens to the torch in Roshan's hand: its crank, its switch, its lens.</summary>
+    public void Hook()
     {
-        _cone = LightCone.Create(root, "LightShaft", Palette.LensClear.Alpha(0f));
-
-        var hand = UIKit.Raw(root, "Hand");
-        hand.texture = Resources.Load<Texture2D>("Room/torch_base");
-        _hand = hand.rectTransform;
-        _hand.anchorMin = _hand.anchorMax = new Vector2(0.5f, 0.5f);
-        _hand.sizeDelta = HandRect.size;
-        _hand.pivot = new Vector2(WristPx.x / HandRect.width, 1f - WristPx.y / HandRect.height);
-        _hand.anchoredPosition = Wrist;
-        hand.raycastTarget = false;
-
-        _crankTex = new Texture2D[CrankFrames];
-        for (int i = 0; i < CrankFrames; i++) _crankTex[i] = Resources.Load<Texture2D>($"Room/Crank/crank_{i:00}");
-        _crank = UIKit.Raw(_hand, "Crank");
-        _crank.texture = _crankTex[0];
-        _crank.raycastTarget = false;
-        PlaceOnHand(_crank.rectTransform, CrankPx.center, CrankPx.size);
-
-        // the charge dial's needle: a hair of black ink pivoting on the dial's centre
-        var needle = UIKit.Image(_hand, "Needle", Palette.Ink);
-        _needleImg = needle;
-        _needle = needle.rectTransform;
-        PlaceOnHand(_needle, DialPx, new Vector2(2.2f, 12f));
-        _needle.pivot = new Vector2(0.5f, 0f);
-        var hub = UIKit.Image(_hand, "NeedleHub", Palette.HeroRed, UIKit.Disc);
-        PlaceOnHand(hub.rectTransform, DialPx, new Vector2(4.5f, 4f));
-
-        _window = UIKit.Image(_hand, "LensWindow", Palette.LensClear.Alpha(0f), UIKit.Glow);
-        PlaceOnHand(_window.rectTransform, WindowPx[0], new Vector2(34f, 34f));
-        _lensGlow = UIKit.Image(_hand, "LensGlow", Palette.LensClear.Alpha(0f), UIKit.Glow);
-        PlaceOnHand(_lensGlow.rectTransform, LensPx, new Vector2(130f, 130f));
-
-        _hint = UIKit.Text(root, "TwistHint", "", UIKit.Display, 34f, Palette.Yellow);
-        _hint.rectTransform.anchorMin = _hint.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-        _hint.rectTransform.sizeDelta = new Vector2(320f, 44f);
-        _hint.raycastTarget = false;
-        _lensName = UIKit.Text(root, "LensName", "", UIKit.Display, 30f, Palette.Paper);
-        _lensName.rectTransform.anchorMin = _lensName.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-        _lensName.rectTransform.sizeDelta = new Vector2(260f, 40f);
-        _lensName.raycastTarget = false;
-
         var torch = TorchController.I;
         if (torch != null)
         {
@@ -104,14 +53,6 @@ public class GameTorch : MonoBehaviour
             torch.Toggled += on => Pop(on ? "CLICK!" : "CLICK!", SwitchPx, Palette.Yellow);
             _lastLens = torch.Lenses.Current;
         }
-    }
-
-    private static void PlaceOnHand(RectTransform rt, Vector2 px, Vector2 size)
-    {
-        var hand = (RectTransform)rt.parent;
-        rt.anchorMin = rt.anchorMax = hand.pivot;                    // positions measured from the wrist
-        rt.sizeDelta = size;
-        rt.anchoredPosition = Local(px);
     }
 
     /// <summary>A front-layer point for a point on the hand render (follows the hand's turn and move).</summary>

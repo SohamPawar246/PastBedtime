@@ -15,26 +15,20 @@ public class MomDoorView : MonoBehaviour
 {
     public static MomDoorView I { get; private set; }
 
-    // where things sit in the 1920 x 1080 room render (centre origin, y up), from Blender
-    private static readonly Rect DoorCrop = new(-769f, -136f, 656f, 668f);
-    private static readonly Vector2 MomEyes = new(-305.6f, 329.2f);
+    // the gap under the door in the 1920 x 1080 room render (centre origin, y up), from Blender
     private static readonly Vector2 DoorGapLeft = new(-425f, -54f), DoorGapRight = new(-347f, -54f);
-    private static readonly Rect DoorFrame = Rect.MinMaxRect(-508f, -62f, -238f, 480f);
-    // around the comic, on the screen-fixed front layer (1920 x 1080, centre origin)
-    private static readonly Vector2 CaptionAt = new(-800f, -150f), SayAt = new(-760f, 70f);
-    private static readonly Vector2[] SlipperAt = { new(-900f, -488f), new(-836f, -505f), new(-772f, -490f) };
 
-    private DoorVisit _door;
-    private RawImage _strip, _glow;
-    private Image[] _feet;
-    private Image _frame;
-    private TextMeshProUGUI _caption, _say;
-    private CanvasGroup _sayGroup;
-    private Image[] _slippers;
-    private RectTransform _track;
-    private Image[] _prints;
-    private Image _flood;
-    private Vector2[] _slipperHome;
+    [SerializeField] private DoorVisit _door;
+    [SerializeField] private RawImage _strip, _glow;
+    [SerializeField] private Image[] _feet;
+    [SerializeField] private Image _frame;
+    [SerializeField] private TextMeshProUGUI _caption, _say;
+    [SerializeField] private CanvasGroup _sayGroup;
+    [SerializeField] private Image[] _slippers;
+    [SerializeField] private RectTransform _track;
+    [SerializeField] private Image[] _prints;
+    [SerializeField] private Image _flood;
+    [SerializeField] private Vector2[] _slipperHome;
     private int _slipperCount = -1, _flying;
     private float _beat, _floodT = 1f, _lastBust, _sayFor;
 
@@ -74,79 +68,6 @@ public class MomDoorView : MonoBehaviour
 
     private void Awake() => I = this;
     private void OnDestroy() { if (I == this) I = null; }
-
-    public static MomDoorView Build(RectTransform doorLayer, RectTransform front)
-    {
-        var view = doorLayer.gameObject.AddComponent<MomDoorView>();
-        view.BuildUI(doorLayer, front);
-        return view;
-    }
-
-    private void BuildUI(RectTransform room, RectTransform front)
-    {
-        // ---- the door itself, in the room (zooms with it) --------------------------------------------
-        _door = DoorVisit.Create(room, DoorCrop, MomEyes, 21f, "spill_open_");   // its light, minus the comic the title has there
-        _glow = UIKit.Raw(room, "HallwayGlow");
-        _glow.texture = Resources.Load<Texture2D>("Room/gap_glow");
-        UIKit.Place(_glow.rectTransform, new Vector2(-385f, -48f), new Vector2(152f, 72f));
-        _strip = UIKit.Raw(room, "HallwayStrip");
-        _strip.texture = Resources.Load<Texture2D>("Room/gap_strip");
-        UIKit.Place(_strip.rectTransform, new Vector2(-384f, -54f), new Vector2(88f, 4f));
-        _feet = new Image[2];
-        for (int i = 0; i < 2; i++)
-        {
-            _feet[i] = UIKit.Image(room, "Foot" + i, Palette.Ink.Alpha(0f), UIKit.Disc);
-            UIKit.Place(_feet[i].rectTransform, FootPos(i, 1f), new Vector2(30f, 6f));
-        }
-        // the frame's glow: a ring of light traced round the door frame
-        _frame = UIKit.Image(room, "SuspicionFrame", Palette.Hallway.Alpha(0f), FrameGlow);
-        _frame.type = Image.Type.Sliced;
-        UIKit.Place(_frame.rectTransform, DoorFrame.center, DoorFrame.size + new Vector2(64f, 64f));
-        _frame.raycastTarget = false;
-
-        // ---- around the comic (screen-fixed) -------------------------------------------------------
-        _caption = UIKit.Text(front, "DoorCaption", "", UIKit.Display, 30f, Palette.PaperDim);
-        UIKit.Place(_caption.rectTransform, CaptionAt, new Vector2(300f, 44f));
-        _caption.raycastTarget = false;
-
-        var say = UIKit.Panel(front, "MomSays", SayAt, new Vector2(230f, 64f), Palette.Ink, shadow: 5f, tilt: 2f);
-        _sayGroup = say.transform.parent.gameObject.AddComponent<CanvasGroup>();
-        _sayGroup.alpha = 0f;
-        _sayGroup.blocksRaycasts = false;
-        _say = UIKit.Text(say.transform, "Text", "", UIKit.Display, 34f, Palette.Paper);
-        UIKit.Stretch(_say.rectTransform, 6f);
-
-        _slippers = new Image[3];
-        _slipperHome = new Vector2[3];
-        for (int i = 0; i < 3; i++)
-        {
-            var s = UIKit.Image(front, "Slipper" + i, Palette.HeroBlue, Slipper);
-            s.rectTransform.sizeDelta = new Vector2(30f, 60f);
-            _slipperHome[i] = SlipperAt[i];
-            s.rectTransform.anchoredPosition = _slipperHome[i];
-            s.rectTransform.localRotation = Quaternion.Euler(0f, 0f, -78f + i * 14f);   // kicked off by the bed
-            s.raycastTarget = false;
-            _slippers[i] = s;
-        }
-
-        // footprints along the top edge, marching in toward the door (the audio's visual twin)
-        _track = UIKit.Rect(front, "FootprintTrack");
-        _track.anchorMin = _track.anchorMax = new Vector2(0.5f, 0.5f);
-        _track.sizeDelta = new Vector2(1300f, 60f);
-        _track.anchoredPosition = new Vector2(240f, 488f);
-        _prints = new Image[10];
-        for (int i = 0; i < _prints.Length; i++)
-        {
-            _prints[i] = UIKit.Image(_track, "Print" + i, Palette.Hallway.Alpha(0f), Slipper);
-            _prints[i].rectTransform.anchorMin = _prints[i].rectTransform.anchorMax = new Vector2(1f, 0.5f);
-            _prints[i].raycastTarget = false;
-        }
-
-        // BUSTED: the hall light floods the whole screen for a moment
-        _flood = UIKit.Image(front, "HallwayFlood", Palette.Hallway.Alpha(0f));
-        UIKit.Stretch(_flood.rectTransform, -400f);
-        _flood.raycastTarget = false;
-    }
 
     /// <summary>Mom's line through the door, by the door.</summary>
     public void Say(string text)
@@ -289,14 +210,11 @@ public class MomDoorView : MonoBehaviour
 
     // ---- drawn shapes ------------------------------------------------------------------------------
 
-    private static Sprite _slipper, _paw, _frameGlow;
+    private static Sprite _slipper, _paw;
 
     /// <summary>A slipper's sole, toe up: a wide forefoot and a smaller heel.</summary>
     private static Sprite Slipper => _slipper != null ? _slipper : _slipper = UIKit.LoadSprite("slipper");
 
     /// <summary>A paw print: one pad and four toes.</summary>
     private static Sprite Paw => _paw != null ? _paw : _paw = UIKit.LoadSprite("paw");
-
-    /// <summary>A soft ring of light for a rectangular frame, nine-sliced (hollow in the middle).</summary>
-    private static Sprite FrameGlow => _frameGlow != null ? _frameGlow : _frameGlow = UIKit.LoadSprite("frame_glow");
 }

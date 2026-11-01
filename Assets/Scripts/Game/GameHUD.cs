@@ -17,139 +17,33 @@ public class GameHUD : MonoBehaviour
 {
     public static GameHUD I { get; private set; }
 
-    private RectTransform _page;
-    private Image[] _hearts;
+    [SerializeField] private RectTransform _page;
+    [SerializeField] private Image[] _hearts;
     // hearts popping as they're lost (or won back), the box shaking; stars flying up into their counter
-    private float[] _heartPop;
-    private bool[] _heartLost;
+    [SerializeField] private float[] _heartPop;
+    [SerializeField] private bool[] _heartLost;
     private int _heartsShown = -1;
-    private RectTransform _heartsBox, _starsBox, _starIcon;
-    private Vector2 _heartsHome;
+    [SerializeField] private RectTransform _heartsBox, _starsBox, _starIcon;
+    [SerializeField] private Vector2 _heartsHome;
     private float _heartsShake, _starsBump;
     private int _starsInFlight;
-    private Image _splashFill;
-    private TextMeshProUGUI _splashHint, _stars, _folio;
-    private Image _ring;
-    private CanvasGroup _cardGroup;
-    private TextMeshProUGUI _cardText;
-    private RectTransform _countBox, _bossBox;
-    private TextMeshProUGUI _countText;
-    private Image _bossFill;
+    [SerializeField] private Image _splashFill;
+    [SerializeField] private TextMeshProUGUI _splashHint, _stars, _folio;
+    [SerializeField] private Image _ring;
+    [SerializeField] private CanvasGroup _cardGroup;
+    [SerializeField] private TextMeshProUGUI _cardText;
+    [SerializeField] private RectTransform _countBox, _bossBox;
+    [SerializeField] private TextMeshProUGUI _countText;
+    [SerializeField] private Image _bossFill;
     private float _countdown, _bossLook;
     private BlotBrain _boss;
-    private RectTransform _bubble, _bubbleTail;
+    [SerializeField] private RectTransform _bubble, _bubbleTail;
     private bool _bubbleLeft;
-    private TextMeshProUGUI _bubbleText;
+    [SerializeField] private TextMeshProUGUI _bubbleText;
     private float _bubbleFor;
-
-    private static Sprite _heart;
 
     private void Awake() => I = this;
     private void OnDestroy() { if (I == this) I = null; }
-
-    public void Build(RectTransform pageHolder)
-    {
-        _page = pageHolder;
-
-        // ---- hearts + splash meter: a caption box printed top-left on the page ---------------
-        var box = UIKit.Panel(pageHolder, "HeartsBox", Vector2.zero, new Vector2(300f, 92f), Palette.Yellow, shadow: 5f, tilt: -1.5f);
-        var boxRt = (RectTransform)box.transform.parent;
-        Pin(boxRt, new Vector2(0f, 1f), new Vector2(24f, -12f));
-        _heartsBox = boxRt;
-        _heartsHome = boxRt.anchoredPosition;
-        _hearts = new Image[GameState.MaxHearts];
-        _heartPop = new float[_hearts.Length];
-        _heartLost = new bool[_hearts.Length];
-        for (int i = 0; i < _hearts.Length; i++)
-        {
-            _hearts[i] = UIKit.Image(box.transform, "Heart" + i, Palette.Ink, Heart);
-            UIKit.Place(_hearts[i].rectTransform, new Vector2(-112f + i * 46f, 16f), new Vector2(38f, 34f));
-        }
-        var barBack = UIKit.Image(box.transform, "SplashBack", Palette.Ink);
-        UIKit.Place(barBack.rectTransform, new Vector2(0f, -24f), new Vector2(262f, 18f));
-        _splashFill = UIKit.Image(barBack.transform, "SplashFill", Palette.Paper, UIKit.Solid);
-        _splashFill.type = Image.Type.Filled;
-        _splashFill.fillMethod = Image.FillMethod.Horizontal;
-        UIKit.Stretch(_splashFill.rectTransform, 3f);
-        // beside the box, not under it: under it, it would print over the first panel's caption
-        _splashHint = UIKit.Text(box.transform, "SplashHint", "", UIKit.Display, 24f, Palette.HeroRed, TMPro.TextAlignmentOptions.Left);
-        UIKit.Place(_splashHint.rectTransform, new Vector2(150f + 12f + 150f, -22f), new Vector2(300f, 34f));
-
-        // ---- stars: top-right caption ------------------------------------------------------
-        var stars = UIKit.Panel(pageHolder, "StarsBox", Vector2.zero, new Vector2(190f, 56f), Palette.Yellow, shadow: 5f, tilt: 1.5f);
-        _starsBox = (RectTransform)stars.transform.parent;
-        Pin(_starsBox, new Vector2(1f, 1f), new Vector2(-24f, -12f));
-        var starIcon = UIKit.Image(stars.transform, "StarIcon", Palette.Ink, Star);
-        UIKit.Place(starIcon.rectTransform, new Vector2(-62f, 1f), new Vector2(40f, 40f));
-        _starIcon = starIcon.rectTransform;
-        _stars = UIKit.Text(stars.transform, "Stars", "", UIKit.Display, 30f, Palette.Ink);
-        UIKit.Place(_stars.rectTransform, new Vector2(22f, 0f), new Vector2(140f, 48f));
-
-        // ---- the folio, printed like a page number --------------------------------------------
-        _folio = UIKit.Text(pageHolder, "Folio", "", UIKit.Mono, 24f, Palette.PaperDim);
-        _folio.rectTransform.anchorMin = _folio.rectTransform.anchorMax = new Vector2(0.5f, 0f);
-        _folio.rectTransform.anchoredPosition = new Vector2(0f, 22f);
-        _folio.rectTransform.sizeDelta = new Vector2(400f, 30f);
-
-        // ---- where the beam will land while the torch is off ------------------------------------
-        var ringClip = UIKit.Rect(pageHolder, "AimRingClip");          // the ring is drawn on the page only
-        UIKit.Stretch(ringClip);
-        ringClip.gameObject.AddComponent<RectMask2D>();
-        _ring = UIKit.Image(ringClip, "AimRing", Palette.LensClear.Alpha(0.8f), Dots);
-        _ring.rectTransform.sizeDelta = new Vector2(120f, 120f);
-        _ring.raycastTarget = false;
-
-        // ---- Max's speech bubble ------------------------------------------------------------
-        _bubble = UIKit.Rect(pageHolder, "HeroBubble");
-        _bubble.sizeDelta = new Vector2(440f, 110f);
-        _bubble.pivot = new Vector2(0.15f, 0f);
-        var bubbleInk = UIKit.Image(_bubble, "Ink", Palette.Ink, UIKit.Disc);
-        UIKit.Stretch(bubbleInk.rectTransform, -4f);
-        var bubbleFace = UIKit.Image(_bubble, "Face", Color.white, UIKit.Disc);
-        UIKit.Stretch(bubbleFace.rectTransform);
-        var tail = UIKit.Image(_bubble, "Tail", Color.white, UIKit.Triangle);
-        UIKit.Place(tail.rectTransform, new Vector2(-150f, -52f), new Vector2(34f, 40f));
-        tail.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 170f);
-        _bubbleTail = tail.rectTransform;
-        _bubbleText = UIKit.Text(_bubble, "Text", "", UIKit.Body, 26f, Palette.Ink);
-        _bubbleText.fontStyle = FontStyles.Bold;
-        UIKit.Stretch(_bubbleText.rectTransform, 26f);
-        _bubble.gameObject.SetActive(false);
-
-        // ---- the finale's room light: a countdown caption, top centre --------------------------
-        var count = UIKit.Panel(pageHolder, "RoomLightBox", Vector2.zero, new Vector2(330f, 60f), Palette.Yellow, shadow: 5f, tilt: -1f);
-        _countBox = (RectTransform)count.transform.parent;
-        Pin(_countBox, new Vector2(0.5f, 1f), new Vector2(0f, -12f));
-        _countText = UIKit.Text(count.transform, "Count", "", UIKit.Display, 34f, Palette.Ink);
-        UIKit.Stretch(_countText.rectTransform, 6f);
-        _countBox.gameObject.SetActive(false);
-
-        // ---- Baron Blot's health: his name over an ink bar, under the countdown ------------------
-        var boss = UIKit.Panel(pageHolder, "BossBox", Vector2.zero, new Vector2(520f, 64f), Palette.Paper, shadow: 5f, tilt: 0.8f);
-        _bossBox = (RectTransform)boss.transform.parent;
-        Pin(_bossBox, new Vector2(0.5f, 0f), new Vector2(0f, 64f));        // along the bottom, over the folio
-        var bossName = UIKit.Text(boss.transform, "Name", "BARON BLOT", UIKit.Display, 26f, Palette.Ink);
-        UIKit.Place(bossName.rectTransform, new Vector2(0f, 13f), new Vector2(480f, 30f));
-        var bossBack = UIKit.Image(boss.transform, "Back", Palette.Ink.Alpha(0.25f));
-        UIKit.Place(bossBack.rectTransform, new Vector2(0f, -14f), new Vector2(470f, 16f));
-        _bossFill = UIKit.Image(bossBack.transform, "Fill", Palette.Ink, UIKit.Solid);
-        _bossFill.type = Image.Type.Filled;
-        _bossFill.fillMethod = Image.FillMethod.Horizontal;
-        UIKit.Stretch(_bossFill.rectTransform, 2f);
-        _bossBox.gameObject.SetActive(false);
-
-        // ---- cards ---------------------------------------------------------------------------
-        var card = UIKit.Rect(pageHolder, "Card");
-        UIKit.Stretch(card);
-        _cardGroup = card.gameObject.AddComponent<CanvasGroup>();
-        _cardGroup.alpha = 0f;
-        _cardGroup.blocksRaycasts = false;
-        var dim = UIKit.Image(card, "Dim", Palette.Ink.Alpha(0.88f));
-        UIKit.Stretch(dim.rectTransform);
-        var cap = UIKit.Panel(card, "CardBox", Vector2.zero, new Vector2(820f, 220f), Palette.Yellow, shadow: 10f, tilt: -2f);
-        _cardText = UIKit.Text(cap.transform, "CardText", "", UIKit.Display, 70f, Palette.Ink);
-        UIKit.Stretch(_cardText.rectTransform, 18f);
-    }
 
     /// <summary>The finale's room-light countdown (0 hides it).</summary>
     public void Countdown(float seconds) => _countdown = seconds;
@@ -167,13 +61,6 @@ public class GameHUD : MonoBehaviour
                     Mathf.Abs(hero.transform.position.y - _boss.transform.position.y) < 8f;           // his tier, not one above
         _bossBox.gameObject.SetActive(show);
         if (show) _bossFill.fillAmount = _boss.Health.hp / BlotBrain.MaxHp;
-    }
-
-    private static void Pin(RectTransform rt, Vector2 corner, Vector2 offset)
-    {
-        rt.anchorMin = rt.anchorMax = corner;
-        rt.pivot = corner;
-        rt.anchoredPosition = offset;
     }
 
     private void Update()
@@ -518,14 +405,8 @@ public class GameHUD : MonoBehaviour
         if (struck == 0) StartCoroutine(Card("...MISSED!", 0.8f));
     }
 
-    private static Sprite _dots, _star;
-
-    /// <summary>A dotted circle: where the beam will land when the torch comes back on.</summary>
-    private static Sprite Dots => _dots != null ? _dots : _dots = UIKit.LoadSprite("aim_dots");
+    private static Sprite _star;
 
     /// <summary>A five-point star.</summary>
     public static Sprite Star => _star != null ? _star : _star = UIKit.LoadSprite("hud_star");
-
-    /// <summary>A heart shape.</summary>
-    public static Sprite Heart => _heart != null ? _heart : _heart = UIKit.LoadSprite("hud_heart");
 }
