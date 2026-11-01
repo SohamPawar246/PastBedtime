@@ -10,33 +10,14 @@ using UnityEngine.UI;
 [RequireComponent(typeof(CanvasGroup))]
 public class Modal : MonoBehaviour
 {
-    public RectTransform Content { get; private set; }
+    [field: SerializeField] public RectTransform Content { get; private set; }
 
-    private CanvasGroup _group;
+    [SerializeField] private CanvasGroup _group;
     private Coroutine _pop;
 
     public bool IsOpen => gameObject.activeSelf;
 
-    public static Modal Create(Transform canvas, string name, float dim = 0.72f)
-    {
-        var root = UIKit.Rect(canvas, name);
-        UIKit.Stretch(root);
-        root.gameObject.AddComponent<CanvasGroup>();
-
-        var dimImg = UIKit.Image(root, "Dim", Palette.Ink.Alpha(dim));
-        UIKit.Stretch(dimImg.rectTransform);
-        dimImg.raycastTarget = true; // swallow clicks to whatever is underneath
-
-        var content = UIKit.Rect(root, "Content");
-        UIKit.Stretch(content);
-
-        var modal = root.gameObject.AddComponent<Modal>();
-        modal.Content = content;
-        root.gameObject.SetActive(false);
-        return modal;
-    }
-
-    private void Awake() => _group = GetComponent<CanvasGroup>();
+    private void Awake() { if (_group == null) _group = GetComponent<CanvasGroup>(); }
 
     public void Open(Selectable select = null)
     {

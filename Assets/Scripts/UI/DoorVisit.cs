@@ -33,68 +33,13 @@ public class DoorVisit : MonoBehaviour
 
     public AngryEyes Eyes => _eyes;
 
-    /// <param name="spillSet">"spill_" for the title's room; "spill_open_" for the game's (no comic standing in it).</param>
-    public static DoorVisit Create(Transform layer, Rect cropRect, Vector2 eyesCentre, float eyeSpacing, string spillSet = "spill_")
-    {
-        var root = UIKit.Rect(layer, "DoorVisit");
-        UIKit.Stretch(root);
-        var dv = root.gameObject.AddComponent<DoorVisit>();
-
-        int n = Angles.Length;
-        dv._crops = new Texture2D[n];
-        dv._spills = new Texture2D[n];
-        for (int i = 1; i < n; i++)
-        {
-            dv._crops[i] = Resources.Load<Texture2D>($"Room/Door/door_{Angles[i]:00}");
-            dv._spills[i] = Resources.Load<Texture2D>($"Room/Door/{spillSet}{Angles[i]:00}");
-        }
-
-        dv._spillA = SpillImage(root, "SpillA");
-        dv._spillB = SpillImage(root, "SpillB");
-        dv.Additive();
-
-        dv._cropA = CropImage(root, "DoorA", cropRect);
-        dv._cropB = CropImage(root, "DoorB", cropRect);
-
-        dv._eyes = AngryEyes.Create(root, eyesCentre, eyeSpacing);
-        dv.Angle = 0f;
-        return dv;
-    }
-
-    private static RawImage SpillImage(Transform parent, string name)
-    {
-        var raw = UIKit.Raw(parent, name);
-        UIKit.Stretch(raw.rectTransform);
-        raw.color = new Color(1f, 1f, 1f, 0f);
-        return raw;
-    }
-
-    // a door drawn in a scene: its spilled light gets its additive material as it wakes
+    /// <summary>The spilled light adds to the room (one material for both renders).</summary>
     private void Awake()
     {
-        if (_spillA != null) Additive();
-    }
-
-    /// <summary>The spilled light adds to the room (one material for both renders).</summary>
-    private void Additive()
-    {
-        if (!Application.isPlaying) return;                     // a scene saves no copy of it
         var additive = Resources.Load<Material>("Materials/UIAdditive");
         Material addMat = additive != null ? new Material(additive) : null;
         _spillA.material = addMat;
         _spillB.material = addMat;
-    }
-
-    private static RawImage CropImage(Transform parent, string name, Rect r)
-    {
-        var raw = UIKit.Raw(parent, name);
-        var rt = raw.rectTransform;
-        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.pivot = new Vector2(0f, 0f);
-        rt.sizeDelta = r.size;
-        rt.anchoredPosition = r.min;
-        raw.color = new Color(1f, 1f, 1f, 0f);
-        return raw;
     }
 
     private void Apply()

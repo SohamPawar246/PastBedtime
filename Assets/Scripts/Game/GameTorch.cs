@@ -35,6 +35,8 @@ public class GameTorch : MonoBehaviour
     [SerializeField] private Image _lensGlow, _window;
     [SerializeField] private LightCone _cone;
     [SerializeField] private TextMeshProUGUI _hint, _lensName;
+    [Tooltip("The CLICK! that pops off the torch's switch (Art/UI/TorchPop).")]
+    [SerializeField] private TextMeshProUGUI _pop;
     private float _turn, _crankAngle, _crankTarget, _flicker, _nameFor;
     private Lens _lastLens;
 
@@ -155,12 +157,12 @@ public class GameTorch : MonoBehaviour
     private System.Collections.IEnumerator PopRoutine(string word, Vector2 px, Color color)
     {
         var parent = (RectTransform)_hand.parent;
-        var t = UIKit.Text(parent, "Pop", word, UIKit.Display, 40f, color);
-        t.rectTransform.anchorMin = t.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-        t.rectTransform.sizeDelta = new Vector2(200f, 50f);
+        var t = Instantiate(_pop, parent);
+        t.name = "Pop";
+        t.text = word;
+        t.color = color;
         t.rectTransform.anchoredPosition = HandToFront(px) + new Vector2(-40f, 50f);
         t.rectTransform.localRotation = Quaternion.Euler(0f, 0f, Random.Range(-12f, 12f));
-        t.raycastTarget = false;
         for (float a = 0f; a < 0.5f; a += Time.unscaledDeltaTime)
         {
             t.alpha = 1f - a / 0.5f;

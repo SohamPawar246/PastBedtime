@@ -19,60 +19,26 @@ public class CaptionButton : MonoBehaviour,
     [SerializeField] private float selectedTilt = -2.2f;
     [SerializeField] private float animSeconds = 0.09f;
 
+    [SerializeField] private RectTransform _body;
+    [SerializeField] private Image _face;
+    [SerializeField] private TMP_Text _label;
+    [SerializeField] private float _restTilt;
+    [Tooltip("No click blip (it plays its own sound, like START READING).")]
+    [SerializeField] private bool _quiet;
     private Button _button;
-    private RectTransform _body;
-    private Image _face;
-    private TMP_Text _label;
-    private float _restTilt;
     private bool _selected;
     private Coroutine _anim;
 
-    public Button Button => _button;
+    public Button Button => _button != null ? _button : _button = GetComponent<Button>();
     public TMP_Text Label => _label;
     public RectTransform Body => _body;
 
-    /// <summary>Builds the whole button. <paramref name="quiet"/> skips the click blip
-    /// (for buttons that play their own sound, like START READING).</summary>
-    public static CaptionButton Create(Transform parent, string name, string label, UnityAction onClick,
-        Vector2 pos, Vector2 size, float fontSize = 40f, float tilt = 0f, bool quiet = false)
+    /// <summary>What a click does (and the click blip after it, unless the button is quiet).</summary>
+    public void Bind(UnityAction onClick)
     {
-        var root = UIKit.Rect(parent, name);
-        UIKit.Place(root, pos, size);
-
-        // Invisible full-rect hit area on the root; the visuals rotate inside it.
-        var hit = root.gameObject.AddComponent<Image>();
-        hit.color = Color.clear;
-
-        var body = UIKit.Rect(root, "Body");
-        UIKit.Stretch(body);
-        body.localRotation = Quaternion.Euler(0, 0, tilt);
-
-        var shadow = UIKit.Image(body, "Shadow", Palette.Ink, UIKit.Box, sliced: true);
-        UIKit.Stretch(shadow.rectTransform);
-        shadow.rectTransform.anchoredPosition = new Vector2(7f, -7f);
-
-        var face = UIKit.Image(body, "Face", Palette.Paper, UIKit.Box, sliced: true);
-        UIKit.Stretch(face.rectTransform);
-
-        var text = UIKit.Text(body, "Label", label, UIKit.Display, fontSize, Palette.Ink);
-        UIKit.Stretch(text.rectTransform, 6f);
-        text.characterSpacing = 4f;
-        text.textWrappingMode = TextWrappingModes.NoWrap;
-
-        var button = root.gameObject.AddComponent<Button>();
-        button.transition = Selectable.Transition.None;
-        button.targetGraphic = hit;
+        var button = GetComponent<Button>();
         if (onClick != null) button.onClick.AddListener(onClick);
-        if (!quiet) button.onClick.AddListener(() => AudioDirector.I?.Click());
-
-        var cb = root.gameObject.AddComponent<CaptionButton>();
-        cb._button = button;
-        cb._body = body;
-        cb._face = face;
-        cb._label = text;
-        cb._restTilt = tilt;
-        cb.ApplyInstant(false);
-        return cb;
+        if (!_quiet) button.onClick.AddListener(() => AudioDirector.I?.Click());
     }
 
     private void Awake() => _button = GetComponent<Button>();
@@ -112,6 +78,13 @@ public class CaptionButton : MonoBehaviour,
     }
 
     public void SetLabel(string text) { if (_label != null) _label.text = text; }
+
+    /// <summary>The angle it rests at, tipped like a box stuck on the page.</summary>
+    public void Rest(float tilt)
+    {
+        _restTilt = tilt;
+        ApplyInstant(_selected);
+    }
 
     private void Animate(bool on)
     {

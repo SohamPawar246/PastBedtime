@@ -15,91 +15,33 @@ using Act = Bindings.Act;
 /// </summary>
 public class ControlsPanel : MonoBehaviour
 {
-    private const float Width = 1160f, Height = 930f, RowH = 46f;
-    private static readonly float[] SlotX = { 150f, 430f };
 
     private Action _onBack;
-    private CanvasGroup _group;
-    private KeyCap[,] _caps;
-    private TMP_Text _note;
+    [SerializeField] private CanvasGroup _group;
+    [Tooltip("Every action's main and spare slots, in pairs (action 0 main, action 0 spare, action 1 main...).")]
+    [SerializeField] private KeyCap[] _caps;
+    [SerializeField] private TMP_Text _note;
+    [SerializeField] private CaptionButton _defaults, _back;
     private int _act = -1, _slot;
     private bool _waitRelease;
     private float _blink, _noteFor;
 
-    public Selectable First => _caps[0, 0].Button;
+    public Selectable First => Cap(0, 0).Button;
 
-    public static ControlsPanel Build(Transform parent, Action onBack)
+    private KeyCap Cap(int act, int slot) => _caps[act * 2 + slot];
+
+    /// <summary>Each slot picks itself up; DEFAULTS; BACK to whoever opened the page.</summary>
+    public void Bind(Action onBack)
     {
-        var root = UIKit.Rect(parent, "Controls");
-        UIKit.Place(root, Vector2.zero, new Vector2(Width, Height));
-        var panel = root.gameObject.AddComponent<ControlsPanel>();
-        panel._onBack = onBack;
-        panel._group = root.gameObject.AddComponent<CanvasGroup>();
-
-        UIKit.Panel(root, "Card", Vector2.zero, new Vector2(Width, Height), Palette.Paper, shadow: 12f);
-        var plate = UIKit.Panel(root, "TitlePlate", new Vector2(-Width * 0.5f + 175f, Height * 0.5f - 6f),
-            new Vector2(310f, 70f), Palette.Yellow, shadow: 6f, tilt: -3f);
-        var title = UIKit.Text(plate.transform, "Title", "CONTROLS", UIKit.Display, 46f, Palette.Ink);
-        UIKit.Stretch(title.rectTransform);
-        title.characterSpacing = 6f;
-
-        float labelW = 560f, labelX = -Width * 0.5f + 55f + labelW * 0.5f;
-        float y = Height * 0.5f - 88f;
-        Header(root, "MAIN", new Vector2(SlotX[0], y));
-        Header(root, "SPARE", new Vector2(SlotX[1], y));
-        y -= 50f;
-
-        panel._caps = new KeyCap[Bindings.Count, 2];
+        _onBack = onBack;
         for (int a = 0; a < Bindings.Count; a++)
-        {
-            var label = UIKit.Text(root, "Label " + (Act)a, "", UIKit.Mono, 27f, Palette.Ink, TextAlignmentOptions.Left);
-            label.textWrappingMode = TextWrappingModes.NoWrap;
-            UIKit.Place(label.rectTransform, new Vector2(labelX, y), new Vector2(labelW, 40f));
-            label.text = OptionRow.WithLeaders(label, Bindings.Labels[a], labelW - 10f);
             for (int s = 0; s < 2; s++)
             {
                 int act = a, slot = s;
-                panel._caps[a, s] = KeyCap.Create(root, $"{(Act)a} {s}", new Vector2(SlotX[s], y), () => panel.Begin(act, slot));
+                Cap(a, s).Bind(() => Begin(act, slot));
             }
-            y -= RowH;
-        }
-
-        panel._note = UIKit.Text(root, "Note", "", UIKit.Mono, 21f, Palette.Ink.Alpha(0.75f));
-        UIKit.Place(panel._note.rectTransform, new Vector2(0f, -Height * 0.5f + 150f), new Vector2(Width - 100f, 60f));
-
-        float by = -Height * 0.5f + 62f;
-        var defaults = CaptionButton.Create(root, "DefaultsButton", "DEFAULTS", panel.Defaults,
-            new Vector2(-170f, by), new Vector2(280f, 64f), 34f, tilt: 1.2f, quiet: true);
-        var back = CaptionButton.Create(root, "BackButton", "BACK", () => panel._onBack?.Invoke(),
-            new Vector2(170f, by), new Vector2(240f, 64f), 34f, tilt: -1.4f, quiet: true);
-        panel.Chain(defaults.Button, back.Button);
-        panel.RefreshAll();
-        return panel;
-    }
-
-    private static void Header(Transform root, string text, Vector2 at)
-    {
-        var h = UIKit.Text(root, "Header " + text, text, UIKit.Display, 30f, Palette.Magenta);
-        UIKit.Place(h.rectTransform, at, new Vector2(250f, 44f));
-        h.characterSpacing = 5f;
-    }
-
-    /// <summary>Arrow keys: up and down a column, across between main and spare, down onto the buttons.</summary>
-    private void Chain(Selectable defaults, Selectable back)
-    {
-        int last = Bindings.Count - 1;
-        for (int a = 0; a <= last; a++)
-            for (int s = 0; s < 2; s++)
-            {
-                var nav = new Navigation { mode = Navigation.Mode.Explicit };
-                nav.selectOnUp = a > 0 ? _caps[a - 1, s].Button : null;
-                nav.selectOnDown = a < last ? _caps[a + 1, s].Button : (s == 0 ? defaults : back);
-                nav.selectOnLeft = s == 1 ? _caps[a, 0].Button : null;
-                nav.selectOnRight = s == 0 ? _caps[a, 1].Button : null;
-                _caps[a, s].Button.navigation = nav;
-            }
-        defaults.navigation = new Navigation { mode = Navigation.Mode.Explicit, selectOnUp = _caps[last, 0].Button, selectOnRight = back };
-        back.navigation = new Navigation { mode = Navigation.Mode.Explicit, selectOnUp = _caps[last, 1].Button, selectOnLeft = defaults };
+        _defaults.Bind(Defaults);
+        _back.Bind(() => _onBack?.Invoke());
     }
 
     private void OnEnable()
@@ -110,10 +52,10 @@ public class ControlsPanel : MonoBehaviour
 
     private void RefreshAll()
     {
-        if (_caps == null) return;
+        if (_caps == null || _caps.Length == 0) return;
         for (int a = 0; a < Bindings.Count; a++)
             for (int s = 0; s < 2; s++)
-                _caps[a, s].Show(Bindings.SlotName((Act)a, s), false);
+                Cap(a, s).Show(Bindings.SlotName((Act)a, s), false);
         if (_noteFor <= 0f)
             _note.text = "PICK A SLOT, THEN PRESS THE NEW KEY OR MOUSE BUTTON (SCROLL FOR THE CRANK OR LENS).\n" +
                          "ESC CANCELS, DELETE CLEARS.  KEPT AS THEY ARE: ESC / P BOOKMARK, 1 / 2 CLEAR / GHOST LENS.";
@@ -155,7 +97,7 @@ public class ControlsPanel : MonoBehaviour
         int act = _act, slot = _slot;
         _act = -1;
         if (_group != null) _group.interactable = true;
-        if (select && act >= 0 && _caps != null) UIKit.Select(_caps[act, slot].gameObject);
+        if (select && act >= 0 && _caps != null) UIKit.Select(Cap(act, slot).gameObject);
     }
 
     private void Update()
@@ -168,7 +110,7 @@ public class ControlsPanel : MonoBehaviour
         }
 
         _blink += Time.unscaledDeltaTime;
-        _caps[_act, _slot].Show(Mathf.Repeat(_blink, 0.7f) < 0.45f ? "PRESS..." : "", true);
+        Cap(_act, _slot).Show(Mathf.Repeat(_blink, 0.7f) < 0.45f ? "PRESS..." : "", true);
         var kb = Keyboard.current;
         var ms = Mouse.current;
         if (_waitRelease)
@@ -217,75 +159,5 @@ public class ControlsPanel : MonoBehaviour
             for (int s = 0; s < 2; s++)
                 if ((a != (int)act || s != slot) && Bindings.Get((Act)a, s).Equals(c)) return Bindings.Labels[a];
         return null;
-    }
-
-    /// <summary>One slot: a key cap on the paper. Hover or arrows select it (yellow); a click or Enter
-    /// picks it up (red, "PRESS...").</summary>
-    private class KeyCap : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler
-    {
-        public Button Button { get; private set; }
-        private Image _face;
-        private TMP_Text _label;
-        private bool _selected, _live;
-
-        public static KeyCap Create(Transform parent, string name, Vector2 pos, UnityEngine.Events.UnityAction onPick)
-        {
-            var root = UIKit.Rect(parent, "Cap " + name);
-            UIKit.Place(root, pos, new Vector2(256f, 40f));
-            var hit = root.gameObject.AddComponent<Image>();
-            hit.color = Color.clear;
-            var shadow = UIKit.Image(root, "Shadow", Palette.Ink, UIKit.Box, sliced: true);
-            UIKit.Stretch(shadow.rectTransform);
-            shadow.rectTransform.anchoredPosition = new Vector2(4f, -4f);
-            var face = UIKit.Image(root, "Face", Palette.Paper, UIKit.Box, sliced: true);
-            UIKit.Stretch(face.rectTransform);
-            var label = UIKit.Text(root, "Label", "", UIKit.Mono, 23f, Palette.Ink);
-            label.fontStyle = FontStyles.Bold;
-            label.textWrappingMode = TextWrappingModes.NoWrap;
-            label.enableAutoSizing = true;
-            label.fontSizeMin = 14f;
-            label.fontSizeMax = 23f;
-            UIKit.Stretch(label.rectTransform, 4f);
-
-            var cap = root.gameObject.AddComponent<KeyCap>();
-            cap.Button = root.gameObject.AddComponent<Button>();
-            cap.Button.transition = Selectable.Transition.None;
-            cap.Button.targetGraphic = hit;
-            cap.Button.onClick.AddListener(onPick);
-            cap._face = face;
-            cap._label = label;
-            return cap;
-        }
-
-        public void Show(string text, bool live)
-        {
-            _label.text = text;
-            _live = live;
-            Paint();
-        }
-
-        private void Paint()
-        {
-            _face.color = _live ? Palette.HeroRed : _selected ? Palette.Yellow : Palette.Paper;
-            _label.color = _live ? Palette.Paper : Palette.Ink;
-        }
-
-        public void OnSelect(BaseEventData e)
-        {
-            _selected = true;
-            Paint();
-            if (e is PointerEventData || e is AxisEventData) AudioDirector.I?.Hover();
-        }
-
-        public void OnDeselect(BaseEventData e)
-        {
-            _selected = false;
-            Paint();
-        }
-
-        public void OnPointerEnter(PointerEventData e)
-        {
-            if (Button.IsInteractable() && EventSystem.current != null) EventSystem.current.SetSelectedGameObject(gameObject, e);
-        }
     }
 }

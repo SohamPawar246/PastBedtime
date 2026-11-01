@@ -12,17 +12,6 @@ public class CoverScaler : MonoBehaviour
 
     private RectTransform _rt;
 
-    /// <summary>Creates a centred, cover-scaled 1920 × 1080 layer under <paramref name="parent"/>.</summary>
-    public static RectTransform Create(Transform parent, string name)
-    {
-        var rt = UIKit.Rect(parent, name);
-        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = new Vector2(1920f, 1080f);
-        rt.anchoredPosition = Vector2.zero;
-        rt.gameObject.AddComponent<CoverScaler>().Fit();
-        return rt;
-    }
-
     private void OnEnable() => Fit();
     private void Update() => Fit();
 

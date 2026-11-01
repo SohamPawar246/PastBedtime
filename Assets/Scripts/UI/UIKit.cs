@@ -5,9 +5,10 @@ using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 /// <summary>
-/// Builds the front-end in code: canvases, comic sprites, lettering. Every screen
-/// assembles itself from these helpers at Start, so a scene file only holds a
-/// camera and one screen component, and the whole look lives in source.
+/// The comic UI's kit: fonts, the comic sprites, outlined lettering, and helpers for laying
+/// out UI from code. The screens themselves are drawn in their scenes and prefabs (Art/UI,
+/// Resources/UI); what's still put together here is laid out from data each time, like the
+/// credits crawl from Credits.txt.
 ///
 /// The comic shapes are art files in Resources/UI/Sprites: an ink-bordered caption
 /// box, discs, a soft shadow, a starburst, a warning triangle and a bookmark ribbon.
@@ -121,15 +122,26 @@ public static class UIKit
             var back = Text(root, "Shadow", text, Display, size, Palette.Ink);
             Stretch(back.rectTransform);
             back.rectTransform.anchoredPosition = new Vector2(shadow, -shadow);
-            back.outlineWidth = outline;
-            back.outlineColor = Palette.Ink;
+            back.fontSharedMaterial = Outlined(outline);
         }
         var face = Text(root, "Face", text, Display, size, fill);
         Stretch(face.rectTransform);
-        face.outlineWidth = outline;
-        face.outlineColor = Palette.Ink;
+        face.fontSharedMaterial = Outlined(outline);
         return face;
     }
+
+    private static readonly System.Collections.Generic.Dictionary<string, Material> _outlined = new();
+
+    /// <summary>Bangers with an outline round each letter, ink (or paper) and `width` thick: one shared material per
+    /// look, in Resources/Fonts/Materials ("Bangers Ink Outline 22").</summary>
+    public static Material Outlined(float width, bool paper = false)
+    {
+        string name = OutlinedName(width, paper);
+        if (!_outlined.TryGetValue(name, out var m) || m == null) _outlined[name] = m = Resources.Load<Material>("Fonts/Materials/" + name);
+        return m;
+    }
+
+    public static string OutlinedName(float width, bool paper) => $"Bangers {(paper ? "Paper" : "Ink")} Outline {Mathf.RoundToInt(width * 100f):00}";
 
     /// <summary>A comic panel: a hard ink drop shadow behind an ink-bordered face.</summary>
     public static Image Panel(Transform parent, string name, Vector2 pos, Vector2 size, Color face,

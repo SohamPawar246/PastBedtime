@@ -25,94 +25,26 @@ public class BookmarkPause : MonoBehaviour
         for (float t = 0f; t < seconds; t += UnpausedDelta) yield return null;
     }
 
-    private GameObject _root;
-    private Modal _howTo, _controlsModal;
-    private ControlsPanel _controls;
-    private CaptionButton _resume;
-    private SettingsPanel _settings;
+    [Tooltip("The bookmark screen (switched off till the game's paused), and the pages that open over it.")]
+    [SerializeField] private GameObject _root;
+    [SerializeField] private Modal _howTo, _controlsModal;
+    [SerializeField] private HowToReadLive _howToPage;
+    [SerializeField] private ControlsPanel _controls;
+    [SerializeField] private CaptionButton _resume, _restart, _howToButton, _quitTitle;
+    [SerializeField] private SettingsPanel _settings;
     private CursorLockMode _savedLock;
     private bool _savedVisible;
 
     private void Start()
     {
         UIKit.EnsureEventSystem();
-        var canvas = UIKit.Canvas("BookmarkCanvas", 900, transform);
-        Build(canvas.transform);
-        _root.SetActive(false);
-    }
-
-    private void Build(Transform canvas)
-    {
-        var root = UIKit.Rect(canvas, "Bookmark");
-        UIKit.Stretch(root);
-        _root = root.gameObject;
-
-        var dim = UIKit.Image(root, "Dim", Palette.Night); // opaque: the comic is closed
-        UIKit.Stretch(dim.rectTransform);
-        dim.raycastTarget = true;
-
-        BuildClosedComic(root);
-
-        // Left column of caption buttons.
-        float x = -150f, y = 190f, step = 96f;
-        var size = new Vector2(380f, 74f);
-        _resume = CaptionButton.Create(root, "Resume", "RESUME", Resume, new Vector2(x, y), size, 40f, tilt: -1.2f, quiet: true);
-        var restart = CaptionButton.Create(root, "Restart", "RESTART PAGE", OnRestart, new Vector2(x, y - step), size, 40f, tilt: 1f);
-        var howTo = CaptionButton.Create(root, "HowTo", "HOW TO READ", OpenHowTo, new Vector2(x, y - step * 2), size, 40f, tilt: -0.6f);
-        var quitTitle = CaptionButton.Create(root, "QuitToTitle", "QUIT TO TITLE", OnQuitToTitle, new Vector2(x, y - step * 3), size, 40f, tilt: 1.3f);
-
-        _settings = SettingsPanel.Build(root, new Vector2(470f, 0f), withButtons: false, onBack: null, onControls: OpenControls);
-
-        var nav = new System.Collections.Generic.List<Selectable>
-            { _resume.Button, restart.Button, howTo.Button, quitTitle.Button };
-        nav.AddRange(_settings.Rows);
-        CaptionButton.ChainVertical(nav.ToArray());
-
-        var hint = UIKit.Text(root, "Hint", "ESC  RESUME     ←/→  CHANGE A SETTING", UIKit.Mono, 22f, Palette.PaperDim);
-        UIKit.Pin(hint.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, 34f), new Vector2(1200f, 40f));
-
-        // How-to-read opens above everything, inside the same canvas.
-        _howTo = Modal.Create(canvas, "HowToModal");
-        HowToReadPanel.Build(_howTo.Content, CloseHowTo);
-        _controlsModal = Modal.Create(canvas, "ControlsModal");
-        _controls = ControlsPanel.Build(_controlsModal.Content, CloseControls);
-    }
-
-    /// <summary>The comic, closed on its ribbon: the same cover as on the bed, a little
-    /// page thickness behind it, the ribbon hanging out of the bottom, and a caption
-    /// plate above it saying where we are.</summary>
-    private static void BuildClosedComic(Transform root)
-    {
-        const float w = 400f, h = 547f;
-        var book = UIKit.Rect(root, "ClosedComic");
-        UIKit.Place(book, new Vector2(-640f, -10f), new Vector2(w, h));
-        book.localRotation = Quaternion.Euler(0, 0, -4f);
-
-        var shadow = UIKit.SoftShadow(book, "Shadow", 40f, 0.8f);
-        shadow.rectTransform.anchoredPosition = new Vector2(14f, -20f);
-
-        // Ribbon first, so only the part hanging below the book shows.
-        var ribbon = UIKit.Image(book, "Ribbon", Palette.HeroRed, UIKit.Ribbon);
-        UIKit.Place(ribbon.rectTransform, new Vector2(118f, -h * 0.5f - 40f), new Vector2(40f, 170f));
-
-        // Page edges: two sheets peeking out behind the cover give it thickness.
-        for (int i = 2; i >= 1; i--)
-        {
-            var sheet = UIKit.Image(book, "Pages" + i, Palette.PaperDim, UIKit.Box, sliced: true);
-            sheet.pixelsPerUnitMultiplier = 2.5f;
-            UIKit.Stretch(sheet.rectTransform);
-            sheet.rectTransform.anchoredPosition = new Vector2(5f * i, -4f * i);
-        }
-
-        var cover = UIKit.Rect(book, "Cover");
-        UIKit.Stretch(cover);
-        ComicCoverView.Build(cover, w, h);
-
-        var plate = UIKit.Panel(book, "BookmarkedPlate", new Vector2(0f, h * 0.5f + 64f), new Vector2(330f, 72f),
-            Palette.Yellow, shadow: 6f, tilt: 2f);
-        var label = UIKit.Text(plate.transform, "Text", "BOOKMARKED", UIKit.Display, 48f, Palette.Ink);
-        label.characterSpacing = 4f;
-        UIKit.Stretch(label.rectTransform);
+        _resume.Bind(Resume);
+        _restart.Bind(OnRestart);
+        _howToButton.Bind(OpenHowTo);
+        _quitTitle.Bind(OnQuitToTitle);
+        _settings.Bind(null, OpenControls);
+        _howToPage.Bind(CloseHowTo);
+        _controls.Bind(CloseControls);
     }
 
     private void Update()

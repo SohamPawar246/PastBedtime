@@ -18,8 +18,9 @@ public class SceneFlow : MonoBehaviour
     [SerializeField] private float closeSeconds = 0.38f;
     [SerializeField] private float openSeconds = 0.42f;
 
-    private RawImage _overlay;
-    private Material _mat;
+    [Tooltip("The iris: a full-screen overlay on the top canvas, hidden between transitions.")]
+    [SerializeField] private RawImage _overlay;
+    private Material _mat;                   // its own copy of LightMask (made as it wakes)
     private bool _loading;
 
     public bool IsLoading => _loading;
@@ -39,11 +40,6 @@ public class SceneFlow : MonoBehaviour
 
     private void Awake()
     {
-        var canvas = UIKit.Canvas("TransitionCanvas", 32000, transform);
-        _overlay = UIKit.Raw(canvas.transform, "Iris");
-        UIKit.Stretch(_overlay.rectTransform);
-        _overlay.raycastTarget = true;
-
         _mat = UIKit.NewLightMaskMaterial();
         if (_mat != null)
         {

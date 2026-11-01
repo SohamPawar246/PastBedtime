@@ -17,7 +17,8 @@ public class AudioDirector : MonoBehaviour
 
     [SerializeField] private float musicFadeSeconds = 1.2f;
 
-    private AudioSource _musicA, _musicB, _sfx;
+    [Tooltip("The two music sources that crossfade, and the one-shots' source.")]
+    [SerializeField] private AudioSource _musicA, _musicB, _sfx;
     private bool _usingA = true;
     private Coroutine _crossfade, _tape;
     private float _duck = 1f;
@@ -34,16 +35,7 @@ public class AudioDirector : MonoBehaviour
     private void Awake()
     {
         I = this;
-        _musicA = gameObject.AddComponent<AudioSource>();
-        _musicB = gameObject.AddComponent<AudioSource>();
-        _sfx = gameObject.AddComponent<AudioSource>();
-        foreach (var s in new[] { _musicA, _musicB, _sfx })
-        {
-            s.playOnAwake = false;
-            s.ignoreListenerPause = true; // menus keep sounding while the game is paused
-        }
-        _musicA.loop = _musicB.loop = true;
-
+        // (its sources ignore the listener's pause: menus keep sounding while the game is paused)
         _hover = Load("Audio/ui_hover");
         _click = Load("Audio/ui_click");
         _confirm = Load("Audio/ui_confirm");

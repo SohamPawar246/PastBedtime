@@ -17,7 +17,7 @@ public static class Scenes
 }
 
 /// <summary>
-/// The persistent root. It creates itself before the first scene loads (so any
+/// The persistent root (Resources/App). It creates itself before the first scene loads (so any
 /// scene can be played straight from the editor) and owns the scene transitions,
 /// the audio and the loaded settings.
 ///
@@ -40,9 +40,9 @@ public class App : MonoBehaviour
     private static void Bootstrap()
     {
         if (I != null) return;
-        var go = new GameObject("App (persistent)");
+        var go = Instantiate(Resources.Load<GameObject>("App"));     // App, its audio and the scene transition
+        go.name = "App (persistent)";
         DontDestroyOnLoad(go);
-        go.AddComponent<App>();
     }
 
     private void Awake()
@@ -51,8 +51,8 @@ public class App : MonoBehaviour
         I = this;
 
         Settings.Load();
-        Audio = gameObject.AddComponent<AudioDirector>();
-        Flow = gameObject.AddComponent<SceneFlow>();
+        Audio = GetComponent<AudioDirector>();
+        Flow = GetComponent<SceneFlow>();
 
 #if !UNITY_WEBGL || UNITY_EDITOR
         // On the web the browser owns the canvas; elsewhere honour the saved choice.
@@ -70,7 +70,7 @@ public class App : MonoBehaviour
     {
         // Every gameplay scene gets the Bookmark pause without placing it by hand.
         if (Scenes.IsGameplay(scene.name) && FindFirstObjectByType<BookmarkPause>() == null)
-            new GameObject("BookmarkPause").AddComponent<BookmarkPause>();
+            Instantiate(Resources.Load<BookmarkPause>("UI/BookmarkPause")).name = "BookmarkPause";
     }
 
     /// <summary>Platform-aware quit. Menus hide Quit on WebGL; this is a backstop.</summary>

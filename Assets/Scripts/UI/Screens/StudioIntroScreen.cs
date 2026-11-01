@@ -16,8 +16,11 @@ public class StudioIntroScreen : MonoBehaviour
     [SerializeField] private float prepareTimeout = 5f;
     [SerializeField] private float fallbackSeconds = 2.6f;
 
-    private VideoPlayer _player;
-    private RawImage _surface;
+    [Tooltip("The intro, drawn in the scene (switched off till it starts): white under the video, and the lettered " +
+             "card (switched off) that stands in if the video fails.")]
+    [SerializeField] private GameObject _canvas, _card;
+    [SerializeField] private RawImage _surface;
+    [SerializeField] private VideoPlayer _player;
     private RenderTexture _rt;
     private bool _done, _failed, _advancing;
     private float _elapsed;
@@ -25,22 +28,8 @@ public class StudioIntroScreen : MonoBehaviour
     private void Start()
     {
         UIKit.EnsureEventSystem();
-        var canvas = UIKit.Canvas("IntroCanvas", 0);
-        // The logo animation is on white; match it so the first frame doesn't flash.
-        var bg = UIKit.Image(canvas.transform, "White", Color.white);
-        UIKit.Stretch(bg.rectTransform);
-
-        _surface = UIKit.Raw(canvas.transform, "Video");
-        UIKit.Stretch(_surface.rectTransform);
-        _surface.gameObject.SetActive(false);
-
-        _player = gameObject.AddComponent<VideoPlayer>();
-        _player.playOnAwake = false;
-        _player.isLooping = false;
-        _player.source = VideoSource.Url;
+        _canvas.SetActive(true);
         _player.url = Application.streamingAssetsPath + "/" + videoFile;
-        _player.renderMode = VideoRenderMode.RenderTexture;
-        _player.audioOutputMode = VideoAudioOutputMode.Direct;
         _player.prepareCompleted += OnPrepared;
         _player.loopPointReached += _ => _done = true;
         _player.errorReceived += (_, msg) =>
@@ -94,15 +83,12 @@ public class StudioIntroScreen : MonoBehaviour
     {
         if (_player != null) _player.Stop();
         _surface.gameObject.SetActive(false);
-        var canvas = _surface.canvas.transform;
-        var card = UIKit.Lettering(canvas, "Studio", "STUDIO KAMIKAZE", 110f, Palette.HeroRed,
-            new Vector2(0f, 20f), new Vector2(1600f, 160f), outline: 0.18f, shadow: 7f, tilt: -2f);
-        var by = UIKit.Text(canvas, "Presents", "presents", UIKit.Mono, 32f, Palette.Ink);
-        UIKit.Place(by.rectTransform, new Vector2(0f, -90f), new Vector2(800f, 50f));
-        card.transform.parent.localScale = Vector3.one * 0.9f;
+        _card.SetActive(true);
+        var studio = _card.transform.Find("Studio");
+        studio.localScale = Vector3.one * 0.9f;
         for (float t = 0f; t < 0.4f; t += Time.unscaledDeltaTime)
         {
-            card.transform.parent.localScale = Vector3.one * Mathf.Lerp(0.9f, 1f, t / 0.4f);
+            studio.localScale = Vector3.one * Mathf.Lerp(0.9f, 1f, t / 0.4f);
             yield return null;
         }
         yield return new WaitForSecondsRealtime(fallbackSeconds);

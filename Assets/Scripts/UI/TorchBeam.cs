@@ -24,7 +24,7 @@ public class TorchBeam : MonoBehaviour
     public bool followPointer = true;        // false: the beam ignores the mouse (e.g. during the opening)
 
     [SerializeField] private RawImage _overlay;
-    private Material _mat;                   // its own copy of LightMask (made as it wakes: a scene saves no copy)
+    private Material _mat;                   // its own copy of LightMask (made as it wakes)
     private Vector2 _pos, _vel;              // screen pixels
     private Vector2 _lastMouse;
     private float _mouseActiveUntil;
@@ -55,29 +55,8 @@ public class TorchBeam : MonoBehaviour
     /// <summary>The beam's current radius in screen heights (what SceneFlow expects).</summary>
     public float ScreenRadius => CurrentRadius * OverlayPixels.y / Mathf.Max(1, Screen.height);
 
-    /// <summary>Creates the overlay as the next sibling under <paramref name="parent"/>.
-    /// With <paramref name="darkTexture"/>, the dark side shows that picture instead of a flat colour.</summary>
-    public static TorchBeam Create(Transform parent, RectTransform home, Texture darkTexture = null)
-    {
-        var raw = UIKit.Raw(parent, "TorchBeam");
-        raw.texture = darkTexture;
-        UIKit.Stretch(raw.rectTransform);
-        var beam = raw.gameObject.AddComponent<TorchBeam>();
-        beam._overlay = raw;
-        beam.home = home;
-        beam.Mask();
-        return beam;
-    }
-
-    // a beam drawn in a scene makes its mask as it wakes
     private void Awake()
     {
-        if (_overlay != null) Mask();
-    }
-
-    private void Mask()
-    {
-        if (!Application.isPlaying) return;
         _mat = UIKit.NewLightMaskMaterial();
         _overlay.material = _mat;
         if (_mat == null) _overlay.color = Palette.Night.Alpha(0.6f); // shader missing: plain dim

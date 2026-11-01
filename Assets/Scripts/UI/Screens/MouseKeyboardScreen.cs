@@ -16,12 +16,28 @@ public class MouseKeyboardScreen : MonoBehaviour
     [SerializeField] private float minSeconds = 1.2f, autoSeconds = 14f;
     private const float TourStep = 1.3f;                   // how long each part of the mouse stays lit
 
-    private CanvasGroup _prompt;
-    private readonly System.Collections.Generic.List<(RectTransform rt, CanvasGroup group)> _stamps = new();
-    private (Image part, TMP_Text key, RectTransform box)[] _tour;
-    private Image[] _parts;
+    // the keyboard's caps, in this order, and the callouts on the mouse's tour: they're lettered with the player's own
+    // controls each time the card shows
+    private static readonly Act[] CapActs = { Act.Kick, Act.Up, Act.Punch, Act.Left, Act.Down, Act.Right, Act.Splash, Act.Dodge, Act.Jump };
+
+    [Tooltip("The two cards, drawn in the scene (switched off till they show).")]
+    [SerializeField] private GameObject _canvas;
+    [SerializeField] private CanvasGroup _prompt;
+    [Tooltip("The pieces that land like rubber stamps, in order.")]
+    [SerializeField] private RectTransform[] _stampRects;
+    [SerializeField] private CanvasGroup[] _stampGroups;
+    [Tooltip("The mouse's tour, a step each: the part lit (none for aiming), its callout's key and its box.")]
+    [SerializeField] private Image[] _tourParts;
+    [SerializeField] private TMP_Text[] _tourKeys;
+    [SerializeField] private RectTransform[] _tourBoxes;
+    [SerializeField] private Image[] _parts;
+    [SerializeField] private TMP_Text[] _capKeys;
+    [SerializeField] private TMP_Text _combos;
+    [Tooltip("The pointers from the callouts to the mouse (line and dot each): follow, aim, torch, crank, lens. Each " +
+             "shows only while that control really is that part of the mouse.")]
+    [SerializeField] private GameObject[] _leaders;
     private float _t;
-    private bool _advancing;
+    private bool _advancing, _showing;
 
     private void Start()
     {
@@ -29,203 +45,41 @@ public class MouseKeyboardScreen : MonoBehaviour
         App.MouseKeyboardShown = true;
 
         UIKit.EnsureEventSystem();
-        var canvas = UIKit.Canvas("MouseKeyboardCanvas", 0);
-        var root = canvas.transform;
-        var bg = UIKit.Image(root, "Night", Palette.Night);
-        UIKit.Stretch(bg.rectTransform);
-
-        var title = UIKit.Lettering(root, "Title", "BEST WITH A MOUSE AND KEYBOARD", 80f, Palette.Yellow,
-            new Vector2(0f, 400f), new Vector2(1760f, 104f), tilt: -1f);
-        Stamped(title.transform.parent as RectTransform);
-        var sub = UIKit.Text(root, "Sub", "Both hands at once: one plays Max, the other holds Roshan's torch.",
-            UIKit.Body, 33f, Palette.Paper);
-        sub.fontStyle = FontStyles.Bold;
-        UIKit.Place(sub.rectTransform, new Vector2(0f, 318f), new Vector2(1600f, 50f));
-        Stamped(sub.rectTransform);
-
-        Stamped(KeyboardCard(root, new Vector2(-448f, -58f)));
-        Stamped(MouseCard(root, new Vector2(448f, -58f)));
-
-        var promptGo = UIKit.Rect(root, "Prompt");
-        UIKit.Place(promptGo, new Vector2(0f, -446f), new Vector2(1000f, 50f));
-        _prompt = promptGo.gameObject.AddComponent<CanvasGroup>();
-        _prompt.alpha = 0f;
-        var promptText = UIKit.Text(promptGo, "Text", "CLICK OR PRESS ANY KEY", UIKit.Mono, 26f, Palette.PaperDim);
-        UIKit.Stretch(promptText.rectTransform);
-        promptText.characterSpacing = 8f;
-
+        Letter();
+        _canvas.SetActive(true);
+        _showing = true;
         StartCoroutine(StampIn());
     }
 
-    // ---- the keyboard: Max, on the left hand ------------------------------------------------------------------
-
-    private RectTransform KeyboardCard(Transform root, Vector2 at)
+    /// <summary>The player's own controls on the caps and callouts.</summary>
+    private void Letter()
     {
-        const float w = 800f, h = 560f;
-        var card = UIKit.Panel(root, "Keyboard", at, new Vector2(w, h), Palette.Paper, shadow: 12f, tilt: -1.2f).transform.parent;
-        Plate(card, "THE KEYBOARD IS MAX", new Vector2(-w * 0.5f + 265f, h * 0.5f - 4f), new Vector2(480f, 72f), -3f);
-        Hand(card, "LEFT HAND", new Vector2(w * 0.5f - 130f, h * 0.5f - 58f));
-
-        // the left hand's corner of a keyboard, staggered like the real rows; the fighting keys in yellow
-        Cap(card, new Vector2(-170f, 128f), 98f, Act.Kick, "KICK", Palette.Yellow);
-        Cap(card, new Vector2(-66f, 128f), 98f, Act.Up, "UP", Palette.Paper);
-        Cap(card, new Vector2(38f, 128f), 98f, Act.Punch, "PUNCH", Palette.Yellow);
-        Cap(card, new Vector2(-144f, 22f), 98f, Act.Left, "LEFT", Palette.Paper);
-        Cap(card, new Vector2(-40f, 22f), 98f, Act.Down, "DOWN", Palette.Paper);
-        Cap(card, new Vector2(64f, 22f), 98f, Act.Right, "RIGHT", Palette.Paper);
-        Cap(card, new Vector2(168f, 22f), 98f, Act.Splash, "SPLASH", Palette.Yellow);
-        Cap(card, new Vector2(-150f, -84f), 176f, Act.Dodge, "DODGE", Palette.Paper);
-        Cap(card, new Vector2(118f, -84f), 336f, Act.Jump, "JUMP (HOLD = HIGHER)", Palette.Paper);
-
-        var combos = UIKit.Text(card, "Combos",
-            $"<b>{Bindings.Name(Act.Punch)} {Bindings.Name(Act.Punch)} {Bindings.Name(Act.Punch)}</b> a 3-hit combo   " +
-            $"<b>{Bindings.Name(Act.Up)} + {Bindings.Name(Act.Kick)}</b> launcher",
-            UIKit.Body, 23f, Palette.Ink);
-        UIKit.Place(combos.rectTransform, new Vector2(0f, -178f), new Vector2(w - 70f, 34f));
-        var note = UIKit.Text(card, "Note", "Arrow keys run too.  Change any key: SETTINGS > CONTROLS",
-            UIKit.Mono, 20f, Palette.Ink.Alpha(0.6f));
-        UIKit.Place(note.rectTransform, new Vector2(0f, -h * 0.5f + 48f), new Vector2(w - 70f, 30f));
-        return card as RectTransform;
-    }
-
-    private static void Cap(Transform card, Vector2 at, float width, Act act, string what, Color face)
-    {
-        var cap = UIKit.Panel(card, "Key " + act, at, new Vector2(width, 98f), face, shadow: 5f);
-        var key = UIKit.Text(cap.transform, "Key", Bindings.Name(act), UIKit.Display, 42f, Palette.Ink);
-        key.textWrappingMode = TextWrappingModes.NoWrap;
-        key.enableAutoSizing = true;
-        key.fontSizeMin = 18f;
-        key.fontSizeMax = 42f;
-        UIKit.Place(key.rectTransform, new Vector2(0f, 13f), new Vector2(width - 16f, 52f));
-        var label = UIKit.Text(cap.transform, "What", what, UIKit.Body, 17f, Palette.Ink.Alpha(0.8f));
-        label.fontStyle = FontStyles.Bold;
-        label.textWrappingMode = TextWrappingModes.NoWrap;
-        UIKit.Place(label.rectTransform, new Vector2(0f, -29f), new Vector2(width - 8f, 24f));
-    }
-
-    // ---- the mouse: Roshan's torch, on the right hand -----------------------------------------------------------
-
-    private RectTransform MouseCard(Transform root, Vector2 at)
-    {
-        const float w = 800f, h = 560f;
-        var card = UIKit.Panel(root, "Mouse", at, new Vector2(w, h), Palette.Paper, shadow: 12f, tilt: 1.2f).transform.parent;
-        Plate(card, "THE MOUSE IS THE TORCH", new Vector2(-w * 0.5f + 295f, h * 0.5f - 4f), new Vector2(540f, 72f), 2.5f);
-        Hand(card, "RIGHT HAND", new Vector2(w * 0.5f - 130f, h * 0.5f - 58f));
-
-        // the mouse, drawn, with a highlight for each part that lights up in its turn
-        Vector2 m = new(0f, -22f);
-        var mouse = UIKit.Rect(card, "Mouse");
-        UIKit.Place(mouse, m, new Vector2(MouseArt.W, MouseArt.H));
-        var body = UIKit.Image(mouse, "Body", Palette.Paper, MouseArt.Body);
-        UIKit.Stretch(body.rectTransform);
-        var left = Part(mouse, "Left button", MouseArt.LeftButton);
-        var right = Part(mouse, "Right button", MouseArt.RightButton);
-        var wheel = Part(mouse, "Wheel", MouseArt.Wheel);
-        _parts = new[] { left, right, wheel };
-
-        // what each part does, with the player's own controls; a pointer only where the control really is that part
-        var follow = Callout(card, new Vector2(-265f, 152f), true, "HOLD " + Bindings.Name(Act.Follow), "the light follows Max");
-        var aim = Callout(card, new Vector2(-265f, -60f), true, "MOVE THE MOUSE", "aim the beam");
-        var torch = Callout(card, new Vector2(265f, 150f), false, Bindings.Name(Act.Torch), "torch on / off");
-        var crank = Callout(card, new Vector2(265f, 46f), false, Bindings.Name(Act.Crank), "twist the crank");
-        var lens = Callout(card, new Vector2(265f, -58f), false, Bindings.Name(Act.Lens), "the purple ghost lens");
+        for (int i = 0; i < CapActs.Length; i++) _capKeys[i].text = Bindings.Name(CapActs[i]);
+        _combos.text = $"<b>{Bindings.Name(Act.Punch)} {Bindings.Name(Act.Punch)} {Bindings.Name(Act.Punch)}</b> a 3-hit combo   " +
+                       $"<b>{Bindings.Name(Act.Up)} + {Bindings.Name(Act.Kick)}</b> launcher";
+        _tourKeys[0].text = "HOLD " + Bindings.Name(Act.Follow);
+        _tourKeys[1].text = Bindings.Name(Act.Torch);
+        _tourKeys[2].text = Bindings.Name(Act.Crank);
+        _tourKeys[3].text = Bindings.Name(Act.Lens);
         var M = Bindings.Kind.Mouse;
-        if (Bindings.Uses(Act.Follow, new Bindings.Control(M, 0))) Leader(card, new Vector2(-132f, 152f), m + MouseArt.LeftAt);
-        Leader(card, new Vector2(-132f, -60f), m + MouseArt.SideAt);
-        if (Bindings.Uses(Act.Torch, new Bindings.Control(M, 1))) Leader(card, new Vector2(132f, 150f), m + MouseArt.RightAt);
-        if (Bindings.UsesWheel(Act.Crank)) Leader(card, new Vector2(132f, 46f), m + MouseArt.WheelAt + new Vector2(12f, 10f));
-        if (Bindings.Uses(Act.Lens, new Bindings.Control(M, 2))) Leader(card, new Vector2(132f, -58f), m + MouseArt.WheelAt + new Vector2(10f, -20f));
-
-        var pause = UIKit.Text(card, "Pause", "ESC or P: the Bookmark (pause)", UIKit.Mono, 20f, Palette.Ink.Alpha(0.6f));
-        UIKit.Place(pause.rectTransform, new Vector2(0f, -h * 0.5f + 48f), new Vector2(w - 70f, 30f));
-
-        _tour = new[]
+        bool[] shown =
         {
-            (left, follow.key, follow.box),
-            (right, torch.key, torch.box),
-            (wheel, crank.key, crank.box),
-            (wheel, lens.key, lens.box),
-            ((Image)null, aim.key, aim.box),
+            Bindings.Uses(Act.Follow, new Bindings.Control(M, 0)), true, Bindings.Uses(Act.Torch, new Bindings.Control(M, 1)),
+            Bindings.UsesWheel(Act.Crank), Bindings.Uses(Act.Lens, new Bindings.Control(M, 2)),
         };
-        return card as RectTransform;
-    }
-
-    private static Image Part(RectTransform mouse, string name, Sprite mask)
-    {
-        var part = UIKit.Image(mouse, name, Palette.Yellow.Alpha(0f), mask);
-        UIKit.Stretch(part.rectTransform);
-        return part;
-    }
-
-    private static (TMP_Text key, RectTransform box) Callout(Transform card, Vector2 at, bool leftOfMouse, string key, string what)
-    {
-        const float w = 250f;
-        var box = UIKit.Rect(card, "Callout " + key);
-        UIKit.Place(box, at, new Vector2(w, 84f));
-        var align = leftOfMouse ? TextAlignmentOptions.Right : TextAlignmentOptions.Left;
-        var k = UIKit.Text(box, "Key", key, UIKit.Display, 34f, Palette.Ink, align);
-        k.textWrappingMode = TextWrappingModes.NoWrap;
-        k.enableAutoSizing = true;
-        k.fontSizeMin = 18f;
-        k.fontSizeMax = 34f;
-        UIKit.Place(k.rectTransform, new Vector2(0f, 17f), new Vector2(w, 42f));
-        var d = UIKit.Text(box, "What", what, UIKit.Body, 22f, Palette.Ink.Alpha(0.8f), align);
-        d.fontStyle = FontStyles.Bold;
-        UIKit.Place(d.rectTransform, new Vector2(0f, -21f), new Vector2(w, 34f));
-        box.pivot = new Vector2(leftOfMouse ? 1f : 0f, 0.5f);                  // it grows away from the mouse when lit
-        box.anchoredPosition += new Vector2(leftOfMouse ? w * 0.5f : -w * 0.5f, 0f);
-        return (k, box);
-    }
-
-    /// <summary>A thin ink pointer from a callout to a part of the mouse, with a dot on the part.</summary>
-    private static void Leader(Transform card, Vector2 from, Vector2 to)
-    {
-        Vector2 d = to - from;
-        var line = UIKit.Image(card, "Leader", Palette.Ink, UIKit.Solid);
-        var rt = line.rectTransform;
-        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.pivot = new Vector2(0f, 0.5f);
-        rt.sizeDelta = new Vector2(d.magnitude, 3f);
-        rt.anchoredPosition = from;
-        rt.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg);
-        var dot = UIKit.Image(card, "Dot", Palette.Ink, UIKit.Disc);
-        UIKit.Place(dot.rectTransform, to, new Vector2(13f, 13f));
-    }
-
-    // ---- shared pieces ----------------------------------------------------------------------------------------
-
-    private static void Plate(Transform card, string text, Vector2 at, Vector2 size, float tilt)
-    {
-        var plate = UIKit.Panel(card, "TitlePlate", at, size, Palette.Yellow, shadow: 6f, tilt: tilt);
-        var t = UIKit.Text(plate.transform, "Title", text, UIKit.Display, 42f, Palette.Ink);
-        t.characterSpacing = 4f;
-        t.textWrappingMode = TextWrappingModes.NoWrap;
-        t.enableAutoSizing = true;
-        t.fontSizeMin = 26f;
-        t.fontSizeMax = 42f;
-        UIKit.Stretch(t.rectTransform, 12f);
-    }
-
-    private static void Hand(Transform card, string text, Vector2 at)
-    {
-        var t = UIKit.Text(card, "Hand", text, UIKit.Mono, 21f, Palette.Ink.Alpha(0.5f));
-        t.characterSpacing = 4f;
-        UIKit.Place(t.rectTransform, at, new Vector2(220f, 30f));
-    }
-
-    private void Stamped(RectTransform rt)
-    {
-        var group = rt.gameObject.AddComponent<CanvasGroup>();
-        group.alpha = 0f;
-        _stamps.Add((rt, group));
+        for (int i = 0; i < shown.Length; i++)
+        {
+            _leaders[i * 2].SetActive(shown[i]);
+            _leaders[i * 2 + 1].SetActive(shown[i]);
+        }
     }
 
     /// <summary>Each piece lands like a rubber stamp, one after another.</summary>
     private IEnumerator StampIn()
     {
-        foreach (var (rt, group) in _stamps)
+        for (int i = 0; i < _stampRects.Length; i++)
         {
-            StartCoroutine(Stamp(rt, group));
+            StartCoroutine(Stamp(_stampRects[i], _stampGroups[i]));
             yield return new WaitForSecondsRealtime(0.12f);
         }
     }
@@ -247,24 +101,24 @@ public class MouseKeyboardScreen : MonoBehaviour
 
     private void Update()
     {
-        if (_advancing || _prompt == null) return;
+        if (_advancing || !_showing) return;
         _t += Time.unscaledDeltaTime;
 
         // the mouse's tour: one part lit at a time, and what it does in red
-        if (_tour != null && _t > 0.8f)
+        if (_t > 0.8f)
         {
-            int on = (int)((_t - 0.8f) / TourStep) % _tour.Length;
+            int on = (int)((_t - 0.8f) / TourStep) % _tourKeys.Length;
             foreach (var p in _parts)
             {
-                bool lit = _tour[on].part == p;
+                bool lit = _tourParts[on] == p;
                 p.color = Palette.Yellow.Alpha(Mathf.MoveTowards(p.color.a, lit ? 0.95f : 0f, Time.unscaledDeltaTime * 6f));
             }
-            for (int i = 0; i < _tour.Length; i++)
+            for (int i = 0; i < _tourKeys.Length; i++)
             {
                 bool lit = i == on;
-                _tour[i].key.color = lit ? Palette.HeroRed : Palette.Ink;
-                float s = Mathf.MoveTowards(_tour[i].box.localScale.x, lit ? 1.08f : 1f, Time.unscaledDeltaTime * 1.5f);
-                _tour[i].box.localScale = new Vector3(s, s, 1f);
+                _tourKeys[i].color = lit ? Palette.HeroRed : Palette.Ink;
+                float s = Mathf.MoveTowards(_tourBoxes[i].localScale.x, lit ? 1.08f : 1f, Time.unscaledDeltaTime * 1.5f);
+                _tourBoxes[i].localScale = new Vector3(s, s, 1f);
             }
         }
 
@@ -280,20 +134,4 @@ public class MouseKeyboardScreen : MonoBehaviour
         App.MouseKeyboardShown = true;
         App.I.Flow.Load(Scenes.Title);
     }
-}
-
-/// <summary>The computer mouse, comic style (paper, ink outline, the buttons' seams, the wheel), and the masks that
-/// light up its parts: art files in Resources/UI/Sprites, 200 x 320 design units, centre origin. The points are
-/// where the leader lines meet each part.</summary>
-internal static class MouseArt
-{
-    public const int W = 200, H = 320;
-    public static readonly Vector2 WheelAt = new(0f, 84f);
-    public static readonly Vector2 LeftAt = new(-50f, 92f), RightAt = new(50f, 92f), SideAt = new(-90f, -46f);
-
-    private static Sprite _body, _left, _right, _wheel;
-    public static Sprite Body => _body != null ? _body : _body = UIKit.LoadSprite("mouse_body");
-    public static Sprite LeftButton => _left != null ? _left : _left = UIKit.LoadSprite("mouse_left");
-    public static Sprite RightButton => _right != null ? _right : _right = UIKit.LoadSprite("mouse_right");
-    public static Sprite Wheel => _wheel != null ? _wheel : _wheel = UIKit.LoadSprite("mouse_wheel");
 }

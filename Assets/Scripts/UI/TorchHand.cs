@@ -17,53 +17,27 @@ public class TorchHand : MonoBehaviour
     public Vector2 pivot;                // wrist, in layer units
     public float maxTurn = 9f;
 
-    private RectTransform _hand;
-    private LightCone _cone;
-    private Image _lensGlow;
-    private RectTransform[] _motes;
-    private Image[] _moteImages;
+    [SerializeField] private RectTransform _hand;
+    [SerializeField] private LightCone _cone;
+    [SerializeField] private Image _lensGlow;
+    [Tooltip("Dust motes: their sizes and drift are rolled afresh each time the hand appears.")]
+    [SerializeField] private RectTransform[] _motes;
+    [SerializeField] private Image[] _moteImages;
     private Vector2[] _moteSeeds;
     private float _turn;
 
     private const int MoteCount = 28;
 
-    public static TorchHand Create(Transform layerParent, RectTransform layer, TorchBeam beam, Texture handTexture,
-        Rect handRect, Vector2 lensRest, Vector2 aimRest, Vector2 wrist)
+    /// <summary>A fresh roll of dust each time: each mote's size and where it drifts.</summary>
+    private void Awake()
     {
-        var root = UIKit.Rect(layerParent, "TorchHand");
-        UIKit.Stretch(root);
-        var th = root.gameObject.AddComponent<TorchHand>();
-        th.beam = beam; th.layer = layer; th.lensRest = lensRest; th.aimRest = aimRest; th.pivot = wrist;
-
-        th._cone = LightCone.Create(root, "LightShaft", Palette.LensClear.Alpha(0.16f));
-
-        // Dust motes: little specks that only show inside the light.
-        th._motes = new RectTransform[MoteCount];
-        th._moteImages = new Image[MoteCount];
-        th._moteSeeds = new Vector2[MoteCount];
+        _moteSeeds = new Vector2[MoteCount];
         for (int i = 0; i < MoteCount; i++)
         {
-            var img = UIKit.Image(root, "Mote" + i, Palette.LensClear.Alpha(0f), UIKit.Disc);
             float s = Random.Range(2.5f, 5.5f);
-            UIKit.Place(img.rectTransform, Vector2.zero, new Vector2(s, s));
-            th._motes[i] = img.rectTransform;
-            th._moteImages[i] = img;
-            th._moteSeeds[i] = new Vector2(Random.value * 100f, Random.value * 100f);
+            _motes[i].sizeDelta = new Vector2(s, s);
+            _moteSeeds[i] = new Vector2(Random.value * 100f, Random.value * 100f);
         }
-
-        // The hand, pivoting at the wrist.
-        var raw = UIKit.Raw(root, "Hand");
-        raw.texture = handTexture;
-        var hrt = raw.rectTransform;
-        hrt.anchorMin = hrt.anchorMax = new Vector2(0.5f, 0.5f);
-        hrt.sizeDelta = handRect.size;
-        hrt.pivot = new Vector2((wrist.x - handRect.xMin) / handRect.width, (wrist.y - handRect.yMin) / handRect.height);
-        hrt.anchoredPosition = wrist;
-        th._hand = hrt;
-
-        th._lensGlow = UIKit.Image(root, "LensGlow", Palette.LensClear.Alpha(0f), UIKit.Glow);
-        UIKit.Place(th._lensGlow.rectTransform, lensRest, new Vector2(120f, 120f));
-        return th;
     }
 
     private void LateUpdate()

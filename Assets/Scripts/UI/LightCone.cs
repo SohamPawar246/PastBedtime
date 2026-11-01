@@ -18,19 +18,6 @@ public class LightCone : MaskableGraphic
     /// <summary>u: across the shaft, v: along it (0 at the lens).</summary>
     public override Texture mainTexture => _tex != null ? _tex : (_tex = Resources.Load<Texture2D>("UI/Textures/light_shaft"));
 
-    public static LightCone Create(Transform parent, string name, Color color)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(LightCone));
-        go.transform.SetParent(parent, false);
-        var cone = go.GetComponent<LightCone>();
-        var rt = cone.rectTransform;
-        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = Vector2.zero;
-        cone.color = color;
-        cone.raycastTarget = false;
-        return cone;
-    }
-
     public void Set(Vector2 from, Vector2 to, float fromWidth, float toWidth)
     {
         start = from; end = to; startWidth = fromWidth; endWidth = toWidth;

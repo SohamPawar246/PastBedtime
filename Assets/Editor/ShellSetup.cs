@@ -10,12 +10,12 @@ using UnityEngine;
 ///
 ///  - TMP font assets for Bangers / Comic Neue / Courier Prime (Resources/Fonts)
 ///  - the LightMask material the torch beam and transitions use (Resources/Materials)
-///  - the shell scenes, each just a camera + its screen component (the screens
-///    build their UI in code, see UIKit), and the build order
+///  - the shell scenes (only the missing ones: each scene is where its screen is drawn, so
+///    an existing one is never overwritten), and the build order
 ///  - product name, company and the web build's settings (compression, page template, quality tier)
 ///
-/// Safe to re-run. The Game scene is only created if it does not exist, so
-/// gameplay work there is never overwritten.
+/// Safe to re-run: no scene that exists is touched, so work in them is never
+/// overwritten.
 /// </summary>
 public static class ShellSetup
 {
@@ -93,12 +93,12 @@ public static class ShellSetup
 
     private static void CreateScenes()
     {
-        MakeScene(Scenes.Boot, typeof(BootScreen), Palette.Night, overwrite: true);
-        MakeScene(Scenes.StudioIntro, typeof(StudioIntroScreen), Color.white, overwrite: true);
-        MakeScene(Scenes.Warning, typeof(WarningScreen), Color.black, overwrite: true);
-        MakeScene(Scenes.MouseKeyboard, typeof(MouseKeyboardScreen), Palette.Night, overwrite: true);
-        MakeScene(Scenes.Title, typeof(TitleScreen), Palette.Bedroom, overwrite: true);
-        MakeScene(Scenes.Credits, typeof(CreditsScreen), Palette.Night, overwrite: true);
+        MakeScene(Scenes.Boot, typeof(BootScreen), Palette.Night, overwrite: false);
+        MakeScene(Scenes.StudioIntro, typeof(StudioIntroScreen), Color.white, overwrite: false);
+        MakeScene(Scenes.Warning, typeof(WarningScreen), Color.black, overwrite: false);
+        MakeScene(Scenes.MouseKeyboard, typeof(MouseKeyboardScreen), Palette.Night, overwrite: false);
+        MakeScene(Scenes.Title, typeof(TitleScreen), Palette.Bedroom, overwrite: false);
+        MakeScene(Scenes.Credits, typeof(CreditsScreen), Palette.Night, overwrite: false);
         MakeScene(Scenes.Game, typeof(GameDirector), Palette.Bedroom, overwrite: false);
 
         var order = new[] { Scenes.Boot, Scenes.StudioIntro, Scenes.Warning, Scenes.MouseKeyboard, Scenes.Title, Scenes.Game, Scenes.Credits };

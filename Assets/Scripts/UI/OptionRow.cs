@@ -20,123 +20,43 @@ public class OptionRow : Selectable, IPointerClickHandler, ISubmitHandler, IScro
     private enum Kind { Toggle, Choice, Slider, Link }
 
     private const int Cells = 10;
-    private const float ValueColumn = 0.56f;   // value column starts at this fraction of the row width
 
-    private Kind _kind;
+    [SerializeField] private Kind _kind;
+    [SerializeField] private string[] _choices;
+    [SerializeField] private string _linkText;
+    // what it reads and changes (its panel binds them when it starts)
     private Func<bool> _getBool; private Action<bool> _setBool;
-    private Func<int> _getIndex; private Action<int> _setIndex; private string[] _choices;
+    private Func<int> _getIndex; private Action<int> _setIndex;
     private Func<float> _getValue; private Action<float> _setValue;
-    private Action _open; private string _linkText;
+    private Action _open;
 
-    private Image _highlight;
-    private TMP_Text _value;
-    private RectTransform _bar;
-    private Image[] _cells;
-
-    // ---- Factories ----------------------------------------------------------------------
-
-    public static OptionRow Toggle(Transform parent, string label, Func<bool> get, Action<bool> set, Vector2 pos, float width)
-    {
-        var row = Build(parent, label, pos, width);
-        row._kind = Kind.Toggle; row._getBool = get; row._setBool = set;
-        row.Refresh();
-        return row;
-    }
-
-    public static OptionRow Choice(Transform parent, string label, string[] choices, Func<int> get, Action<int> set, Vector2 pos, float width)
-    {
-        var row = Build(parent, label, pos, width);
-        row._kind = Kind.Choice; row._choices = choices; row._getIndex = get; row._setIndex = set;
-        row.Refresh();
-        return row;
-    }
-
-    public static OptionRow Link(Transform parent, string label, string value, Action open, Vector2 pos, float width)
-    {
-        var row = Build(parent, label, pos, width);
-        row._kind = Kind.Link; row._open = open; row._linkText = value;
-        row.Refresh();
-        return row;
-    }
-
-    public static OptionRow Slider(Transform parent, string label, Func<float> get, Action<float> set, Vector2 pos, float width)
-    {
-        var row = Build(parent, label, pos, width);
-        row._kind = Kind.Slider; row._getValue = get; row._setValue = set;
-        row._value.gameObject.SetActive(false);
-
-        row._bar = UIKit.Rect(row.transform, "Bar");
-        row._bar.anchorMin = new Vector2(ValueColumn, 0.5f);
-        row._bar.anchorMax = new Vector2(1f, 0.5f);
-        row._bar.pivot = new Vector2(0f, 0.5f);
-        row._bar.sizeDelta = new Vector2(-14f, 26f);
-        row._bar.anchoredPosition = Vector2.zero;
-        row._cells = new Image[Cells];
-        for (int i = 0; i < Cells; i++)
-        {
-            var cell = UIKit.Image(row._bar, "Cell" + i, Palette.Paper, UIKit.Box, sliced: true);
-            cell.pixelsPerUnitMultiplier = 2f; // thinner border on small cells
-            var rt = cell.rectTransform;
-            rt.anchorMin = new Vector2((float)i / Cells, 0f);
-            rt.anchorMax = new Vector2((float)(i + 1) / Cells, 1f);
-            rt.offsetMin = new Vector2(2f, 0f);
-            rt.offsetMax = new Vector2(-2f, 0f);
-            row._cells[i] = cell;
-        }
-        row.Refresh();
-        return row;
-    }
-
-    private static OptionRow Build(Transform parent, string label, Vector2 pos, float width)
-    {
-        var rt = UIKit.Rect(parent, "Row " + label);
-        UIKit.Place(rt, pos, new Vector2(width, 46f));
-
-        var hit = rt.gameObject.AddComponent<Image>(); // pointer target
-        hit.color = Color.clear;
-
-        var highlight = UIKit.Image(rt, "Highlight", Palette.Yellow);
-        UIKit.Stretch(highlight.rectTransform);
-        highlight.rectTransform.offsetMin = new Vector2(-12f, 2f);
-        highlight.rectTransform.offsetMax = new Vector2(12f, -2f);
-        highlight.enabled = false;
-
-        var labelText = UIKit.Text(rt, "Label", label, UIKit.Mono, 27f, Palette.Ink, TextAlignmentOptions.Left);
-        labelText.textWrappingMode = TextWrappingModes.NoWrap;
-        labelText.rectTransform.anchorMin = new Vector2(0f, 0f);
-        labelText.rectTransform.anchorMax = new Vector2(ValueColumn, 1f);
-        labelText.rectTransform.offsetMin = labelText.rectTransform.offsetMax = Vector2.zero;
-        labelText.text = WithLeaders(labelText, label, width * ValueColumn - 14f);
-
-        var value = UIKit.Text(rt, "Value", "", UIKit.Mono, 27f, Palette.Ink, TextAlignmentOptions.Left);
-        value.textWrappingMode = TextWrappingModes.NoWrap;
-        value.richText = true;
-        value.rectTransform.anchorMin = new Vector2(ValueColumn, 0f);
-        value.rectTransform.anchorMax = new Vector2(1f, 1f);
-        value.rectTransform.offsetMin = value.rectTransform.offsetMax = Vector2.zero;
-
-        var row = rt.gameObject.AddComponent<OptionRow>();
-        row.transition = Transition.None;
-        row.targetGraphic = hit;
-        row._highlight = highlight;
-        row._value = value;
-        return row;
-    }
-
-    /// <summary>"Label ........" with as many dots as fit before <paramref name="maxWidth"/>,
-    /// measured with the real font so every row's leaders end at the value column.</summary>
-    public static string WithLeaders(TMP_Text measure, string label, float maxWidth)
-    {
-        float labelW = measure.GetPreferredValues(label + " ", 4000f, 100f).x;
-        float dotW = measure.GetPreferredValues("..........", 4000f, 100f).x / 10f;
-        int n = Mathf.Max(2, Mathf.FloorToInt((maxWidth - labelW) / Mathf.Max(1f, dotW)));
-        return label + " " + new string('.', n);
-    }
+    [SerializeField] private Image _highlight;
+    [SerializeField] private TMP_Text _value;
+    [SerializeField] private RectTransform _bar;
+    [SerializeField] private Image[] _cells;
 
     // ---- Value plumbing -----------------------------------------------------------------------
 
+    /// <summary>A toggle's value.</summary>
+    public void Bind(Func<bool> get, Action<bool> set) { _getBool = get; _setBool = set; Refresh(); }
+    /// <summary>A choice's value (an index into its choices).</summary>
+    public void Bind(Func<int> get, Action<int> set) { _getIndex = get; _setIndex = set; Refresh(); }
+    /// <summary>A slider's value (0..1).</summary>
+    public void Bind(Func<float> get, Action<float> set) { _getValue = get; _setValue = set; Refresh(); }
+    /// <summary>What a link line opens.</summary>
+    public void Bind(Action open) { _open = open; Refresh(); }
+
+    private bool Bound => _kind switch
+    {
+        Kind.Toggle => _getBool != null,
+        Kind.Choice => _getIndex != null,
+        Kind.Slider => _getValue != null,
+        _ => true,
+    };
+
     public void Refresh()
     {
+        if (!Bound) return;                      // its panel hasn't bound it yet
         switch (_kind)
         {
             case Kind.Toggle:

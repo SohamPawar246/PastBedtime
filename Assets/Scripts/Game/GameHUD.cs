@@ -176,14 +176,8 @@ public class GameHUD : MonoBehaviour
 
     private IEnumerator StarFlight(Vector2 from)
     {
-        var fly = UIKit.Rect(_page, "FlyingStar");
-        fly.anchorMin = fly.anchorMax = new Vector2(0.5f, 0.5f);
-        fly.sizeDelta = new Vector2(46f, 46f);
-        var ink = UIKit.Image(fly, "Ink", Palette.Ink, Star);
-        UIKit.Stretch(ink.rectTransform, -5f);
-        var face = UIKit.Image(fly, "Face", Palette.Yellow, Star);
-        UIKit.Stretch(face.rectTransform);
-        ink.raycastTarget = face.raycastTarget = false;
+        var fly = Instantiate(_flyingStar, _page);
+        fly.name = "FlyingStar";
         int page = GameState.I != null ? GameState.I.Page : 0;
         const float seconds = 0.55f;
         for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime)
@@ -332,10 +326,16 @@ public class GameHUD : MonoBehaviour
 
     // ---- a tutorial step: an instruction that stays up until it's done ------------------------------------------
 
-    private RectTransform _teach;
-    private TextMeshProUGUI _teachText;
-    private CanvasGroup _teachGroup;
+    [Tooltip("The tutorial box between the hearts and the stars (switched off till the first lesson).")]
+    [SerializeField] private RectTransform _teach;
+    [SerializeField] private TextMeshProUGUI _teachText;
+    [SerializeField] private CanvasGroup _teachGroup;
     private string _teachRaw;
+
+    [Header("Popped onto the page (Art/UI)")]
+    [SerializeField] private RectTransform _flyingStar;
+    [Tooltip("A caption across the top of the page; it's sized to its words and coloured as it's put up.")]
+    [SerializeField] private RectTransform _banner;
 
     /// <summary>Puts up a tutorial instruction at the top of the page that stays until it's done (null takes it
     /// down). "{TORCH}" and the like say the player's own controls.</summary>
@@ -343,19 +343,10 @@ public class GameHUD : MonoBehaviour
     {
         if (text == _teachRaw) return;
         _teachRaw = text;
-        if (_teach == null)
+        if (!_teach.gameObject.activeSelf)
         {
-            // between the hearts (top left) and the stars (top right), over neither
-            var box = UIKit.Panel(_page, "Teach", Vector2.zero, new Vector2(940f, 100f), Palette.Yellow, shadow: 7f, tilt: -0.8f);
-            _teach = (RectTransform)box.transform.parent;
-            _teach.anchorMin = _teach.anchorMax = new Vector2(0.5f, 1f);
-            _teach.anchoredPosition = new Vector2(0f, -94f);
-            _teachText = UIKit.Text(box.transform, "Text", "", UIKit.Display, 36f, Palette.Ink);
-            _teachText.lineSpacing = -10f;
-            UIKit.Stretch(_teachText.rectTransform, 10f);
-            PageBuilder.SetLayer(_teach);                    // printed on the page: the page camera draws it
-            _teachGroup = _teach.gameObject.AddComponent<CanvasGroup>();
-            _teachGroup.alpha = 0f;
+            _teach.gameObject.SetActive(true);
+            _teach.SetAsLastSibling();                       // over whatever's printed on the page already
         }
         if (text != null)
         {
@@ -366,7 +357,7 @@ public class GameHUD : MonoBehaviour
 
     private void TeachTick()
     {
-        if (_teach == null) return;
+        if (!_teach.gameObject.activeSelf) return;
         float dt = Time.unscaledDeltaTime;
         _teachGroup.alpha = Mathf.MoveTowards(_teachGroup.alpha, _teachRaw != null ? 1f : 0f, dt * 5f);
         _teach.localScale = Vector3.one * Mathf.MoveTowards(_teach.localScale.x, 1f, dt * 1.2f);
@@ -381,14 +372,14 @@ public class GameHUD : MonoBehaviour
 
     private IEnumerator Banner(string text, Color face, Color ink, float seconds)
     {
-        var box = UIKit.Panel(_page, "Banner", new Vector2(0f, 0f), new Vector2(Mathf.Min(900f, 30f * text.Length + 80f), 70f), face, shadow: 6f, tilt: -1f);
-        var root = (RectTransform)box.transform.parent;
-        root.anchorMin = root.anchorMax = new Vector2(0.5f, 1f);
-        root.anchoredPosition = new Vector2(0f, -70f);
-        var t = UIKit.Text(box.transform, "Text", text, UIKit.Display, 36f, ink);
-        UIKit.Stretch(t.rectTransform, 8f);
-        PageBuilder.SetLayer(root);                         // printed on the page: the page camera draws it
-        var group = root.gameObject.AddComponent<CanvasGroup>();
+        var root = Instantiate(_banner, _page);
+        root.name = "Banner";
+        root.sizeDelta = new Vector2(Mathf.Min(900f, 30f * text.Length + 80f), 70f);
+        root.Find("Face").GetComponent<Image>().color = face;
+        var t = root.Find("Face/Text").GetComponent<TextMeshProUGUI>();
+        t.text = text;
+        t.color = ink;
+        var group = root.GetComponent<CanvasGroup>();
         for (float a = 0f; a < seconds; a += Time.unscaledDeltaTime)
         {
             group.alpha = Mathf.Min(1f, a / 0.15f, (seconds - a) / 0.3f);
@@ -404,9 +395,4 @@ public class GameHUD : MonoBehaviour
     {
         if (struck == 0) StartCoroutine(Card("...MISSED!", 0.8f));
     }
-
-    private static Sprite _star;
-
-    /// <summary>A five-point star.</summary>
-    public static Sprite Star => _star != null ? _star : _star = UIKit.LoadSprite("hud_star");
 }

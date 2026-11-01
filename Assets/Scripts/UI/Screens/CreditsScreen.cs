@@ -16,38 +16,21 @@ public class CreditsScreen : MonoBehaviour
     [SerializeField] private float debounceSeconds = 0.6f;
     private const float Width = 1100f;
 
-    private RectTransform _crawl;
+    [Tooltip("The page by torchlight, drawn in the scene (switched off till it starts); the crawl is laid out in it " +
+             "from Credits.txt each time.")]
+    [SerializeField] private GameObject _canvas;
+    [SerializeField] private RectTransform _crawl;
     private float _endY, _elapsed;
     private bool _leaving;
 
     private void Start()
     {
         UIKit.EnsureEventSystem();
-        var canvas = UIKit.Canvas("CreditsCanvas", 0);
-        var root = canvas.transform;
-
-        var bg = UIKit.Image(root, "Page", Palette.Night);
-        UIKit.Stretch(bg.rectTransform);
-
-        var beam = TorchBeam.Create(root, null);
-        beam.darkness = 0.7f;
-        beam.radius = 0.36f;
-        beam.followSelection = false;
-
-        var viewport = UIKit.Rect(root, "Viewport");
-        UIKit.Stretch(viewport);
-        _crawl = UIKit.Rect(viewport, "Crawl");
-        _crawl.anchorMin = _crawl.anchorMax = new Vector2(0.5f, 0.5f);
-        _crawl.pivot = new Vector2(0.5f, 1f);
-        _crawl.sizeDelta = new Vector2(Width, 10f);
-
+        _canvas.SetActive(true);
         float height = Fill(_crawl, LoadText());
         float half = UIKit.RefHeight * 0.5f;
         _crawl.anchoredPosition = new Vector2(0f, -half);   // top of the crawl starts just below the screen
         _endY = half + height;
-
-        var hint = UIKit.Text(root, "Hint", "ANY KEY  BACK TO THE MENU", UIKit.Mono, 20f, Palette.PaperDim);
-        UIKit.Pin(hint.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, 28f), new Vector2(800f, 30f));
     }
 
     private static string LoadText()

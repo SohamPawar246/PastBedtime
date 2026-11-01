@@ -24,176 +24,103 @@ using UnityEngine.UI;
 /// </summary>
 public class TitleScreen : MonoBehaviour
 {
-    private CanvasGroup _menuGroup;        // the caption-box menu (interaction)
-    private CanvasGroup _front;            // title lettering and menu (fades on leaving)
-    private CanvasGroup _litLayer;         // things that glow on their own (fade on leaving)
-    private CanvasGroup _doorGroup;        // Mom's door, its light, her eyes
-    private DoorVisit _door;
-    private TorchHand _torch;
+    [Tooltip("The title, drawn in the scene (switched off till it starts): the room and its menu, and the modal pages.")]
+    [SerializeField] private GameObject _canvas, _modals;
+    [SerializeField] private CanvasGroup _menuGroup;        // the caption-box menu (interaction)
+    [SerializeField] private CanvasGroup _front;            // title lettering and menu (fades on leaving)
+    [SerializeField] private CanvasGroup _litLayer;         // things that glow on their own (fade on leaving)
+    [SerializeField] private CanvasGroup _doorGroup;        // Mom's door, its light, her eyes
+    [SerializeField] private DoorVisit _door;
+    [SerializeField] private TorchHand _torch;
     private readonly List<CaptionButton> _items = new();
-    private RectTransform _cover;
-    private TorchBeam _beam;
-    private Modal _settingsModal, _howToModal, _controlsModal;
-    private SettingsPanel _settings;
-    private ControlsPanel _controls;
-    private CaptionButton _howToBack;
+    [SerializeField] private RectTransform _cover;
+    [SerializeField] private TorchBeam _beam;
+    [SerializeField] private Modal _settingsModal, _howToModal, _controlsModal;
+    [SerializeField] private SettingsPanel _settings;
+    [SerializeField] private ControlsPanel _controls;
+    [SerializeField] private HowToReadLive _howTo;
     private GameObject _reselectOnClose;
     private bool _leaving;
 
+    [Header("Menu")]
+    [Tooltip("Every entry the menu can have; which show depends on the save (CONTINUE and START OVER once a page has " +
+             "been read, else START READING) and the platform (no QUIT on the web).")]
+    [SerializeField] private CaptionButton _continue, _startOver, _startReading, _settingsItem, _howToItem, _creditsItem, _quit;
+    [Tooltip("Where the menu's slots run: the first one's middle, and the step down to each next.")]
+    [SerializeField] private Vector2 _menuTop = new(560f, 150f);
+    [SerializeField] private float _menuStep = 90f;
+    [Tooltip("Each slot's tilt, in turn (repeating).")]
+    [SerializeField] private float[] _menuTilts = { -1.6f, 1.2f, -0.8f, 1.5f, -1.2f, 0.9f };
+
     private static bool _openingSeen;      // the opening film plays once per launch
-    private CanvasGroup _titleGroup, _tagGroup;
-    private RectTransform _titleRoot;
+    [SerializeField] private CanvasGroup _titleGroup, _tagGroup;
+    [SerializeField] private RectTransform _titleRoot;
+    [Tooltip("The burst behind the title as it pops on (switched off till then).")]
+    [SerializeField] private Image _titleBurst;
+    [Tooltip("The opening's comic-panel frame (switched off till the opening plays, once per launch).")]
+    [SerializeField] private GameObject _opening;
+    [SerializeField] private RawImage _frame;
 
     // Door + hallway gag
-    private RawImage _strip, _stripGlow;
-    private Image[] _feet;
+    [SerializeField] private RawImage _strip, _stripGlow;
+    [SerializeField] private Image[] _feet;
     private float _stripLevel = 0.3f;
 
     private void Start()
     {
         UIKit.EnsureEventSystem();
-        var canvas = UIKit.Canvas("TitleCanvas", 0);
-        var root = canvas.transform;
-
-        BuildRoom(root);
-        BuildFront(root);
-
-        var modalCanvas = UIKit.Canvas("TitleModals", 20);
-        _settingsModal = Modal.Create(modalCanvas.transform, "SettingsModal");
-        _settings = SettingsPanel.Build(_settingsModal.Content, Vector2.zero, withButtons: true, onBack: CloseModal, onControls: OpenControls);
-        _howToModal = Modal.Create(modalCanvas.transform, "HowToModal");
-        _howToBack = HowToReadPanel.Build(_howToModal.Content, CloseModal);
-        _controlsModal = Modal.Create(modalCanvas.transform, "ControlsModal");          // over the settings card
-        _controls = ControlsPanel.Build(_controlsModal.Content, CloseControls);
-
+        Menu();
+        _settings.Bind(CloseModal, OpenControls);
+        _howTo.Bind(CloseModal);
+        _controls.Bind(CloseControls);
+        SetStrip(_stripLevel);
+        _canvas.SetActive(true);
+        _modals.SetActive(true);
         StartCoroutine(Intro());
     }
 
-    // ---- Room (pre-rendered in Blender) -------------------------------------------------------
-    //
-    // Two renders of the same shot: the room by moonlight, and the room lit by Roshan's
-    // torch. The torch-lit one sits underneath; the moonlit one is the beam's "dark"
-    // side on top, so wherever the beam points you see that part of the room lit.
-    // Positions below are where things land in the 1920 x 1080 render (origin at the
-    // centre), exported from Blender alongside it.
-
-    private static readonly Vector2 ComicCentre = new(34f, -120f);
-    // The part of the gap under Mom's door that isn't hidden behind Roshan's blanket.
-    private static readonly Vector2 DoorGapLeft = new(-425f, -54f), DoorGapRight = new(-347f, -54f);
-    private static readonly Rect HandRect = Rect.MinMaxRect(416f, -702f, 1016f, -254f);   // rendered with overscan
-    private static readonly Vector2 Lens = new(445f, -322f), LensAim = new(33f, -229f), Wrist = new(852f, -548f);
-    private static readonly Rect DoorCrop = new(-769f, -136f, 656f, 668f);
-    private static readonly Vector2 MomEyes = new(-305.6f, 329.2f);
-
-    private void BuildRoom(Transform root)
+    /// <summary>The menu for this save and platform: its entries in their slots, top to bottom.</summary>
+    private void Menu()
     {
-        var bg = UIKit.Image(root, "Night", Palette.Night);           // under any letterboxing
-        UIKit.Stretch(bg.rectTransform);
-
-        var roomLayer = CoverScaler.Create(root, "Room");
-        var lit = UIKit.Raw(roomLayer, "RoomTorchLit");
-        lit.texture = Resources.Load<Texture2D>("Room/room_lit");
-        UIKit.Stretch(lit.rectTransform);
-
-        var home = UIKit.Rect(roomLayer, "BeamHome");
-        UIKit.Place(home, ComicCentre, new Vector2(10f, 10f));
-        _cover = home;
-        _beam = TorchBeam.Create(roomLayer, home, Resources.Load<Texture2D>("Room/room_dark"));
-        _beam.darkColor = Color.white;                 // the moonlit render, as is
-        _beam.darkness = 1f;
-        _beam.litAlpha = 0f;
-        _beam.radius = 0.42f;
-        _beam.softness = 0.15f;
-        _beam.followSelection = false;                 // keys move the yellow box; the torch stays on the comic
-
-        // Mom's door: rendered open at several angles, with the light it lets in.
-        var doorLayer = CoverScaler.Create(root, "DoorLayer");
-        _doorGroup = doorLayer.gameObject.AddComponent<CanvasGroup>();
-        _doorGroup.blocksRaycasts = false;
-        _door = DoorVisit.Create(doorLayer, DoorCrop, MomEyes, 21f);
-
-        // Things above the darkness: the hallway light under Mom's door, Roshan's torch.
-        var litLayer = CoverScaler.Create(root, "RoomLights");
-        _litLayer = litLayer.gameObject.AddComponent<CanvasGroup>();
-        _litLayer.blocksRaycasts = false;
-
-        // Strip and glow are baked with the blanket cut out of them, so the light stays
-        // behind it (sizes and centres from the bake).
-        _stripGlow = UIKit.Raw(litLayer, "HallwayGlow");
-        _stripGlow.texture = Resources.Load<Texture2D>("Room/gap_glow");
-        UIKit.Place(_stripGlow.rectTransform, new Vector2(-385f, -48f), new Vector2(152f, 72f));
-        _strip = UIKit.Raw(litLayer, "HallwayStrip");
-        _strip.texture = Resources.Load<Texture2D>("Room/gap_strip");
-        UIKit.Place(_strip.rectTransform, new Vector2(-384f, -54f), new Vector2(88f, 4f));
-        _feet = new Image[2];
-        for (int i = 0; i < 2; i++)
+        var entries = new List<(CaptionButton item, string label, UnityEngine.Events.UnityAction act)>();
+        if (Settings.HighestPage > 0)
         {
-            _feet[i] = UIKit.Image(litLayer, "Foot" + i, Palette.Ink, UIKit.Disc);
-            UIKit.Place(_feet[i].rectTransform, FootPos(i, 1f), new Vector2(30f, 6f));
+            entries.Add((_continue, $"CONTINUE · PAGE {Settings.HighestPage}", OnRead));
+            entries.Add((_startOver, "START OVER", OnStartOver));
         }
-        SetStrip(_stripLevel);
+        else entries.Add((_startReading, "START READING", OnRead));
+        entries.Add((_settingsItem, "SETTINGS", OnSettings));
+        entries.Add((_howToItem, "HOW TO READ", OnHowTo));
+        entries.Add((_creditsItem, "CREDITS", OnCredits));
+        if (!App.IsWeb) entries.Add((_quit, "QUIT", OnQuit));
 
-        var hand = Resources.Load<Texture2D>("Room/torch_hand");
-        if (hand != null) _torch = TorchHand.Create(litLayer, litLayer, _beam, hand, HandRect, Lens, LensAim, Wrist);
+        foreach (var item in new[] { _continue, _startOver, _startReading, _settingsItem, _howToItem, _creditsItem, _quit })
+            item.gameObject.SetActive(false);
+        for (int i = 0; i < entries.Count; i++)
+        {
+            var (item, label, act) = entries[i];
+            item.gameObject.SetActive(true);
+            item.name = "Item " + label;
+            item.SetLabel(label);
+            ((RectTransform)item.transform).anchoredPosition = _menuTop - new Vector2(0f, _menuStep * i);
+            item.Rest(_menuTilts[i % _menuTilts.Length]);
+            item.Bind(act);
+            _items.Add(item);
+        }
+        var sel = new Selectable[_items.Count];
+        for (int i = 0; i < _items.Count; i++) sel[i] = _items[i].Button;
+        CaptionButton.ChainVertical(sel);
     }
+
+    // The part of the gap under Mom's door (where it lands in the 1920 x 1080 room render, centre origin) that
+    // isn't hidden behind Roshan's blanket.
+    private static readonly Vector2 DoorGapLeft = new(-425f, -54f), DoorGapRight = new(-347f, -54f);
 
     /// <summary>Where Mom's foot shadow i sits in the door gap; k = 0 far off to the side, 1 at the door.</summary>
     private static Vector2 FootPos(int i, float k)
     {
         Vector2 gapMid = (DoorGapLeft + DoorGapRight) * 0.5f;
         return gapMid + new Vector2(-18f + i * 36f - (1f - k) * 40f, 0f);   // shuffle in from the left
-    }
-
-    // ---- Title lettering and menu -------------------------------------------------------------
-
-    private void BuildFront(Transform root)
-    {
-        var front = UIKit.Rect(root, "Front");
-        UIKit.Stretch(front);
-        _front = front.gameObject.AddComponent<CanvasGroup>();
-
-        var title = UIKit.Lettering(front, "GameTitle", "PAST BEDTIME", 118f, Palette.Paper,
-            new Vector2(600f, 368f), new Vector2(720f, 150f), outline: 0.24f, shadow: 9f, tilt: -3f);
-        title.characterSpacing = 2f;
-        _titleRoot = (RectTransform)title.transform.parent;
-        _titleGroup = _titleRoot.gameObject.AddComponent<CanvasGroup>();
-        var tag = UIKit.Text(front, "Tagline", "2 AM. The comic only happens where it's being read.",
-            UIKit.Body, 28f, Palette.PaperDim);
-        tag.fontStyle = FontStyles.Italic;
-        UIKit.Place(tag.rectTransform, new Vector2(600f, 270f), new Vector2(720f, 44f));
-
-        var menu = UIKit.Rect(front, "Menu");
-        UIKit.Stretch(menu);
-        _menuGroup = menu.gameObject.AddComponent<CanvasGroup>();
-
-        var entries = new List<(string label, UnityEngine.Events.UnityAction act, bool quiet)>();
-        void Entry(string label, UnityEngine.Events.UnityAction act, bool quiet) => entries.Add((label, act, quiet));
-        if (Settings.HighestPage > 0)
-        {
-            Entry($"CONTINUE · PAGE {Settings.HighestPage}", OnRead, true);
-            Entry("START OVER", OnStartOver, true);
-        }
-        else Entry("START READING", OnRead, true);
-        Entry("SETTINGS", OnSettings, false);
-        Entry("HOW TO READ", OnHowTo, false);
-        Entry("CREDITS", OnCredits, false);
-        if (!App.IsWeb) Entry("QUIT", OnQuit, true);
-
-        float[] tilts = { -1.6f, 1.2f, -0.8f, 1.5f, -1.2f, 0.9f };
-        float y = 150f;
-        for (int i = 0; i < entries.Count; i++)
-        {
-            var (label, act, quiet) = entries[i];
-            var item = CaptionButton.Create(menu, "Item " + label, label, act,
-                new Vector2(560f, y), new Vector2(440f, 78f), 44f, tilts[i % tilts.Length], quiet);
-            _items.Add(item);
-            y -= 90f;
-        }
-        var sel = new Selectable[_items.Count];
-        for (int i = 0; i < _items.Count; i++) sel[i] = _items[i].Button;
-        CaptionButton.ChainVertical(sel);
-
-        _tagGroup = tag.gameObject.AddComponent<CanvasGroup>();
     }
 
     // ---- Flow ------------------------------------------------------------------------------------------
@@ -233,14 +160,12 @@ public class TitleScreen : MonoBehaviour
     {
         _beam.followPointer = false;
 
-        var canvas = UIKit.Canvas("OpeningPanel", 5);
-        var frame = UIKit.Raw(canvas.transform, "PanelFrame");
-        UIKit.Stretch(frame.rectTransform);
+        _opening.SetActive(true);
         var frameMat = Resources.Load<Material>("Materials/ComicFrame");
-        if (frameMat != null) { _frameMat = new Material(frameMat); frame.material = _frameMat; }
-        else frame.color = Color.clear;
+        if (frameMat != null) { _frameMat = new Material(frameMat); _frame.material = _frameMat; }
+        else _frame.color = Color.clear;
         SetFrame(0f);
-        _sfx = canvas.transform;
+        _sfx = _opening.transform;
 
         bool skipped = false;
         IEnumerator Watch(IEnumerator step)
@@ -273,7 +198,7 @@ public class TitleScreen : MonoBehaviour
             SetFrame(k);
             yield return null;
         }
-        Destroy(canvas.gameObject);
+        Destroy(_opening);
         if (_frameMat != null) Destroy(_frameMat);
         _beam.followPointer = true;
     }
@@ -330,9 +255,8 @@ public class TitleScreen : MonoBehaviour
     private IEnumerator Reveal()
     {
         var restRot = _titleRoot.localRotation;
-        var burst = UIKit.Image(_titleRoot.parent, "TitleBurst", Palette.Yellow, UIKit.Burst);
-        UIKit.Place(burst.rectTransform, _titleRoot.anchoredPosition, new Vector2(760f, 330f));
-        burst.transform.SetSiblingIndex(_titleRoot.GetSiblingIndex());
+        var burst = _titleBurst;
+        burst.gameObject.SetActive(true);
         for (float t = 0f; t < 0.42f; t += Time.unscaledDeltaTime)
         {
             float k = t / 0.42f;
@@ -450,7 +374,7 @@ public class TitleScreen : MonoBehaviour
     }
 
     private void OnSettings() => OpenModal(_settingsModal, _settings.First);
-    private void OnHowTo() => OpenModal(_howToModal, _howToBack.Button);
+    private void OnHowTo() => OpenModal(_howToModal, _howTo.Back.Button);
 
     private void OpenModal(Modal modal, Selectable first)
     {

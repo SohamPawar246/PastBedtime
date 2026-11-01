@@ -116,7 +116,7 @@ rules and take screenshots.
 | Path | What |
 |---|---|
 | `Assets/Scripts/Core` | App root, scene transitions, audio, settings |
-| `Assets/Scripts/UI` | Front-end screens and the comic UI kit (built in code) |
+| `Assets/Scripts/UI` | Front-end screens and the comic UI kit (the screens are drawn in their scenes; the scripts give them life) |
 | `Assets/Scripts/Game` | The game: the light rule, the torch, Max, the Inkies and Baron Blot, Mom, the pages, the HUD, the finale |
 | `Assets/Scripts/Game/Dev` | Editor-only playtest driver (scripted runs that check the rules) and screenshot capture |
 | `Assets/Shaders/Comic` | The comic's printing: ink, tone, hatching, gradation and the torch's light on the page |
@@ -124,7 +124,8 @@ rules and take screenshots.
 | `Assets/Scenes/Game.unity` | The game's room, comic view, HUD, torch hand, Mom's door, Max and the managers, laid out in the scene (switched off; GameDirector switches them on in order) |
 | `Assets/Art/Pages` | The nine comic pages as prefabs: panels, rooftops, props, stars, captions and the Inkies' spawn points |
 | `Assets/Art/Effects` | What the game spawns while you play: Blot's ink waves and geysers, Dot-Shot pellets, SFX lettering, manga marks, ink shadows |
-| `Assets/Resources` | Fonts, audio, music, the room renders, the page settings (title, Mom's visits), credits text |
+| `Assets/Art/UI` | The shared menu pages (settings card and sheet, controls, how to read) and the HUD's pop-ups, as prefabs |
+| `Assets/Resources` | Fonts and their outlined lettering materials, audio, music, the room renders, the page settings (title, Mom's visits), credits text, the app root (`App`) and the UI the game loads by name (`UI/`: the Bookmark pause, the Nightstand, SFX lettering) |
 
 ## Licence
 
