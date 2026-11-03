@@ -50,8 +50,19 @@ public class PageView : MonoBehaviour
     [SerializeField] private Vector2[] _from, _to;
     private float _flip;                     // the cover's swing, 0 shut .. 1 open
 
-    private void Awake() => I = this;
+    private CoverScaler _roomScaler, _frontScaler;
+
+    private void Awake()
+    {
+        I = this;
+        _roomScaler = Room.GetComponent<CoverScaler>();
+        _frontScaler = Front.GetComponent<CoverScaler>();
+    }
+
     private void OnDestroy() { if (I == this) I = null; }
+
+    /// <summary>Flat page view: the open comic faces the reader straight on, fitted to the screen (a phone's view).</summary>
+    public static bool Flat => Settings.FlatPage;
 
     /// <summary>The page camera's texture on the spread, the comic shut on Roshan's knees (the title's framing).</summary>
     public void Show(RenderTexture page)
@@ -128,7 +139,7 @@ public class PageView : MonoBehaviour
         Zoomed.localScale = new Vector3(z, z, 1f);
         Zoomed.anchoredPosition = Pivot * (1f - z);
         var c = new Vector2[4];
-        for (int i = 0; i < 4; i++) c[i] = Vector2.Lerp(_from[i], _to[i], k);
+        for (int i = 0; i < 4; i++) c[i] = Vector2.Lerp(_from[i], Flat ? FlatCorner(i) : _to[i], k);
         // while it's the size of the closed comic, show the middle of the page (the spread is wider)
         float crop = Mathf.Lerp(0.09f, 0f, k);
         Page.uvRect = new Rect(crop, 0f, 1f - 2f * crop, 1f);
@@ -145,6 +156,115 @@ public class PageView : MonoBehaviour
         var drop = new Vector2(14f, -20f);
         _shadow.SetCorners(Grow(c[0], mid, 16f) + drop, Grow(c[1], mid, 10f) + drop, Grow(c[2], mid, 10f) + drop, Grow(c[3], mid, 16f) + drop);
         SetFlip(_flip);
+    }
+
+    /// <summary>The open spread squared up (Flat page view): the game's framing, straight on, in the page texture's
+    /// shape.</summary>
+    private Vector2 FlatCorner(int i)
+    {
+        float yB = (_to[0].y + _to[3].y) * 0.5f, yT = (_to[1].y + _to[2].y) * 0.5f;
+        float h = yT - yB, w = h * PageCamera.TextureWidth / PageCamera.TextureHeight;
+        float cx = (_to[0].x + _to[1].x + _to[2].x + _to[3].x) * 0.25f;
+        return new Vector2(i < 2 ? cx - w / 2f : cx + w / 2f, i == 0 || i == 3 ? yB : yT);
+    }
+
+    // ---- where the room sits on the screen ---------------------------------------------------------------
+
+    /// <summary>Canvas units kept clear left of the comic, so Mom's door shows beside it in Flat page view.</summary>
+    private const float DoorRoom = 170f;
+
+    private void Update() => Layout();
+
+    /// <summary>
+    /// The room on the screen. A desktop covers the screen with it, as it always has. On a tablet the whole bedroom
+    /// shows (a 4:3 screen would cut off Mom's door and the hand). In Flat page view (a phone's way) the open comic
+    /// fills the screen's height, with a margin on the left for Mom's door. The title's framing always covers, so the
+    /// opening zooms from exactly the title's picture into this. The front layer (the hand, the door's captions and
+    /// Mom's strikes) moves with the room, so it stays where it belongs.
+    /// </summary>
+    private void Layout()
+    {
+        bool manual = Flat || Form.Touch;
+        _roomScaler.Manual = _frontScaler.Manual = manual;
+        if (!manual) return;
+        var canvas = (RectTransform)Room.parent;
+        Vector2 size = canvas.rect.size;
+        float cover = Mathf.Max(size.x / 1920f, size.y / 1080f);
+        Rect safe = SafeRect(size);
+        float s;
+        Vector2 at;
+        if (Flat) FitSpread(safe, out s, out at);
+        else
+        {
+            s = Mathf.Min(safe.width / 1920f, safe.height / 1080f);
+            at = safe.center;
+        }
+        float scale = Mathf.Lerp(cover, s, Framing);
+        Vector2 pos = at * Framing;
+        foreach (var layer in new[] { Room, Front })
+        {
+            layer.localScale = new Vector3(scale, scale, 1f);
+            layer.anchoredPosition = pos;
+            layer.sizeDelta = new Vector2(1920f, 1080f);
+        }
+    }
+
+    /// <summary>The comic, fitted: as tall as the safe area allows (or narrower, to leave Mom's door room), and pushed
+    /// right just enough for the door.</summary>
+    private void FitSpread(Rect safe, out float s, out Vector2 at)
+    {
+        // the spread in the game's framing, in room units, its paper edge and shadow included
+        Vector2 zp = Pivot * (1f - Zoom);
+        Vector2 min = zp + (FlatCorner(0) - new Vector2(18f, 26f)) * Zoom;
+        Vector2 max = zp + (FlatCorner(2) + new Vector2(18f, 10f)) * Zoom;
+        Vector2 box = max - min;
+        s = Mathf.Min(safe.height * 0.97f / box.y, (safe.width - DoorRoom) / box.x);
+        float left = Mathf.Max(DoorRoom, (safe.width - box.x * s) * 0.5f);
+        var centre = new Vector2(safe.xMin + left + box.x * s * 0.5f, safe.center.y);
+        at = centre - (min + max) * 0.5f * s;
+    }
+
+    /// <summary>The open spread in Flat page view at the game's framing, in room units (which the front layer shares
+    /// on a touch screen).</summary>
+    public Rect FlatSpread
+    {
+        get
+        {
+            Vector2 zp = Pivot * (1f - Zoom);
+            Vector2 a = zp + FlatCorner(0) * Zoom, b = zp + FlatCorner(2) * Zoom;
+            return Rect.MinMaxRect(a.x, a.y, b.x, b.y);
+        }
+    }
+
+    /// <summary>The safe part of the screen, in room units.</summary>
+    public Rect SafeInRoom
+    {
+        get
+        {
+            Rect safe = SafeRect(((RectTransform)Room.parent).rect.size);
+            float s = Mathf.Max(0.001f, Room.localScale.x);
+            Vector2 o = Room.anchoredPosition;
+            return Rect.MinMaxRect((safe.xMin - o.x) / s, (safe.yMin - o.y) / s, (safe.xMax - o.x) / s, (safe.yMax - o.y) / s);
+        }
+    }
+
+    /// <summary>The top of the comic's spine on the screen (pixels): where the bookmark ribbon hangs on a phone.</summary>
+    public Vector2 SpineTopOnScreen
+    {
+        get
+        {
+            Rect r = FlatSpread;
+            return RectTransformUtility.WorldToScreenPoint(null, Room.TransformPoint(new Vector3(r.center.x, r.yMax, 0f)));
+        }
+    }
+
+    /// <summary>The screen's safe area (clear of notches and rounded corners) in canvas units, centre origin.</summary>
+    private static Rect SafeRect(Vector2 size)
+    {
+        var sa = UnityEngine.Device.Screen.safeArea;
+        float sw = Mathf.Max(1, UnityEngine.Device.Screen.width), sh = Mathf.Max(1, UnityEngine.Device.Screen.height);
+        return Rect.MinMaxRect(sa.xMin / sw * size.x - size.x / 2f, sa.yMin / sh * size.y - size.y / 2f,
+                               sa.xMax / sw * size.x - size.x / 2f, sa.yMax / sh * size.y - size.y / 2f);
     }
 
     /// <summary>The cover swinging round its spine, from shut on the right page to open on the left.</summary>
@@ -206,7 +326,7 @@ public class PageView : MonoBehaviour
         if (field != null && PageCamera.I != null && Framing > 0f)
         {
             Vector2 onPage = Page.UVToLocal(PageCamera.I.LaneToViewport(field.BeamCentre));
-            float unit = (_to[3] - _to[0]).magnitude / PageCamera.ViewWidth;        // zoomed-local units per lane unit
+            float unit = (_to[3] - _to[0]).magnitude / PageCamera.Width;        // zoomed-local units per lane unit
             float gameSpill = field.BeamRadius * unit * 1.7f / 1080f;
             at = Vector2.Lerp(ComicCentre, onPage, Framing);
             spill = Mathf.Lerp(TitleSpill, gameSpill, Framing);
@@ -228,6 +348,9 @@ public class PageView : MonoBehaviour
 
     /// <summary>A lane point in world space (for things drawn in other layers: the hand's light shaft).</summary>
     public Vector3 LaneToWorld(Vector2 lane) => Page.rectTransform.TransformPoint(LaneToRoom(lane));
+
+    /// <summary>A lane point on the screen (pixels): where a finger would touch to aim there.</summary>
+    public Vector2 LaneToScreen(Vector2 lane) => RectTransformUtility.WorldToScreenPoint(UIKit.CanvasCamera(Page), LaneToWorld(lane));
 
     /// <summary>Screen pixel to a point on the comic's z = 0 lane. False if it's well off the page.</summary>
     public static bool ScreenToLane(Vector2 screen, out Vector2 lane)

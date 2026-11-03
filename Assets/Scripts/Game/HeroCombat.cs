@@ -46,6 +46,8 @@ public class HeroCombat : MonoBehaviour
     private static readonly Def Slam = D("SlamDive", 1.2f, 0f, 0f, 10f, new Vector2(5f, 6f), 1.5f, Vector2.zero, new Vector2(4f, 1.6f), "KRAK!", heavy: true);
 
     public bool Busy => _move != Move.None;
+    /// <summary>The move under way, by name (tests).</summary>
+    public string MoveName => _move.ToString();
     public bool Airborne => _move == Move.DiveKick || _move == Move.GroundSlam;
     public bool Slamming => _move == Move.GroundSlam;
     public bool OverridesGravity => Airborne;
@@ -194,6 +196,7 @@ public class HeroCombat : MonoBehaviour
             MangaFx.Focus((Vector2)transform.position + Vector2.up * 0.8f, 1.3f);
             ComicFx.ImpactFrame();
             GameEvents.Impact(0.7f);
+            Haptics.Heavy();
             GameAudio.Play("slam", 0.9f);
         }
     }
@@ -215,6 +218,7 @@ public class HeroCombat : MonoBehaviour
             MangaFx.Focus(at - new Vector2(0f, 0.9f), hit.heavy ? 1.1f : 0.8f);
         if (finisher) ComicFx.ImpactFrame();
         GameEvents.HitStop(hit.heavy && !clank ? 0.09f : 0.05f);
+        if (finisher) Haptics.Bump(); else Haptics.Tick();
         GameEvents.Impact(hit.heavy && !clank ? 0.5f : 0.2f);
         // each blow of a combo rings a little higher than the last
         int combo = gs != null ? gs.Combo : 1;

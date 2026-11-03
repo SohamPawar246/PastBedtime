@@ -17,7 +17,7 @@ public class RoomArtImporter : AssetPostprocessor
         ti.wrapMode = UnityEngine.TextureWrapMode.Clamp;
         ti.filterMode = UnityEngine.FilterMode.Bilinear;
         ti.npotScale = TextureImporterNPOTScale.None;
-        ti.maxTextureSize = 2048;
+        ti.maxTextureSize = 4096;                        // the bedroom plates are 2520 wide (bleed for phones and tablets)
         ti.alphaIsTransparency = assetPath.Contains("torch") || assetPath.Contains("/Door/door_") || assetPath.Contains("/gap_");
         ti.textureCompression = TextureImporterCompression.CompressedHQ;
     }

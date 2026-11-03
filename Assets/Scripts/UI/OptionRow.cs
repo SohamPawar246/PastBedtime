@@ -15,7 +15,7 @@ using UnityEngine.UI;
 /// gets a process-yellow highlighter stripe. The dot leaders are measured so they
 /// always run right up to the value column.
 /// </summary>
-public class OptionRow : Selectable, IPointerClickHandler, ISubmitHandler, IScrollHandler
+public class OptionRow : Selectable, IPointerClickHandler, ISubmitHandler, IScrollHandler, IDragHandler
 {
     private enum Kind { Toggle, Choice, Slider, Link }
 
@@ -134,15 +134,41 @@ public class OptionRow : Selectable, IPointerClickHandler, ISubmitHandler, IScro
     {
         if (!IsInteractable() || e.button != PointerEventData.InputButton.Left) return;
         if (_kind == Kind.Link) { Open(); return; }
+        if (_kind == Kind.Choice && CaptionButton.IsTouch(e) && PickChoice(e)) return;
         if (_kind != Kind.Slider) { Step(1); return; }
+        SetSlider(e);
+    }
 
-        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_bar, e.position, e.pressEventCamera, out var local))
+    /// <summary>A slider follows a finger (or the mouse) dragged along it.</summary>
+    public void OnDrag(PointerEventData e)
+    {
+        if (_kind == Kind.Slider && IsInteractable()) SetSlider(e);
+    }
+
+    private void SetSlider(PointerEventData e)
+    {
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_bar, e.position, e.pressEventCamera, out var local)) return;
+        float k = Mathf.Clamp01(local.x / Mathf.Max(1f, _bar.rect.width));
+        float v = Mathf.Clamp01(Mathf.Ceil(k * Cells) / Cells);
+        if (Mathf.Approximately(v, _getValue())) return;
+        _setValue(v);
+        AudioDirector.I?.Hover();
+        Refresh();
+    }
+
+    /// <summary>A tap on one of a choice line's words picks that one (on a phone there's no stepping through them
+    /// with the arrow keys).</summary>
+    private bool PickChoice(PointerEventData e)
+    {
+        int word = TMPro.TMP_TextUtilities.FindIntersectingWord(_value, e.position, e.pressEventCamera);
+        if (word < 0 || _value.textInfo.wordCount != _choices.Length) return false;
+        if (word != _getIndex())
         {
-            float k = Mathf.Clamp01(local.x / Mathf.Max(1f, _bar.rect.width));
-            _setValue(Mathf.Clamp01(Mathf.Ceil(k * Cells) / Cells));
-            AudioDirector.I?.Hover();
+            _setIndex(word);
+            AudioDirector.I?.Toggle();
             Refresh();
         }
+        return true;
     }
 
     public void OnScroll(PointerEventData e)
@@ -154,7 +180,15 @@ public class OptionRow : Selectable, IPointerClickHandler, ISubmitHandler, IScro
     public override void OnPointerEnter(PointerEventData e)
     {
         base.OnPointerEnter(e);
+        if (CaptionButton.IsTouch(e)) return;                  // no hover on glass: the stripe would stick
         if (IsInteractable() && EventSystem.current != null) EventSystem.current.SetSelectedGameObject(gameObject, e);
+    }
+
+    public override void OnPointerUp(PointerEventData e)
+    {
+        base.OnPointerUp(e);
+        if (CaptionButton.IsTouch(e) && EventSystem.current != null && EventSystem.current.currentSelectedGameObject == gameObject)
+            EventSystem.current.SetSelectedGameObject(null);
     }
 
     public override void OnSelect(BaseEventData e)

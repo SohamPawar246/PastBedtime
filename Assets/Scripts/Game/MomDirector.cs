@@ -206,6 +206,7 @@ public class MomDirector : MonoBehaviour
                 {
                     _step = IsCat ? 0.3f : 0.5f;
                     AudioDirector.I?.Footstep(Mathf.Lerp(0.05f, IsCat ? 0.12f : 0.32f, Feet));
+                    Haptics.Pulse(Feet);                      // felt before she's heard
                 }
                 if (_t >= _approach) Go(MomState.AtDoor);
                 break;
@@ -388,6 +389,7 @@ public class MomDirector : MonoBehaviour
         Suspicion = 0f;
         LightField.I?.Wedges.Clear();
         Bust = 2.6f;
+        Haptics.Heavy();
         Open = 1f;
         Handle = 0f;
         Go(MomState.Asleep);

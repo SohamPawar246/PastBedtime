@@ -48,10 +48,12 @@ public class ChargeSystem : MonoBehaviour
             {
                 Charge = Mathf.Min(Capacity, Charge + PerTwist);
                 Twisted?.Invoke(0);
+                Haptics.Tick();
                 continue;
             }
             Charge = Capacity;
             Overwind++;
+            Haptics.Bump();
             if (Overwind > OverwindBuffer)
             {
                 Flare();
@@ -67,6 +69,7 @@ public class ChargeSystem : MonoBehaviour
         _deadFor = FlareSeconds + CoolSeconds;
         if (LightField.I != null) LightField.I.FlareTime = FlareSeconds;
         Flared?.Invoke();
+        Haptics.Heavy();
     }
 
     public void ApplyUpgrades(int spring, int gear, int ratchet)

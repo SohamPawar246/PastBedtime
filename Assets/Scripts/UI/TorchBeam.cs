@@ -22,6 +22,9 @@ public class TorchBeam : MonoBehaviour
     public RectTransform home;               // where the beam rests with no pointer and no selection
     public bool followSelection = true;
     public bool followPointer = true;        // false: the beam ignores the mouse (e.g. during the opening)
+    [Tooltip("The overlay is a picture bigger than its frame (the bedroom's bleed): sizes are in heights of a frame " +
+             "this tall (overlay units). 0: the overlay itself.")]
+    public float frameHeight;
 
     [SerializeField] private RawImage _overlay;
     private Material _mat;                   // its own copy of LightMask (made as it wakes)
@@ -167,21 +170,23 @@ public class TorchBeam : MonoBehaviour
         Vector2 a = RectTransformUtility.WorldToScreenPoint(cam, _corners[0]);
         Vector2 b = RectTransformUtility.WorldToScreenPoint(cam, _corners[2]);
         float w = Mathf.Max(1f, Mathf.Abs(b.x - a.x)), h = Mathf.Max(1f, Mathf.Abs(b.y - a.y));
-        OverlayPixels = new Vector2(w, h);
+        // a room picture that bleeds past its frame (for phones and tablets) still measures in heights of the frame
+        float frame = frameHeight > 0f ? frameHeight / Mathf.Max(1f, rt.rect.height) : 1f;
+        OverlayPixels = new Vector2(w, h) * frame;
 
         // Hand tremor: a few pixels of slow noise, and a breath in the radius.
         float time = Time.unscaledTime;
         var tremor = new Vector2(Mathf.PerlinNoise(time * 0.7f, 0.3f) - 0.5f,
-                                 Mathf.PerlinNoise(0.6f, time * 0.7f) - 0.5f) * (h * 0.012f);
+                                 Mathf.PerlinNoise(0.6f, time * 0.7f) - 0.5f) * (h * frame * 0.012f);
         Vector2 uv = UIKit.ScreenToUV(rt, _pos + tremor);
 
         float r = radius * (1f + 0.012f * Mathf.Sin(time * 1.7f) + 0.05f * _pulse * _pulse) * _power;
         _mat.SetVector(CenterId, uv);
-        _mat.SetFloat(RadiusId, r <= 0.0001f ? -softness : r);
-        _mat.SetFloat(SoftId, softness);
+        _mat.SetFloat(RadiusId, (r <= 0.0001f ? -softness : r) * frame);
+        _mat.SetFloat(SoftId, softness * frame);
         _mat.SetFloat(AspectId, w / h);
         _mat.SetFloat(HeightId, h);
-        _mat.SetFloat(DotId, 11f * h / 1080f);
+        _mat.SetFloat(DotId, 11f * h * frame / 1080f);
         _mat.SetColor(DarkId, darkColor.Alpha(darkness));
         _mat.SetColor(LitId, litColor.Alpha(litAlpha * Mathf.Clamp01(_power)));
         _mat.SetFloat(HalftoneId, halftone);

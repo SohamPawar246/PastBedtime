@@ -57,9 +57,15 @@ public static class ShellInput
         return kb != null && kb[key].wasPressedThisFrame;
     }
 
-    /// <summary>Mouse position in screen pixels, or null when there is no mouse.</summary>
+    /// <summary>Mouse position in screen pixels (on a touch screen, a finger on the glass), or null when there is
+    /// neither.</summary>
     public static Vector2? PointerPosition()
     {
+        if (GameInput.TouchMode)
+        {
+            var touch = Touchscreen.current;
+            return touch != null && touch.primaryTouch.press.isPressed ? touch.primaryTouch.position.ReadValue() : (Vector2?)null;
+        }
         var mouse = Mouse.current;
         return mouse != null ? mouse.position.ReadValue() : (Vector2?)null;
     }

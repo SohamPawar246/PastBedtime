@@ -10,6 +10,9 @@ public class CoverScaler : MonoBehaviour
 {
     public Vector2 designSize = new Vector2(1920f, 1080f);
 
+    /// <summary>Someone else places and scales the layer (the game's view on a phone or tablet).</summary>
+    [System.NonSerialized] public bool Manual;
+
     private RectTransform _rt;
 
     private void OnEnable() => Fit();
@@ -17,6 +20,7 @@ public class CoverScaler : MonoBehaviour
 
     public void Fit()
     {
+        if (Manual) return;
         if (_rt == null) _rt = (RectTransform)transform;
         var parent = _rt.parent as RectTransform;
         if (parent == null) return;

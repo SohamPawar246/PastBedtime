@@ -66,8 +66,43 @@ public class MomDoorView : MonoBehaviour
         return Rect.MinMaxRect(Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y));
     }
 
-    private void Awake() => I = this;
+    private Vector2 _captionHome, _sayHome, _trackHome;
+
+    private void Awake()
+    {
+        I = this;
+        _captionHome = _caption.rectTransform.anchoredPosition;
+        _sayHome = ((RectTransform)_sayGroup.transform).anchoredPosition;
+        _trackHome = _track.anchoredPosition;
+    }
+
     private void OnDestroy() { if (I == this) I = null; }
+
+    /// <summary>Where Mom's strike slipper i rests. In Flat page view (a phone) the comic covers the floor where they
+    /// lie on a desktop, so they sit in the margin under her door, beside the comic.</summary>
+    private Vector2 SlipperHome(int i)
+    {
+        if (!PageView.Flat || PageView.I == null) return _slipperHome[i];
+        Rect page = PageView.I.FlatSpread;
+        float x = page.xMin - 40f - (_slippers.Length - 1 - i) * 34f;
+        return new Vector2(Mathf.Max(x, PageView.I.SafeInRoom.xMin + 18f), -125f + (i % 2) * 10f);
+    }
+
+    /// <summary>In Flat page view the door's captions, footprints and strikes keep to what's on the screen: the
+    /// captions by the door but never off the edge, the footprints along the screen's top.</summary>
+    private void LateUpdate()
+    {
+        bool flat = PageView.Flat && PageView.I != null;
+        Rect safe = flat ? PageView.I.SafeInRoom : default;
+        Vector2 Inside(Vector2 home, RectTransform rt) => !flat ? home
+            : new Vector2(Mathf.Max(home.x, safe.xMin + rt.rect.width * 0.5f + 12f), Mathf.Min(home.y, safe.yMax - rt.rect.height * 0.5f - 6f));
+        _caption.rectTransform.anchoredPosition = Inside(_captionHome, _caption.rectTransform);
+        var say = (RectTransform)_sayGroup.transform;
+        say.anchoredPosition = Inside(_sayHome, say);
+        _track.anchoredPosition = flat ? new Vector2(_trackHome.x, Mathf.Min(_trackHome.y, safe.yMax - 26f)) : _trackHome;
+        for (int i = 0; i < _slippers.Length; i++)
+            if ((_flying & (1 << i)) == 0) _slippers[i].rectTransform.anchoredPosition = SlipperHome(i);
+    }
 
     /// <summary>Mom's line through the door, by the door.</summary>
     public void Say(string text)
@@ -86,7 +121,7 @@ public class MomDoorView : MonoBehaviour
     private System.Collections.IEnumerator SlipperFlies(int i)
     {
         var rt = _slippers[i].rectTransform;
-        Vector2 home = _slipperHome[i];
+        Vector2 home = SlipperHome(i);
         float spin = Random.Range(540f, 900f) * (Random.value < 0.5f ? -1f : 1f);
         for (float t = 0f; t < 0.9f; t += Time.unscaledDeltaTime)
         {
@@ -145,7 +180,11 @@ public class MomDoorView : MonoBehaviour
         if (s > 0.08f && !BookmarkPause.IsPaused)
         {
             float loud = Mathf.Lerp(0.2f, 0.75f, s);
-            if (after < before) GameAudio.Heartbeat(loud);
+            if (after < before)
+            {
+                GameAudio.Heartbeat(loud);
+                Haptics.Pulse(s);                         // a phone speaker can't play the thump: it's felt instead
+            }
             else if (before < 1.1f && after >= 1.1f) GameAudio.Heartbeat(loud * 0.6f);
         }
         float pulse = s > 0.05f ? 0.75f + 0.25f * Mathf.Sin(_beat) : 0f;

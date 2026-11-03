@@ -458,6 +458,7 @@ GameObject:
   - component: {fileID: 746814140}
   - component: {fileID: 746814142}
   - component: {fileID: 746814141}
+  - component: {fileID: 746814143}
   m_Layer: 0
   m_Name: Text
   m_TagString: Untagged
@@ -584,6 +585,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 746814139}
   m_CullTransparentMesh: 1
+--- !u!114 &746814143
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 746814139}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de1a0693ccbd1ee4cab02e65a92fbe01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TouchText
+  _touch: TAP TO CONTINUE
 --- !u!1 &852663250
 GameObject:
   m_ObjectHideFlags: 0

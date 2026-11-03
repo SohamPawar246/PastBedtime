@@ -46,13 +46,18 @@ public class TitleScreen : MonoBehaviour
     [Tooltip("Every entry the menu can have; which show depends on the save (CONTINUE and START OVER once a page has " +
              "been read, else START READING) and the platform (no QUIT on the web).")]
     [SerializeField] private CaptionButton _continue, _startOver, _startReading, _settingsItem, _howToItem, _creditsItem, _quit;
+    [Tooltip("CONTENTS (a touch screen's, in START OVER's place: START OVER is on the contents page) and its page.")]
+    [SerializeField] private CaptionButton _contentsItem;
+    [SerializeField] private Modal _contentsModal;
+    [SerializeField] private ContentsPanel _contents;
     [Tooltip("Where the menu's slots run: the first one's middle, and the step down to each next.")]
     [SerializeField] private Vector2 _menuTop = new(560f, 150f);
     [SerializeField] private float _menuStep = 90f;
     [Tooltip("Each slot's tilt, in turn (repeating).")]
     [SerializeField] private float[] _menuTilts = { -1.6f, 1.2f, -0.8f, 1.5f, -1.2f, 0.9f };
 
-    private static bool _openingSeen;      // the opening film plays once per launch
+    /// <summary>The opening film plays once per launch (tests set it to go straight to the menu).</summary>
+    public static bool OpeningSeen;
     [SerializeField] private CanvasGroup _titleGroup, _tagGroup;
     [SerializeField] private RectTransform _titleRoot;
     [Tooltip("The burst behind the title as it pops on (switched off till then).")]
@@ -70,12 +75,19 @@ public class TitleScreen : MonoBehaviour
     {
         UIKit.EnsureEventSystem();
         Menu();
+        MakeCoverTappable();
         _settings.Bind(CloseModal, OpenControls);
         _howTo.Bind(CloseModal);
+        if (_contents != null) _contents.Bind(OnPage, OnStartOver, CloseModal);
         _controls.Bind(CloseControls);
         SetStrip(_stripLevel);
         _canvas.SetActive(true);
         _modals.SetActive(true);
+        if (Form.Touch)
+        {
+            Canvas.ForceUpdateCanvases();                 // (the canvas has only just come on: its scale is needed)
+            FingerSizedMenu();
+        }
         StartCoroutine(Intro());
     }
 
@@ -83,19 +95,21 @@ public class TitleScreen : MonoBehaviour
     private void Menu()
     {
         var entries = new List<(CaptionButton item, string label, UnityEngine.Events.UnityAction act)>();
+        bool contents = GameInput.OnTouchDevice && _contentsItem != null;
         if (Settings.HighestPage > 0)
         {
             entries.Add((_continue, $"CONTINUE · PAGE {Settings.HighestPage}", OnRead));
-            entries.Add((_startOver, "START OVER", OnStartOver));
+            if (contents) entries.Add((_contentsItem, "CONTENTS", OnContents));
+            else entries.Add((_startOver, "START OVER", OnStartOver));
         }
         else entries.Add((_startReading, "START READING", OnRead));
         entries.Add((_settingsItem, "SETTINGS", OnSettings));
         entries.Add((_howToItem, "HOW TO READ", OnHowTo));
         entries.Add((_creditsItem, "CREDITS", OnCredits));
-        if (!App.IsWeb) entries.Add((_quit, "QUIT", OnQuit));
+        if (!App.IsWeb && !GameInput.OnTouchDevice) entries.Add((_quit, "QUIT", OnQuit));   // (a phone's Back quits)
 
-        foreach (var item in new[] { _continue, _startOver, _startReading, _settingsItem, _howToItem, _creditsItem, _quit })
-            item.gameObject.SetActive(false);
+        foreach (var item in new[] { _continue, _startOver, _startReading, _settingsItem, _howToItem, _creditsItem, _quit, _contentsItem })
+            if (item != null) item.gameObject.SetActive(false);
         for (int i = 0; i < entries.Count; i++)
         {
             var (item, label, act) = entries[i];
@@ -110,6 +124,44 @@ public class TitleScreen : MonoBehaviour
         var sel = new Selectable[_items.Count];
         for (int i = 0; i < _items.Count; i++) sel[i] = _items[i].Button;
         CaptionButton.ChainVertical(sel);
+    }
+
+    /// <summary>On a touch screen the caption boxes grow to a finger's size (8 mm tall, 2 mm apart), in a column that
+    /// starts under the tagline and stops above the screen's bottom edge (smaller boxes if it must).</summary>
+    private void FingerSizedMenu()
+    {
+        if (_items.Count == 0) return;
+        var first = (RectTransform)_items[0].transform;
+        var parent = first.parent;
+        var canvas = first.GetComponentInParent<Canvas>().rootCanvas;
+        var screen = (RectTransform)canvas.transform;
+        float toLocal = canvas.transform.lossyScale.x / parent.lossyScale.x;            // canvas units to the menu's
+        float gap = Form.Mm(canvas, 2f) * toLocal;
+        // from under the tagline to the bottom of the screen, in the menu's own (local) units
+        var tagCorners = new Vector3[4];
+        ((RectTransform)_tagGroup.transform).GetWorldCorners(tagCorners);
+        float top = parent.InverseTransformPoint(tagCorners[0]).y - gap;
+        float bottom = parent.InverseTransformPoint(screen.TransformPoint(new Vector3(0f, screen.rect.yMin, 0f))).y + gap;
+        float h = first.rect.height;
+        float scale = Mathf.Clamp(Form.Mm(canvas, 8f) * toLocal / h, 1f, 1.9f);
+        float fit = (top - bottom - (_items.Count - 1) * gap) / (_items.Count * h);
+        scale = Mathf.Max(1f, Mathf.Min(scale, fit));
+        float step = h * scale + gap;
+        Vector2 local = first.localPosition, anchored = first.anchoredPosition;
+        Vector2 toAnchored = anchored - local;                                         // (the same for every box)
+        // clear of the comic on the bed (it's a button too), and on the screen
+        float half = first.rect.width * scale * 0.5f;
+        var coverCorners = new Vector3[4];
+        _cover.GetWorldCorners(coverCorners);
+        float coverRight = parent.InverseTransformPoint(coverCorners[2]).x;
+        float screenRight = parent.InverseTransformPoint(screen.TransformPoint(new Vector3(screen.rect.xMax, 0f, 0f))).x;
+        float x = Mathf.Min(Mathf.Max(local.x, coverRight + gap + half), screenRight - gap - half) + toAnchored.x;
+        for (int i = 0; i < _items.Count; i++)
+        {
+            var rt = (RectTransform)_items[i].transform;
+            rt.localScale = Vector3.one * scale;
+            rt.anchoredPosition = new Vector2(x, top - h * scale * 0.5f - step * i + toAnchored.y);
+        }
     }
 
     // The part of the gap under Mom's door (where it lands in the 1920 x 1080 room render, centre origin) that
@@ -132,9 +184,9 @@ public class TitleScreen : MonoBehaviour
         _titleGroup.alpha = _tagGroup.alpha = 0f;
         _beam.SetPowerInstant(0f);
 
-        if (!_openingSeen)
+        if (!OpeningSeen)
         {
-            _openingSeen = true;
+            OpeningSeen = true;
             yield return Opening();
         }
         else
@@ -309,8 +361,50 @@ public class TitleScreen : MonoBehaviour
     {
         // the Controls page answers its own Esc (and the Esc that closed it isn't this card's too)
         if (_leaving || _controlsModal.IsOpen || Time.frameCount == _controlsClosed) return;
-        bool modalOpen = _settingsModal.IsOpen || _howToModal.IsOpen;
+        bool modalOpen = _settingsModal.IsOpen || _howToModal.IsOpen || (_contentsModal != null && _contentsModal.IsOpen);
         if (modalOpen && ShellInput.BackPressed()) CloseModal();
+        else if (!modalOpen && Application.isMobilePlatform && ShellInput.BackPressed()) BackOnTitle();
+    }
+
+    private float _backAt = -10f;
+    private string _tagLine;
+
+    /// <summary>Android's Back on the title: once says how to leave, twice in a row leaves (an edge swipe shouldn't
+    /// close the comic by accident).</summary>
+    private void BackOnTitle()
+    {
+        var tag = _tagGroup.GetComponentInChildren<TMP_Text>();
+        if (Time.unscaledTime - _backAt < 2.5f)
+        {
+            App.I.Quit();
+            return;
+        }
+        _backAt = Time.unscaledTime;
+        AudioDirector.I?.Back();
+        if (tag == null) return;
+        _tagLine ??= tag.text;
+        tag.text = "BACK AGAIN TO STOP READING";
+        StartCoroutine(PutTagBack(tag));
+    }
+
+    private IEnumerator PutTagBack(TMP_Text tag)
+    {
+        yield return new WaitForSecondsRealtime(2.5f);
+        tag.text = _tagLine;
+    }
+
+    /// <summary>On a touch screen the comic on the bed is the biggest button there is: a tap opens it (as CONTINUE).</summary>
+    private void MakeCoverTappable()
+    {
+        if (!GameInput.OnTouchDevice || _cover == null) return;
+        if (!_cover.TryGetComponent<Graphic>(out _))
+        {
+            var hit = _cover.gameObject.AddComponent<Image>();
+            hit.color = Color.clear;                                // invisible: it only catches the tap
+        }
+        var button = _cover.gameObject.AddComponent<Button>();
+        button.transition = Selectable.Transition.None;
+        button.onClick.AddListener(() => { if (_menuGroup.interactable) OnRead(); });
     }
 
     private void OnRead()
@@ -318,6 +412,7 @@ public class TitleScreen : MonoBehaviour
         if (_leaving) return;
         // "continue" picks up at the furthest page reached; a first read starts at page 1
         GameDirector.StartPage = Mathf.Max(1, Settings.HighestPage);
+        PageManager.ResumeNext = GameInput.OnTouchDevice;       // a phone goes back to the very panel it was on
         StartCoroutine(OpenTheComic());
     }
 
@@ -346,6 +441,7 @@ public class TitleScreen : MonoBehaviour
 
     private void OnStartOver()
     {
+        if (_contentsModal != null) _contentsModal.Close();
         Settings.ResetProgress();                    // a fresh comic: no stars or torch upgrades carried over
         OnRead();
     }
@@ -375,6 +471,17 @@ public class TitleScreen : MonoBehaviour
 
     private void OnSettings() => OpenModal(_settingsModal, _settings.First);
     private void OnHowTo() => OpenModal(_howToModal, _howTo.Back.Button);
+    private void OnContents() => OpenModal(_contentsModal, _contents.Back.Button);
+
+    /// <summary>A page picked on the contents page: read from its start (to look for the stars still on it).</summary>
+    private void OnPage(int page)
+    {
+        if (_leaving) return;
+        _contentsModal.Close();
+        GameDirector.StartPage = page;
+        PageManager.ResumeNext = false;
+        StartCoroutine(OpenTheComic());
+    }
 
     private void OpenModal(Modal modal, Selectable first)
     {
@@ -402,6 +509,7 @@ public class TitleScreen : MonoBehaviour
         _controlsModal.Close();
         _settingsModal.Close();
         _howToModal.Close();
+        if (_contentsModal != null) _contentsModal.Close();
         _menuGroup.interactable = true;
         AudioDirector.I?.Duck(1f);
         AudioDirector.I?.Back();

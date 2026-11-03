@@ -39,8 +39,29 @@ public class MouseKeyboardScreen : MonoBehaviour
     private float _t;
     private bool _advancing, _showing;
 
+    [Tooltip("A touch screen's card instead: How to Read as the phone has it (where the thumbs go, the torch, the " +
+             "ribbon), shown once per install, its box saying GOT IT.")]
+    [SerializeField] private GameObject _touchCard;
+    [SerializeField] private HowToReadLive _touchHowTo;
+
     private void Start()
     {
+        if (GameInput.OnTouchDevice)
+        {
+            // a phone has neither a mouse nor a keyboard: once, how to hold it; after that straight on
+            if (App.MouseKeyboardShown || Settings.TouchCardSeen || _touchCard == null) { Advance(); return; }
+            App.MouseKeyboardShown = true;
+            UIKit.EnsureEventSystem();
+            _touchCard.SetActive(true);
+            _touchHowTo.Back.SetLabel("GOT IT");
+            _touchHowTo.Bind(() =>
+            {
+                Settings.TouchCardSeen = true;
+                Settings.Save();
+                Advance();
+            });
+            return;
+        }
         if (App.MouseKeyboardShown) { Advance(); return; }
         App.MouseKeyboardShown = true;
 

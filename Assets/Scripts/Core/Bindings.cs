@@ -9,7 +9,8 @@ using UnityEngine.InputSystem.Controls;
 /// scroll wheel. Gameplay reads them through <see cref="GameInput"/>; captions and hints name them
 /// through <see cref="Format"/>, so "HOLD {FOLLOW}" always says what the player has set. DEFAULTS
 /// puts the jam layout back: the left hand on W A S D is Max, the right hand on the mouse is the torch.
-/// Fixed, whatever the bindings: Esc and P (Bookmark), 1 and 2 (pick a lens).
+/// Fixed, whatever the bindings: Esc and P (Bookmark), 1 and 2 (pick a lens). On a phone the hints
+/// name the on-screen controls instead ("TAP THE TORCH", "POW").
 /// </summary>
 public static class Bindings
 {
@@ -295,8 +296,19 @@ public static class Bindings
     }
 
     /// <summary>An action's main control by name (its spare if the main slot is empty).</summary>
+    // On a phone, what each action is on the screen: its button, or (the torch's) what to do with it.
+    private static readonly string[] TouchNames =
+    {
+        "STICK LEFT", "STICK RIGHT", "STICK UP", "STICK DOWN", "JUMP", "POW", "KICK", "DODGE", "SPLASH!",
+        "TAP THE TORCH", "LET GO OF THE PAGE", "CIRCLE THE CRANK", "TAP THE LENS",
+    };
+
+    /// <summary>The on-screen names already say what to do ("TAP THE TORCH"), so "PRESS" doesn't go in front.</summary>
+    private static bool SaysWhatToDo(Act a) => a is Act.Torch or Act.Follow or Act.Crank or Act.Lens;
+
     public static string Name(Act a)
     {
+        if (GameInput.TouchMode) return TouchNames[(int)a];
         var c = _bound[(int)a, 0];
         if (c.IsNone) c = _bound[(int)a, 1];
         return Name(c, IsHoldAct(a));
@@ -314,7 +326,7 @@ public static class Bindings
     {
         var main = _bound[(int)a, 0];
         var spare = _bound[(int)a, 1];
-        if (main.IsNone || spare.IsNone) return Name(a);
+        if (main.IsNone || spare.IsNone || GameInput.TouchMode) return Name(a);
         return Name(main, IsHoldAct(a)) + " / " + Name(spare, IsHoldAct(a));
     }
 
@@ -323,19 +335,43 @@ public static class Bindings
     public static string Format(string text)
     {
         if (string.IsNullOrEmpty(text) || text.IndexOf('{') < 0) return text;
-        if (_formatted.TryGetValue(text, out var done)) return done;
+        bool touch = GameInput.TouchMode;
+        string key = touch ? "\u0001" + text : text;
+        if (_formatted.TryGetValue(key, out var done)) return done;
         string s = text;
+        if (touch)
+        {
+            // whole phrases a phone says its own way: the launcher and the slam are swipes on KICK, the crank is
+            // circled, and following Max is what the beam does when the page is let go
+            foreach (var (keys, glass) in TouchPhrases) s = s.Replace(keys, glass);
+        }
         for (int a = 0; a < Count; a++)
         {
             string token = "{" + ((Act)a).ToString().ToUpperInvariant() + "}";
-            if (s.Contains(token)) s = s.Replace(token, Name((Act)a));
+            if (!s.Contains(token)) continue;
+            if (touch)
+            {
+                // on the screen it's a tap, not a press; and following Max is what the beam does on its own
+                string tap = SaysWhatToDo((Act)a) ? Name((Act)a) : "TAP " + Name((Act)a);
+                s = s.Replace("PRESS " + token, tap).Replace("HOLD " + token, Name((Act)a));
+            }
+            s = s.Replace(token, Name((Act)a));
         }
         if (_formatted.Count > 256) _formatted.Clear();
-        _formatted[text] = s;
+        _formatted[key] = s;
         return s;
     }
 
     private static readonly System.Collections.Generic.Dictionary<string, string> _formatted = new();
+
+    private static readonly (string keys, string glass)[] TouchPhrases =
+    {
+        ("TWIST THE CRANK: {CRANK}", "CIRCLE A FINGER ROUND THE CRANK"),
+        ("{UP} + {KICK}", "SWIPE UP ON KICK"),
+        ("{DOWN} + {KICK}", "SWIPE DOWN ON KICK"),
+        ("{UP} and {KICK}", "a swipe up on KICK"),
+        ("Hold {FOLLOW}", "Let go of the page"),
+    };
 
     // ---- storage (through Settings: nothing else touches PlayerPrefs) -------------------------------------
 

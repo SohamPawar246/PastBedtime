@@ -55,16 +55,28 @@ public class App : MonoBehaviour
         Flow = GetComponent<SceneFlow>();
 
 #if !UNITY_WEBGL || UNITY_EDITOR
-        // On the web the browser owns the canvas; elsewhere honour the saved choice.
-        if (!Application.isEditor) Screen.fullScreen = Settings.Fullscreen;
+        // On the web the browser owns the canvas; on a phone the game is always the whole screen; elsewhere honour
+        // the saved choice.
+        if (!Application.isEditor && !Application.isMobilePlatform) Screen.fullScreen = Settings.Fullscreen;
 #endif
+        // phones run at 30 unless asked: the comic's motion wants 60
+        if (Application.isMobilePlatform) Application.targetFrameRate = 60;
         SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    /// <summary>Sent to the background (a call, the home button): the save is written now, as the system may close
+    /// the game without another word. (The Bookmark pauses a page in play.)</summary>
+    private void OnApplicationPause(bool paused)
+    {
+        if (paused) Settings.Save();
     }
 
     private void OnDestroy()
     {
         if (I == this) SceneManager.sceneLoaded -= OnSceneLoaded;
     }
+
+    private void Update() => GameInput.Poll();
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {

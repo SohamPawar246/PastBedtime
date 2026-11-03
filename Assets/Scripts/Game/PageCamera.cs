@@ -22,7 +22,18 @@ public class PageCamera : MonoBehaviour
     public RenderTexture Texture { get; private set; }
     public bool Sweeping { get; private set; }
 
-    private float _minX, _maxX, _y;
+    /// <summary>Tests: how much of the tier the view shows, whatever the screen.</summary>
+    public static float? ViewScaleOverride;
+
+    /// <summary>How much of the tier the view shows (1 = all of it). A phone looks closer, so Max and the lettering
+    /// are big enough to read; the view then follows him up and down a little as well as sideways.</summary>
+    public static float ViewScale => ViewScaleOverride ?? (Form.Phone ? PhoneViewScale : 1f);
+    public const float PhoneViewScale = 0.85f;
+
+    /// <summary>The view's width on the lane right now (lane units).</summary>
+    public static float Width => ViewWidth * ViewScale;
+
+    private float _minX, _maxX, _y, _homeY;
     private float _x;
     private float _shake;
     private Vector2 _shakeOffset;
@@ -57,13 +68,18 @@ public class PageCamera : MonoBehaviour
         if (Texture != null) Texture.Release();
     }
 
-    public float HalfWidth => ViewWidth / 2f;
+    public float HalfWidth => Width / 2f;
+
+    /// <summary>The view's height on the tier: a closer view (a phone's) keeps the top, the HUD margin and the panels'
+    /// captions, and loses the strip of floor under the lane.</summary>
+    private float ViewY => _homeY + _baseSize * (1f - ViewScale);
 
     public void Frame(TierLayout tier, float x, bool snap)
     {
         _minX = tier.minX - PageDef.Gutter;
         _maxX = tier.maxX + PageDef.Gutter;
-        _y = tier.CentreY + HudRoom;
+        _homeY = tier.CentreY + HudRoom;
+        _y = ViewY;
         _x = ClampX(x);
         if (snap) Apply();
     }
@@ -81,7 +97,8 @@ public class PageCamera : MonoBehaviour
         float fromX = _x, fromY = _y;
         _minX = tier.minX - PageDef.Gutter;
         _maxX = tier.maxX + PageDef.Gutter;
-        float toX = ClampX(x), toY = tier.CentreY + HudRoom;
+        _homeY = tier.CentreY + HudRoom;
+        float toX = ClampX(x), toY = ViewY;
         for (float t = 0f; t < Sweep; t += Time.unscaledDeltaTime)
         {
             float k = Mathf.SmoothStep(0f, 1f, t / Sweep);
@@ -128,6 +145,7 @@ public class PageCamera : MonoBehaviour
             if (hx > _x + half) _x = hx - half;
             if (hx < _x - half) _x = hx + half;
             _x = ClampX(_x);
+            _y = ViewY;
         }
         if (_shake > 0f)
         {
@@ -155,7 +173,7 @@ public class PageCamera : MonoBehaviour
         if (_punch > 0f) at = Vector2.Lerp(at, _punchAt, _punch * 0.55f);       // in on the action, not all the way
         Vector3 focus = new Vector3(at.x + _shakeOffset.x, at.y + _shakeOffset.y, 0f);
         transform.position = focus - transform.forward * 30f;
-        Cam.orthographicSize = _baseSize * Mathf.Lerp(1f, _punchZoom, _punch);
+        Cam.orthographicSize = _baseSize * ViewScale * Mathf.Lerp(1f, _punchZoom, _punch);
     }
 
     /// <summary>Viewport point (0..1) on the page texture to a point on the z = 0 lane.</summary>

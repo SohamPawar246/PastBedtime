@@ -122,6 +122,8 @@ public class PageManager : MonoBehaviour
             Settings.HighestPage = number;
             Settings.Save();
         }
+        if (ResumeNext && Settings.ResumePage == number) ResumeAt(Settings.ResumeTier, Settings.ResumePanel);
+        ResumeNext = false;
     }
 
     private void Unload()
@@ -195,6 +197,45 @@ public class PageManager : MonoBehaviour
         _checkpointCharge = torch != null ? torch.Charge.Charge : 0f;
         _checkpointSplash = GameState.I != null ? GameState.I.Splash : 0f;
         if (!string.IsNullOrEmpty(pl.heroLine)) GameHUD.I?.HeroSays(pl.heroLine, 4f);
+        if (GameInput.OnTouchDevice && GameState.I != null)
+        {
+            // a phone can close the game in the background at any time: CONTINUE comes back to this panel
+            Settings.ResumePage = GameState.I.Page;
+            Settings.ResumeTier = TierIndex;
+            Settings.ResumePanel = Layout.tiers[TierIndex].panels.IndexOf(pl);
+            Settings.Save();
+        }
+    }
+
+    /// <summary>The next page load picks up at the panel the save says (CONTINUE on a phone).</summary>
+    public static bool ResumeNext;
+
+    /// <summary>Starts this page at a panel Max reached in an earlier sitting: the panels before it are read, the
+    /// torch is wound for a fresh sitting, and the checkpoint is its entry.</summary>
+    private void ResumeAt(int tierIndex, int panelIndex)
+    {
+        if (tierIndex < 0 || tierIndex >= Layout.tiers.Count) return;
+        var tier = Layout.tiers[tierIndex];
+        if (panelIndex < 0 || panelIndex >= tier.panels.Count || (tierIndex == 0 && panelIndex == 0)) return;
+        TierIndex = tierIndex;
+        for (int t = 0; t <= tierIndex; t++)
+            for (int p = 0; p < Layout.tiers[t].panels.Count; p++)
+                if (t < tierIndex || p < panelIndex) Layout.tiers[t].panels[p].visited = true;
+        var pl = tier.panels[panelIndex];
+        var hero = HeroController.I;
+        if (hero != null)
+        {
+            hero.Teleport(pl.entry);
+            SetHeroBounds();
+        }
+        var torch = TorchController.I;
+        if (torch != null)
+        {
+            torch.Charge.Charge = torch.Charge.Capacity;
+            torch.PlaceAt(pl.entry + Vector2.up);
+        }
+        EnterPanel(pl);
+        PageCamera.I?.Frame(tier, pl.entry.x, snap: true);
     }
 
     public void EnemyDown(EnemyBrain e)

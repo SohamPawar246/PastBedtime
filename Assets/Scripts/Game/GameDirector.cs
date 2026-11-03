@@ -30,6 +30,10 @@ public class GameDirector : MonoBehaviour
     [SerializeField] private GameMusic _music;
     [SerializeField] private PageManager _pages;
 
+    // a phone stays awake while the comic is read: its cutscenes have no touches and the screen would dim mid-page
+    private void OnEnable() => Screen.sleepTimeout = SleepTimeout.NeverSleep;
+    private void OnDisable() => Screen.sleepTimeout = SleepTimeout.SystemSetting;
+
     private void Start()
     {
         UIKit.EnsureEventSystem();

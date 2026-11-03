@@ -84,6 +84,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2287573959095718989}
+  - component: {fileID: 3778547692278359295}
   m_Layer: 0
   m_Name: Card
   m_TagString: Untagged
@@ -112,6 +113,21 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 10}
   m_SizeDelta: {x: 1240, y: 700}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &3778547692278359295
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370194605545000684}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 376f58baf6775094c948710dbb63def3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PhoneFit
+  _height: 0.94
+  _width: 0.96
+  _maxScale: 2.2
 --- !u!1 &1125464836055822794
 GameObject:
   m_ObjectHideFlags: 0

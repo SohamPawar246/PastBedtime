@@ -52,10 +52,11 @@ public static class UIKit
         go.GetComponent<EventSystem>().sendNavigationEvents = true;
     }
 
-    /// <summary>Selects <paramref name="go"/> for keyboard/gamepad (null clears the selection).</summary>
+    /// <summary>Selects <paramref name="go"/> for keyboard/gamepad (null clears the selection). Played by touch, nothing
+    /// is selected: a highlighted line nobody pointed at reads as a mistake on a phone.</summary>
     public static void Select(GameObject go)
     {
-        if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(go);
+        if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(GameInput.TouchMode ? null : go);
     }
 
     public static GameObject Selected =>

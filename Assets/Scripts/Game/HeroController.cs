@@ -18,6 +18,8 @@ public class HeroController : MonoBehaviour
 
     public const float RunSpeed = 7f, Gravity = 30f, JumpHigh = 3.2f, JumpLow = 1.8f;
     public const float Coyote = 0.1f, Buffer = 0.1f;
+    /// <summary>A thumb on glass is less exact than a key: on a touch screen both windows are half again as long.</summary>
+    private static float Forgiveness => GameInput.TouchMode ? 1.5f : 1f;
     /// <summary>Past the peak: half gravity until he's falling at HangSpeed, then FallGravity times it. Tuned so a
     /// full jump spends the same time coming down as a plain arc does (0.46 s), so its reach is unchanged.</summary>
     public const float HangSpeed = 2f, HangGravity = 0.5f, FallGravity = 1.5f;
@@ -158,6 +160,7 @@ public class HeroController : MonoBehaviour
         _combat?.Interrupt();
         Clips?.Play(_health.Dead ? "Death" : "Hurt", 0.05f, 1f, restart: true);
         GameEvents.Impact(hit.hearts >= 2 ? 0.6f : 0.3f);
+        if (_health.Dead) Haptics.Heavy(); else Haptics.Bump();
         GameState.I?.Notify();
         _flash = 0.07f;                                     // a red flash, then a blink through his i-frames
         _blink = _health.Dead ? 0f : HurtBlink;
@@ -269,8 +272,8 @@ public class HeroController : MonoBehaviour
         }
 
         // ---- jump: coyote time, buffer, hold for height ----------------------------------------
-        _coyote = Grounded ? Coyote : _coyote - dt;
-        _buffer = !Locked && !hushed && GameInput.JumpPressed ? Buffer : _buffer - dt;
+        _coyote = Grounded ? Coyote * Forgiveness : _coyote - dt;
+        _buffer = !Locked && !hushed && GameInput.JumpPressed ? Buffer * Forgiveness : _buffer - dt;
         if (_buffer > 0f && _coyote > 0f && !attacking && _hurt <= 0f && _dodge <= 0f)
         {
             Velocity.y = Mathf.Sqrt(2f * Gravity * JumpHigh);

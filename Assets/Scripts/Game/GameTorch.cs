@@ -18,6 +18,7 @@ public class GameTorch : MonoBehaviour
     private static readonly Vector2 Wrist = new(852f, -548f);
     private static readonly Vector2 GameOffset = new(96f, -78f);
     private const float GameScale = 1f;
+    private const float PhoneScale = 0.8f;                   // on a phone it sits in the corner under the thumb, clear of the buttons
     // points in the 600 x 448 render (y down), projected from Blender (torch_layer_points.json)
     private static readonly Vector2 WristPx = new(436f, 294f);
     private static readonly Vector2 LensPx = new(29f, 68f), AimPx = new(-383f, -25f);   // the aim: the title's comic centre
@@ -57,6 +58,23 @@ public class GameTorch : MonoBehaviour
         }
     }
 
+    // ---- where the torch is on the screen (the on-screen controls touch it) -----------------------------
+
+    private Camera Cam => UIKit.CanvasCamera(_hand);
+
+    /// <summary>Is a screen point (pixels) on the hand and torch?</summary>
+    public bool OnHand(Vector2 screen) => RectTransformUtility.RectangleContainsScreenPoint(_hand, screen, Cam);
+
+    /// <summary>The crank's middle, on the screen (pixels): a finger circles it to wind the torch.</summary>
+    public Vector2 CrankOnScreen => RectTransformUtility.WorldToScreenPoint(Cam, _crank.rectTransform.position);
+
+    /// <summary>Is a screen point within `radius` (hand-render pixels) of the lens?</summary>
+    public bool OnLens(Vector2 screen, float radius)
+    {
+        Vector2 lens = RectTransformUtility.WorldToScreenPoint(Cam, _lensGlow.rectTransform.position);
+        return (screen - lens).magnitude <= radius * _hand.lossyScale.x;
+    }
+
     /// <summary>A front-layer point for a point on the hand render (follows the hand's turn and move).</summary>
     private Vector2 HandToFront(Vector2 px)
     {
@@ -77,7 +95,7 @@ public class GameTorch : MonoBehaviour
         // where the hand is: the title's spot, sliding down to the corner as the view zooms in
         float k = view.Framing;
         _hand.anchoredPosition = Wrist + GameOffset * k;
-        float s = Mathf.Lerp(1f, GameScale, k);
+        float s = Mathf.Lerp(1f, Form.Phone ? PhoneScale : GameScale, k);
 
         // turn a little toward the beam (in the title's framing, the title's beam on the closed comic)
         Vector2 onPage = parent.InverseTransformPoint(view.LaneToWorld(field.BeamCentre));
@@ -90,6 +108,7 @@ public class GameTorch : MonoBehaviour
         _turn = Mathf.Lerp(_turn, want, 1f - Mathf.Exp(-dt * 10f));
         _hand.localRotation = Quaternion.Euler(0f, 0f, _turn);
         _hand.localScale = new Vector3(s, s, 1f);
+        if (Form.Touch) KeepCrankOnScreen(parent, k);
 
         // the crank: each scroll notch winds it on a quarter-ish turn
         _crankAngle = Mathf.MoveTowards(_crankAngle, _crankTarget, dt * 900f);
@@ -151,6 +170,22 @@ public class GameTorch : MonoBehaviour
         _hint.alpha = k;
         _hint.rectTransform.anchoredPosition = HandToFront(LensPx) + new Vector2(-40f, 120f);   // above the torch head
     }
+
+    /// <summary>On a touch screen the crank is the thumb's: the hand slides in just enough to keep the crank a thumb's
+    /// width inside the screen's bottom-right corner (a wide phone screen would cut it off).</summary>
+    private void KeepCrankOnScreen(RectTransform parent, float k)
+    {
+        var canvas = _hand.GetComponentInParent<Canvas>().rootCanvas;
+        var screen = (RectTransform)canvas.transform;
+        Vector2 lo = parent.InverseTransformPoint(screen.TransformPoint(screen.rect.min));
+        Vector2 hi = parent.InverseTransformPoint(screen.TransformPoint(screen.rect.max));
+        float inset = Form.Mm(canvas, CrankInsetMm) * screen.lossyScale.x / parent.lossyScale.x;
+        Vector2 crank = parent.InverseTransformPoint(_crank.rectTransform.position);
+        var want = new Vector2(Mathf.Min(crank.x, hi.x - inset), Mathf.Max(crank.y, lo.y + inset));
+        _hand.anchoredPosition += (want - crank) * k;
+    }
+
+    private const float CrankInsetMm = 11f;
 
     private void Pop(string word, Vector2 px, Color color) => StartCoroutine(PopRoutine(word, px, color));
 

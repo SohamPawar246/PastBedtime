@@ -101,7 +101,7 @@ public class GameHUD : MonoBehaviour
             {
                 // the beam's size on the page, so the player can line up exactly what it will wake
                 float radius = LightField.I != null && LightField.I.BeamRadius > 0.1f ? LightField.I.BeamRadius : 4f;
-                _ring.rectTransform.sizeDelta = Vector2.one * (2f * radius * _page.rect.width / PageCamera.ViewWidth);
+                _ring.rectTransform.sizeDelta = Vector2.one * (2f * radius * _page.rect.width / PageCamera.Width);
                 _ring.rectTransform.anchoredPosition = ToHolder(torch.Aim);
                 _ring.rectTransform.localRotation = Quaternion.Euler(0f, 0f, Time.unscaledTime * 12f);
                 _ring.color = lens.Alpha(0.75f);
@@ -253,7 +253,7 @@ public class GameHUD : MonoBehaviour
         lane = default;
         var hero = HeroController.I;
         if (_bubble == null || !_bubble.gameObject.activeSelf || _bubbleFor <= 0f || hero == null || !hero.Light.IsAwake) return false;
-        float perUnit = _page.rect.width / PageCamera.ViewWidth;
+        float perUnit = _page.rect.width / PageCamera.Width;
         Vector2 size = _bubble.sizeDelta / perUnit;
         Vector2 at = (Vector2)hero.transform.position + new Vector2(_bubbleLeft ? -BubbleAt.x : BubbleAt.x, BubbleAt.y);
         lane = new Rect(at.x - _bubble.pivot.x * size.x, at.y, size.x, size.y);
@@ -370,7 +370,26 @@ public class GameHUD : MonoBehaviour
         else StartCoroutine(Banner(text, Palette.Ink, Palette.Paper, 1.6f));
     }
 
+    private int _bannersUp;
+
+    /// <summary>Something's printed across the top of the page (a lesson or a warning): the phone's bookmark ribbon,
+    /// which hangs there, tucks itself up out of the way.</summary>
+    public bool TopCaptionUp => _bannersUp > 0 || (_teach.gameObject.activeSelf && _teachGroup.alpha > 0.05f);
+
     private IEnumerator Banner(string text, Color face, Color ink, float seconds)
+    {
+        _bannersUp++;
+        try
+        {
+            yield return BannerShown(text, face, ink, seconds);
+        }
+        finally
+        {
+            _bannersUp--;
+        }
+    }
+
+    private IEnumerator BannerShown(string text, Color face, Color ink, float seconds)
     {
         var root = Instantiate(_banner, _page);
         root.name = "Banner";

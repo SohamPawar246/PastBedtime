@@ -39,6 +39,7 @@ public class CaptionButton : MonoBehaviour,
         var button = GetComponent<Button>();
         if (onClick != null) button.onClick.AddListener(onClick);
         if (!_quiet) button.onClick.AddListener(() => AudioDirector.I?.Click());
+        button.onClick.AddListener(Haptics.Tick);
     }
 
     private void Awake() => _button = GetComponent<Button>();
@@ -49,8 +50,13 @@ public class CaptionButton : MonoBehaviour,
         ApplyInstant(false);
     }
 
+    /// <summary>A finger, not a mouse: there's no hover, so a box lights while it's pressed and nothing stays selected.</summary>
+    public static bool IsTouch(PointerEventData e) =>
+        e is UnityEngine.InputSystem.UI.ExtendedPointerEventData x && x.pointerType == UnityEngine.InputSystem.UI.UIPointerType.Touch;
+
     public void OnPointerEnter(PointerEventData e)
     {
+        if (IsTouch(e)) return;
         if (_button.IsInteractable() && EventSystem.current != null) EventSystem.current.SetSelectedGameObject(gameObject, e);
     }
 
@@ -69,11 +75,20 @@ public class CaptionButton : MonoBehaviour,
 
     public void OnPointerDown(PointerEventData e)
     {
-        if (_button.IsInteractable() && _body != null) _body.localScale = Vector3.one * 0.95f;
+        if (!_button.IsInteractable() || _body == null) return;
+        if (IsTouch(e)) Animate(true);
+        _body.localScale = Vector3.one * 0.95f;
     }
 
     public void OnPointerUp(PointerEventData e)
     {
+        if (IsTouch(e))
+        {
+            if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == gameObject) EventSystem.current.SetSelectedGameObject(null);
+            _selected = false;
+            Animate(false);
+            return;
+        }
         if (_body != null) _body.localScale = Vector3.one * (_selected ? selectedScale : 1f);
     }
 

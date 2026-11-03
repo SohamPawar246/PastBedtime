@@ -23,6 +23,15 @@ public static class Settings
     public static bool ScreenShake;
     public static bool ReduceFlashing;  // softens the flare and other full-screen flashes
     public static bool SoundCaptions;   // a caption for every audio cue
+    public static bool Haptics;         // a phone buzzes for the crank, blows, flares and Mom's footsteps
+    // the on-screen controls (Settings > TOUCH): button size (0 small, 1 normal, 2 big), how see-through they are at
+    // rest (0..1), and left-handed (the stick on the right, the buttons on the left)
+    public static int ButtonSize;
+    public static float ButtonOpacity;
+    public static bool LeftHanded;
+    public static bool TiltAim;         // tipping the phone nudges the beam ahead of or behind Max
+    /// <summary>The touch screen's "how to hold it" card has been shown (once per install).</summary>
+    public static bool TouchCardSeen;
 
     // ---- Display --------------------------------------------------------------------
     public static bool Fullscreen;
@@ -36,6 +45,9 @@ public static class Settings
     public static bool MomTaught;
     /// <summary>The Ghost lens has been taught (once per save, on page 7).</summary>
     public static bool GhostTaught;
+    /// <summary>On a phone: the page, tier and panel Max last walked into, so CONTINUE comes back to that panel (a phone
+    /// closes games in the background without asking). Page 0: none.</summary>
+    public static int ResumePage, ResumeTier, ResumePanel;
     /// <summary>Which stars have been found on each page (bit i = the page's star i): found stars aren't drawn
     /// again, so each counts once.</summary>
     private static readonly int[] _starsFound = new int[MaxPages + 1];
@@ -54,6 +66,7 @@ public static class Settings
         Stars = Spring = Gear = Ratchet = 0;
         System.Array.Clear(_starsFound, 0, _starsFound.Length);
         MomTaught = GhostTaught = false;
+        ResumePage = ResumeTier = ResumePanel = 0;
         Commit();
     }
 
@@ -71,10 +84,15 @@ public static class Settings
         SfxVolume = 1f;
         FollowAssist = true;
         EasySuspicion = false;
-        FlatPage = false;
+        FlatPage = Form.Phone;          // a phone's screen is too small for the room view: the comic faces you
         ScreenShake = true;
         ReduceFlashing = false;
         SoundCaptions = true;
+        Haptics = true;
+        ButtonSize = 1;
+        ButtonOpacity = 0.5f;
+        LeftHanded = false;
+        TiltAim = false;
         Fullscreen = false;
     }
 
@@ -90,6 +108,12 @@ public static class Settings
         ScreenShake = GetBool("read.shake", ScreenShake);
         ReduceFlashing = GetBool("read.noflash", ReduceFlashing);
         SoundCaptions = GetBool("read.captions", SoundCaptions);
+        Haptics = GetBool("read.haptics", Haptics);
+        ButtonSize = PlayerPrefs.GetInt(Prefix + "touch.size", ButtonSize);
+        ButtonOpacity = PlayerPrefs.GetFloat(Prefix + "touch.opacity", ButtonOpacity);
+        LeftHanded = GetBool("touch.lefthanded", LeftHanded);
+        TiltAim = GetBool("touch.tilt", TiltAim);
+        TouchCardSeen = GetBool("touch.cardseen", false);
         Fullscreen = GetBool("video.fullscreen", Fullscreen);
         HighestPage = PlayerPrefs.GetInt(Prefix + "progress.page", 0);
         Stars = PlayerPrefs.GetInt(Prefix + "progress.stars", 0);
@@ -99,6 +123,9 @@ public static class Settings
         for (int p = 1; p <= MaxPages; p++) _starsFound[p] = PlayerPrefs.GetInt(Prefix + "progress.found" + p, 0);
         MomTaught = GetBool("progress.momtaught", false);
         GhostTaught = GetBool("progress.ghosttaught", false);
+        ResumePage = PlayerPrefs.GetInt(Prefix + "progress.resume.page", 0);
+        ResumeTier = PlayerPrefs.GetInt(Prefix + "progress.resume.tier", 0);
+        ResumePanel = PlayerPrefs.GetInt(Prefix + "progress.resume.panel", 0);
     }
 
     public static void Save()
@@ -112,6 +139,12 @@ public static class Settings
         SetBool("read.shake", ScreenShake);
         SetBool("read.noflash", ReduceFlashing);
         SetBool("read.captions", SoundCaptions);
+        SetBool("read.haptics", Haptics);
+        PlayerPrefs.SetInt(Prefix + "touch.size", ButtonSize);
+        PlayerPrefs.SetFloat(Prefix + "touch.opacity", ButtonOpacity);
+        SetBool("touch.lefthanded", LeftHanded);
+        SetBool("touch.tilt", TiltAim);
+        SetBool("touch.cardseen", TouchCardSeen);
         SetBool("video.fullscreen", Fullscreen);
         PlayerPrefs.SetInt(Prefix + "progress.page", HighestPage);
         PlayerPrefs.SetInt(Prefix + "progress.stars", Stars);
@@ -121,6 +154,9 @@ public static class Settings
         for (int p = 1; p <= MaxPages; p++) PlayerPrefs.SetInt(Prefix + "progress.found" + p, _starsFound[p]);
         SetBool("progress.momtaught", MomTaught);
         SetBool("progress.ghosttaught", GhostTaught);
+        PlayerPrefs.SetInt(Prefix + "progress.resume.page", ResumePage);
+        PlayerPrefs.SetInt(Prefix + "progress.resume.tier", ResumeTier);
+        PlayerPrefs.SetInt(Prefix + "progress.resume.panel", ResumePanel);
         PlayerPrefs.Save(); // flush now: a browser tab can close at any moment
     }
 

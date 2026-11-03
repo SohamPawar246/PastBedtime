@@ -85,6 +85,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7595376929836488465}
   - component: {fileID: 5189865149588721236}
+  - component: {fileID: 2760084738513330350}
   m_Layer: 0
   m_Name: HowToRead
   m_TagString: Untagged
@@ -159,6 +160,21 @@ MonoBehaviour:
   - {fileID: 7858322951044073774}
   - {fileID: 9057437698373112323}
   <Back>k__BackingField: {fileID: 4265667927268095354}
+--- !u!114 &2760084738513330350
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 969258286348275751}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 376f58baf6775094c948710dbb63def3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PhoneFit
+  _height: 0.94
+  _width: 0.96
+  _maxScale: 2.2
 --- !u!1 &2099322273828102648
 GameObject:
   m_ObjectHideFlags: 0
@@ -694,6 +710,7 @@ GameObject:
   - component: {fileID: 7685939025285201995}
   - component: {fileID: 6884811722695220812}
   - component: {fileID: 8159338798933553308}
+  - component: {fileID: 9216731992601111312}
   m_Layer: 0
   m_Name: Head THE KEYBOARD IS MAX
   m_TagString: Untagged
@@ -820,6 +837,19 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &9216731992601111312
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2991583171009144578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de1a0693ccbd1ee4cab02e65a92fbe01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TouchText
+  _touch: YOUR LEFT THUMB IS MAX
 --- !u!1 &3170377069069465744
 GameObject:
   m_ObjectHideFlags: 0
@@ -868,6 +898,7 @@ GameObject:
   - component: {fileID: 5633208035358655175}
   - component: {fileID: 7590737343417817191}
   - component: {fileID: 6834933995574794919}
+  - component: {fileID: 8079994457568768924}
   m_Layer: 0
   m_Name: Head THE MOUSE IS THE TORCH
   m_TagString: Untagged
@@ -994,6 +1025,19 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &8079994457568768924
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3372726676221762539}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de1a0693ccbd1ee4cab02e65a92fbe01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TouchText
+  _touch: THE TORCH IS IN THE HAND
 --- !u!1 &3720059562979286883
 GameObject:
   m_ObjectHideFlags: 0
@@ -1279,6 +1323,7 @@ GameObject:
   - component: {fileID: 2220340559656956138}
   - component: {fileID: 6341778129000020194}
   - component: {fileID: 3491363955129785856}
+  - component: {fileID: 8831959772253911031}
   m_Layer: 0
   m_Name: Rebind
   m_TagString: Untagged
@@ -1405,6 +1450,19 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &8831959772253911031
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4447568248276318409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de1a0693ccbd1ee4cab02e65a92fbe01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TouchText
+  _touch: 'Bigger buttons, left-handed: SETTINGS > TOUCH'
 --- !u!1 &4761486950021339612
 GameObject:
   m_ObjectHideFlags: 0

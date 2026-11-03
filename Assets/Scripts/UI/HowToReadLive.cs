@@ -13,7 +13,18 @@ public class HowToReadLive : MonoBehaviour
     private static string N(Bindings.Act a) => Bindings.Name(a);
 
     // left hand only: everything Max does is in reach of W A S D (the right hand holds the mouse)
-    private static (string key, string what)[] MaxRows() => new[]
+    private static (string key, string what)[] MaxRows() => GameInput.TouchMode
+        ? new[]
+        {
+            ("STICK", "run (left thumb)"),
+            ("JUMP", "hold = higher"),
+            ("POW", "x3 = haymaker"),
+            ("KICK", "swipe up: launcher"),
+            ("DODGE", "dodge"),
+            ("KICK, IN AIR", "swipe down: slam"),
+            ("SPLASH!", "when the meter's full"),
+        }
+        : new[]
     {
         (N(Bindings.Act.Left) + " / " + N(Bindings.Act.Right), "run"),
         (N(Bindings.Act.Jump), "jump (hold = higher)"),
@@ -24,15 +35,26 @@ public class HowToReadLive : MonoBehaviour
         (N(Bindings.Act.Splash), "splash page (meter full)"),
     };
 
-    private static (string key, string what)[] TorchRows() => new[]
-    {
-        ("MOVE", "aim the beam"),
-        ("HOLD " + N(Bindings.Act.Follow), "beam follows Max"),
-        (N(Bindings.Act.Torch), "torch on / off"),
-        (N(Bindings.Act.Crank), "twist the crank"),
-        (N(Bindings.Act.Lens), "ghost lens on / off (page 7 on)"),
-        ("ESC", "bookmark (pause)"),
-    };
+    private static (string key, string what)[] TorchRows() => GameInput.TouchMode
+        ? new[]
+        {
+            // (a key of up to 14 letters and up to 21 after it: a line's width on the page)
+            ("DRAG THE PAGE", "aim the beam"),
+            ("LET GO", "it follows Max"),
+            ("TAP THE TORCH", "on / off"),
+            ("CIRCLE CRANK", "wind it up"),
+            ("LENS", "ghost lens (page 7)"),
+            ("THE RIBBON", "bookmark (pause)"),
+        }
+        : new[]
+        {
+            ("MOVE", "aim the beam"),
+            ("HOLD " + N(Bindings.Act.Follow), "beam follows Max"),
+            (N(Bindings.Act.Torch), "torch on / off"),
+            (N(Bindings.Act.Crank), "twist the crank"),
+            (N(Bindings.Act.Lens), "ghost lens on / off (page 7 on)"),
+            ("ESC", "bookmark (pause)"),
+        };
 
     public void Bind(Action onBack) => Back.Bind(() => onBack?.Invoke());
 
